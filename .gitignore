@@ -12,6 +12,8 @@ modules/hl7-worklist/runtime/config.json
 modules/*/logs/
 modules/cloud-storage/logs/
 modules/cloud-storage/temp/
+# Binario nativo rclone (instalar en el server; no versionar)
+modules/cloud-storage/bin/rclone
 modules/email/logs/
 
 # Dependencias (restaurar con composer/npm)
