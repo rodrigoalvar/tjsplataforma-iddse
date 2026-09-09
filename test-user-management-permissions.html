@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba - Control de Permisos User Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <script src="js/auth-middleware.js"></script>
+    <script src="assets/js/simple-permission-manager.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h3 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            Prueba - Control de Permisos User Management
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Esta página prueba el control de permisos implementado en <code>user-management.html</code>.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Información del Usuario</h5>
+                                <div id="userInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando información del usuario...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Permisos del Usuario</h5>
+                                <div id="permissionsInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando permisos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Pruebas de Permisos</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-primary w-100" onclick="testUsuariosPermission()">
+                                        <i class="fas fa-users me-2"></i>
+                                        Probar Permiso Usuarios
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-success w-100" onclick="testRequirePermission()">
+                                        <i class="fas fa-shield-alt me-2"></i>
+                                        Probar requirePermissionSimple
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-warning w-100" onclick="testAccessUserManagement()">
+                                        <i class="fas fa-external-link-alt me-2"></i>
+                                        Probar Acceso Real
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Simulación de Acceso</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <button class="btn btn-outline-primary w-100" onclick="simulateAccessWithPermission()">
+                                        <i class="fas fa-check-circle me-2"></i>
+                                        Simular Usuario CON Permisos
+                                    </button>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <button class="btn btn-outline-danger w-100" onclick="simulateAccessWithoutPermission()">
+                                        <i class="fas fa-times-circle me-2"></i>
+                                        Simular Usuario SIN Permisos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Resultados de Pruebas</h5>
+                            <div id="testResults" class="alert alert-light">
+                                <p class="mb-0 text-muted">Los resultados de las pruebas aparecerán aquí...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Enlaces de Prueba</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <a href="user-management.html" class="btn btn-outline-info w-100" target="_blank">
+                                        <i class="fas fa-external-link-alt me-2"></i>
+                                        Abrir User Management
+                                    </a>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <a href="test-simple-permissions.html" class="btn btn-outline-secondary w-100" target="_blank">
+                                        <i class="fas fa-cog me-2"></i>
+                                        Abrir Pruebas Generales
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cargar información del usuario al iniciar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUserInfo();
+        });
+
+        /**
+         * Carga la información del usuario y permisos
+         */
+        async function loadUserInfo() {
+            try {
+                // Verificar autenticación primero
+                const isAuthenticated = await requireAuth();
+                if (!isAuthenticated) {
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No hay sesión activa. <a href="login.html">Iniciar sesión</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Obtener información del usuario usando la API simplificada
+                const result = await checkPermissionSimple('usuarios', 'Prueba');
+                
+                if (result.success) {
+                    const user = result.user;
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${user.nombre} ${user.apellido}</h6>
+                                <p class="card-text">
+                                    <strong>ID:</strong> ${user.id}<br>
+                                    <strong>Nivel:</strong> ${user.nivel}<br>
+                                    <strong>Email:</strong> ${user.email || 'No disponible'}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('permissionsInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Permisos (${user.permisos.length})</h6>
+                                <div class="row">
+                                    ${user.permisos.map(permission => `
+                                        <div class="col-md-6 mb-1">
+                                            <span class="badge ${permission === 'usuarios' ? 'bg-success' : 'bg-info'}">${permission}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Permiso Usuarios:</strong> 
+                                    <span class="badge ${user.permisos.includes('usuarios') || user.permisos.includes('all') ? 'bg-success' : 'bg-danger'}">
+                                        ${user.permisos.includes('usuarios') || user.permisos.includes('all') ? 'SÍ' : 'NO'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            Error cargando información del usuario: ${result.error}
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error cargando información:', error);
+                document.getElementById('userInfo').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Prueba el permiso de usuarios
+         */
+        async function testUsuariosPermission() {
+            try {
+                const result = await checkPermissionSimple('usuarios', 'Gestión Usuarios');
+                
+                const status = result.success && result.hasPermission ? 'PERMITIDO' : 'DENEGADO';
+                const badgeClass = result.success && result.hasPermission ? 'bg-success' : 'bg-danger';
+                
+                document.getElementById('testResults').innerHTML = `
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-test-tube me-2"></i>Prueba: Permiso Gestión Usuarios</h6>
+                        <p class="mb-2"><strong>Permiso:</strong> usuarios</p>
+                        <p class="mb-2"><strong>Resultado:</strong> <span class="badge ${badgeClass}">${status}</span></p>
+                        <p class="mb-0"><strong>Usuario:</strong> ${result.user ? result.user.nombre + ' ' + result.user.apellido : 'No disponible'}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error probando permiso:', error);
+                document.getElementById('testResults').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Error probando permiso: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Prueba requirePermissionSimple
+         */
+        async function testRequirePermission() {
+            try {
+                const hasAccess = await requirePermissionSimple('usuarios', 'Gestión Usuarios', {
+                    title: 'Acceso Denegado - Gestión Usuarios',
+                    message: 'No tienes permisos para acceder a <strong>Gestión Usuarios</strong>.',
+                    redirectUrl: 'dashboard-unified.html',
+                    showLogoutButton: true
+                });
+                
+                document.getElementById('testResults').innerHTML = `
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-shield-alt me-2"></i>Prueba requirePermissionSimple: Gestión Usuarios</h6>
+                        <p class="mb-2"><strong>Permiso:</strong> usuarios</p>
+                        <p class="mb-0"><strong>Acceso:</strong> <span class="badge ${hasAccess ? 'bg-success' : 'bg-danger'}">${hasAccess ? 'PERMITIDO' : 'DENEGADO'}</span></p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error probando requirePermissionSimple:', error);
+                document.getElementById('testResults').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-times-circle me-2"></i>
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Prueba el acceso real a user-management
+         */
+        function testAccessUserManagement() {
+            document.getElementById('testResults').innerHTML = `
+                <div class="alert alert-warning">
+                    <h6><i class="fas fa-external-link-alt me-2"></i>Prueba de Acceso Real</h6>
+                    <p class="mb-2">Para probar el acceso real:</p>
+                    <ol class="mb-0">
+                        <li>Haz clic en "Abrir User Management"</li>
+                        <li>Si tienes permisos → Acceso normal</li>
+                        <li>Si no tienes permisos → Modal de acceso denegado</li>
+                    </ol>
+                </div>
+            `;
+        }
+
+        /**
+         * Simula acceso con permisos
+         */
+        function simulateAccessWithPermission() {
+            document.getElementById('testResults').innerHTML = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle me-2"></i>Simulación: Usuario CON Permisos</h6>
+                    <p class="mb-2"><strong>Escenario:</strong> Usuario con permiso 'usuarios' o 'all'</p>
+                    <p class="mb-2"><strong>Resultado esperado:</strong></p>
+                    <ul class="mb-0">
+                        <li>✅ Acceso permitido a Gestión Usuarios</li>
+                        <li>✅ Carga normal de la página</li>
+                        <li>✅ Todas las funcionalidades disponibles</li>
+                        <li>✅ Sin modal de acceso denegado</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        /**
+         * Simula acceso sin permisos
+         */
+        function simulateAccessWithoutPermission() {
+            document.getElementById('testResults').innerHTML = `
+                <div class="alert alert-danger">
+                    <h6><i class="fas fa-times-circle me-2"></i>Simulación: Usuario SIN Permisos</h6>
+                    <p class="mb-2"><strong>Escenario:</strong> Usuario sin permiso 'usuarios' ni 'all'</p>
+                    <p class="mb-2"><strong>Resultado esperado:</strong></p>
+                    <ul class="mb-0">
+                        <li>❌ Modal de acceso denegado</li>
+                        <li>❌ Título: "Acceso Denegado - Gestión Usuarios"</li>
+                        <li>❌ Mensaje: "No tienes permisos para acceder a Gestión Usuarios"</li>
+                        <li>❌ Botones: "Volver al Dashboard" y "Cerrar Sesión"</li>
+                        <li>❌ Página bloqueada completamente</li>
+                    </ul>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

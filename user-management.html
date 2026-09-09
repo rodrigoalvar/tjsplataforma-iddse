@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - TJS Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <link href="css/permissions-badges.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+    <style>
+        .user-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .user-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        .user-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .user-info h6 {
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .user-info small {
+            color: #666;
+        }
+        
+        .user-level {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .level-root {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .level-admin {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .level-user {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .user-actions .btn {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+        }
+        
+        .hierarchy-tree {
+            margin-left: 20px;
+            border-left: 2px solid #e0e0e0;
+            padding-left: 15px;
+        }
+        
+        .hierarchy-item {
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        .hierarchy-item::before {
+            content: '';
+            position: absolute;
+            left: -17px;
+            top: 15px;
+            width: 15px;
+            height: 2px;
+            background-color: #e0e0e0;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .filter-section {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .permission-badge {
+            display: inline-block;
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            margin: 1px;
+        }
+        
+        .permission-badge.active {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .modal-permissions {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert-custom {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .btn-custom {
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Verificar permisos específicos para Gestión Usuarios
+            const hasAccess = await requirePermissionSimple('usuarios', 'Gestión Usuarios', {
+                title: 'Acceso Denegado - Gestión Usuarios',
+                message: 'No tienes permisos para acceder a <strong>Gestión Usuarios</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            // Si no tiene permisos, no continuar con el resto del código
+            if (!hasAccess) {
+                return;
+            }
+            
+            // Inicializar la aplicación
+            initializeUserManagement();
+            
+            // Configurar funcionalidad del sidebar
+            setupSidebarFunctionality();
+        });
+        
+        // Función para configurar la funcionalidad del sidebar
+        function setupSidebarFunctionality() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+            
+            // Actualizar nombre de usuario en sidebar
+            updateSidebarUserInfo();
+        }
+        
+        // Función para actualizar información del usuario en el sidebar
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (error) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+        
+        // Función para verificar permisos desde JavaScript
+        async function checkUserPermission(permission) {
+            try {
+                const response = await fetch('api/users/check-permission-simple.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ permission: permission })
+                });
+                
+                const result = await response.json();
+                return result.success && result.hasPermission;
+            } catch (error) {
+                console.error('Error verificando permisos:', error);
+                return false;
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="container-fluid px-3 py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2><i class="bi bi-people me-2"></i>Gestión de Usuarios</h2>
+                        <p class="text-muted mb-0">Administra usuarios, jerarquías y permisos del sistema</p>
+                    </div>
+                    <div>
+                        <button class="btn btn-primary btn-custom" onclick="showCreateUserModal()">
+                            <i class="bi bi-person-plus me-2"></i>Nuevo Usuario
+                        </button>
+                        <button class="btn btn-danger btn-custom" id="dbManagementBtn" onclick="userManagement.showDatabaseManagement()" style="display: none;">
+                            <i class="bi bi-database me-2"></i>Gestión Avanzada BD
+                        </button>
+                        <a href="dashboard-unified.html?v=202606251200" class="btn btn-outline-secondary btn-custom">
+                            <i class="bi bi-arrow-left me-2"></i>Volver
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información de Filtros -->
+        <div class="row mb-3" id="filterInfoContainer" style="display: none;">
+            <div class="col-12">
+                <div class="alert alert-info d-flex align-items-center">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <div>
+                        <strong>Filtros activos:</strong>
+                        <span id="activeFiltersInfo">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4" id="statsContainer">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="totalUsers">-</div>
+                    <div class="stats-label">Total Usuarios</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="activeUsers">-</div>
+                    <div class="stats-label">Usuarios Activos</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="adminUsers">-</div>
+                    <div class="stats-label">Administradores</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number" id="usersWithoutHierarchy">-</div>
+                    <div class="stats-label">Sin Jerarquía</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filter-section">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar Usuario</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Nombre, email o matrícula...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Nivel</label>
+                    <select class="form-select" id="levelFilter">
+                        <option value="">Todos los niveles</option>
+                        <option value="root">ROOT</option>
+                        <option value="admin">ADMIN</option>
+                        <option value="user">USER</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Rol</label>
+                    <select class="form-select" id="rolFilter">
+                        <option value="">Todos los roles</option>
+                        <option value="medico_informante">Médico Informante</option>
+                        <option value="transcriptor">Transcriptor</option>
+                        <option value="otro">Otro</option>
+                        <option value="sin_rol">Sin rol</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">Todos</option>
+                        <option value="with_hierarchy">Con Jerarquía</option>
+                        <option value="without_hierarchy">Sin Jerarquía</option>
+                        <option value="principals">Principales</option>
+                        <option value="dependents">Dependientes</option>
+                        <option value="independent">Independientes</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-outline-primary w-100" onclick="applyFilters()">
+                        <i class="bi bi-funnel me-1"></i>Filtrar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alertas -->
+        <div id="alertContainer"></div>
+
+        <!-- Vista de Usuarios -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Lista de Usuarios</h5>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleView('list')" id="listViewBtn">
+                                    <i class="bi bi-list"></i> Lista
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="toggleView('hierarchy')" id="hierarchyViewBtn">
+                                    <i class="bi bi-diagram-3"></i> Jerarquía
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Vista de Lista -->
+                        <div id="listView">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Usuario</th>
+                                            <th>Nivel</th>
+                                            <th class="d-none d-md-table-cell">Jerarquía</th>
+                                            <th>Permisos</th>
+                                            <th class="d-none d-lg-table-cell">Último Acceso</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usersTableBody">
+                                        <tr>
+                                            <td colspan="6" class="text-center">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Cargando...</span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Vista de Jerarquía -->
+                        <div id="hierarchyView" style="display: none;">
+                            <div id="hierarchyContainer">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando jerarquía...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear/Editar Usuario -->
+    <div class="modal fade" id="userModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalTitle">Nuevo Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <input type="hidden" id="userId" name="id">
+                        <input type="hidden" id="duplicateMode" name="duplicateMode" value="false">
+                        
+                        <!-- Selector de cuenta base para duplicación -->
+                        <div class="mb-3" id="duplicateBaseContainer" style="display: none;">
+                            <label for="duplicateBaseUser" class="form-label">
+                                <i class="bi bi-files me-2"></i>Cuenta Base (para copiar configuración)
+                            </label>
+                            <select class="form-select" id="duplicateBaseUser" name="duplicateBaseUser">
+                                <option value="">Seleccione una cuenta base...</option>
+                            </select>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Seleccione una cuenta existente para copiar automáticamente sus permisos y configuración. 
+                                Solo deberá completar los datos propios de la nueva cuenta (nombre, apellido, email, matrícula, teléfono, contraseña).
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">Nombre *</label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="apellido" class="form-label">Apellido *</label>
+                                    <input type="text" class="form-control" id="apellido" name="apellido" required>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required autocomplete="email">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="telefono" name="telefono">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="matricula_profesional" class="form-label">Matrícula Profesional</label>
+                                    <input type="text" class="form-control" id="matricula_profesional" name="matricula_profesional">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="especialidad" class="form-label">Especialidad</label>
+                                    <input type="text" class="form-control" id="especialidad" name="especialidad">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="rol" class="form-label">Rol/Perfil</label>
+                                    <select class="form-select" id="rol" name="rol">
+                                        <option value="">Sin rol específico</option>
+                                        <option value="medico_informante">Médico Informante</option>
+                                        <option value="transcriptor">Transcriptor</option>
+                                        <option value="otro">Otro</option>
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Seleccione el rol o perfil del usuario para diferenciar tipos de cuentas.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nivel" class="form-label">Nivel *</label>
+                                    <select class="form-select" id="nivel" name="nivel" required>
+                                        <option value="user">USER</option>
+                                        <option value="admin">ADMIN</option>
+                                        <option value="root">ROOT</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="padre_id" class="form-label">Usuario Padre</label>
+                                    <select class="form-select" id="padre_id" name="padre_id">
+                                        <option value="">Sin jerarquía</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="session_timeout_hours" class="form-label">
+                                        <i class="bi bi-clock-history me-1"></i>Duración de Sesión
+                                    </label>
+                                    <select class="form-select" id="session_timeout_hours" name="session_timeout_hours">
+                                        <option value="">Usar default global (24 h)</option>
+                                        <option value="1">1 hora</option>
+                                        <option value="2">2 horas</option>
+                                        <option value="4">4 horas</option>
+                                        <option value="8">8 horas</option>
+                                        <option value="12">12 horas</option>
+                                        <option value="24">24 horas</option>
+                                        <option value="48">48 horas (2 días)</option>
+                                        <option value="168">168 horas (7 días)</option>
+                                        <option value="720">720 horas (30 días)</option>
+                                        <option value="0">Sin timeout (sesión permanente)</option>
+                                    </select>
+                                    <div class="form-text">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        La sesión se renueva automáticamente con cada actividad. "Sin timeout" mantiene la sesión activa indefinidamente.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="password" name="password" autocomplete="new-password" placeholder="Ingrese la contraseña">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePassword" onclick="togglePasswordVisibility()">
+                                    <i class="bi bi-eye" id="passwordToggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="form-text" id="passwordFieldHint">Ingrese una contraseña segura para el nuevo usuario</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="passwordConfirm" class="form-label">Confirmar Contraseña</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="passwordConfirm" name="passwordConfirm" autocomplete="new-password" placeholder="Confirme la contraseña">
+                                <button class="btn btn-outline-secondary" type="button" id="togglePasswordConfirm" onclick="togglePasswordConfirmVisibility()">
+                                    <i class="bi bi-eye" id="passwordConfirmToggleIcon"></i>
+                                </button>
+                            </div>
+                            <div class="form-text" id="passwordConfirmFieldHint">Repita la contraseña para confirmar</div>
+                            <div id="passwordMatchMessage" class="form-text text-danger" style="display: none;">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Las contraseñas no coinciden
+                            </div>
+                            <div id="passwordMatchSuccess" class="form-text text-success" style="display: none;">
+                                <i class="bi bi-check-circle me-1"></i>Las contraseñas coinciden
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Permisos</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" class="form-control" id="permissionsSearch" placeholder="Buscar permisos...">
+                                <button class="btn btn-outline-secondary" type="button" id="clearPermissionsSearch" onclick="userManagement.clearPermissionsSearch()" style="display: none;">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <span id="permissionsSearchResults" class="text-muted"></span>
+                            </div>
+                            <div class="modal-permissions" id="permissionsContainer">
+                                <!-- Los permisos se cargarán dinámicamente -->
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="institucionesContainer" style="display: none;">
+                            <label for="instituciones_permitidas" class="form-label">
+                                <i class="bi bi-building me-1"></i>Instituciones Permitidas
+                            </label>
+                            <textarea 
+                                class="form-control" 
+                                id="instituciones_permitidas" 
+                                name="instituciones_permitidas" 
+                                rows="3" 
+                                placeholder="Ingrese los nombres de las instituciones permitidas, separados por comas. Ejemplo: HOSPITAL DIGITAL, CLINICA X, CENTRO Y"></textarea>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Solo se aplicará si el permiso "Filtrar por Instituciones" está activo. 
+                                Separe múltiples instituciones con comas. Los nombres deben coincidir exactamente con los nombres de las instituciones en los estudios.
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUser()">
+                        <span id="saveBtnText">Guardar</span>
+                        <span id="saveBtnLoading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Eliminación -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>¿Estás seguro de que deseas eliminar este usuario?</p>
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Esta acción no se puede deshacer. El usuario será desactivado del sistema.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                        <span id="deleteBtnText">Eliminar</span>
+                        <span id="deleteBtnLoading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestión Avanzada BD (Solo ROOT) -->
+    <div class="modal fade" id="dbManagementModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-database me-2"></i>Gestión Avanzada de Base de Datos
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Acceso ROOT:</strong> Esta sección permite gestionar todos los usuarios de la base de datos, 
+                        incluyendo usuarios eliminados (inactivos). Use con precaución.
+                    </div>
+                    
+                    <!-- Filtros -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="dbStatusFilter">
+                                <option value="all">Todos</option>
+                                <option value="active">Solo Activos</option>
+                                <option value="inactive">Solo Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Buscar</label>
+                            <input type="text" class="form-control" id="dbSearchInput" placeholder="Nombre, email o matrícula...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <button class="btn btn-primary w-100" onclick="userManagement.applyDbFilters()">
+                                <i class="bi bi-funnel me-1"></i>Filtrar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tabla de usuarios -->
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuario</th>
+                                    <th>Email</th>
+                                    <th>Nivel</th>
+                                    <th>Estado</th>
+                                    <th>Última Actualización</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dbUsersTableBody">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Botón para copiar permisos -->
+                    <div class="mt-3">
+                        <button class="btn btn-info btn-custom" onclick="userManagement.showCopyPermissionsModal()">
+                            <i class="bi bi-files me-2"></i>Copiar Permisos entre Cuentas
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Copiar Permisos -->
+    <div class="modal fade" id="copyPermissionsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-files me-2"></i>Copiar Permisos entre Cuentas
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Seleccione una cuenta origen (de donde copiar los permisos) y una o más cuentas destino 
+                        (a donde copiar los permisos). Esta operación solo copiará los permisos, no afectará otros datos.
+                    </div>
+                    
+                    <!-- Cuenta Origen -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-arrow-down-circle me-2"></i>Cuenta Origen (De donde copiar)
+                        </label>
+                        <select class="form-select" id="copyPermissionsSource">
+                            <option value="">Seleccione una cuenta origen...</option>
+                        </select>
+                        <div id="sourcePermissionsPreview" class="mt-2" style="display: none;">
+                            <small class="text-muted">Permisos actuales:</small>
+                            <div id="sourcePermissionsList" class="d-flex flex-wrap gap-2 mt-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Cuentas Destino -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="bi bi-arrow-up-circle me-2"></i>Cuentas Destino (A donde copiar)
+                        </label>
+                        <div class="form-text mb-2">Seleccione una o más cuentas. Use Ctrl/Cmd + Click para selección múltiple.</div>
+                        <select class="form-select" id="copyPermissionsTarget" multiple size="8">
+                        </select>
+                        <div class="form-text mt-2">
+                            <span id="selectedTargetsCount">0</span> cuenta(s) seleccionada(s)
+                        </div>
+                    </div>
+                    
+                    <!-- Preview de cambios -->
+                    <div id="copyPermissionsPreview" class="alert alert-warning" style="display: none;">
+                        <h6><i class="bi bi-eye me-2"></i>Vista Previa:</h6>
+                        <div id="copyPermissionsPreviewContent"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-info" onclick="userManagement.executeCopyPermissions()" id="copyPermissionsBtn" disabled>
+                        <span id="copyPermissionsBtnText">Copiar Permisos</span>
+                        <span id="copyPermissionsBtnLoading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Eliminación Permanente -->
+    <div class="modal fade" id="permanentDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">⚠️ Eliminación Permanente</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>¿Estás seguro de que deseas eliminar PERMANENTEMENTE este usuario de la base de datos?</strong></p>
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        <strong>ADVERTENCIA:</strong> Esta acción es IRREVERSIBLE. El usuario será eliminado completamente 
+                        de la base de datos y no podrá ser recuperado.
+                    </div>
+                    <div id="permanentDeleteUserInfo"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="userManagement.confirmPermanentDelete()">
+                        <span id="permanentDeleteBtnText">Eliminar Permanentemente</span>
+                        <span id="permanentDeleteBtnLoading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmación Genérico -->
+    <div class="modal fade" id="confirmModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="confirmModalTitle">
+                        <i class="bi bi-question-circle me-2"></i>Confirmar
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmModalMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmModalOkBtn">
+                        <span id="confirmModalOkBtnText">Confirmar</span>
+                        <span id="confirmModalOkBtnLoading" class="spinner-border spinner-border-sm ms-2" style="display: none;"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Mensaje/Error Genérico -->
+    <div class="modal fade" id="messageModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" id="messageModalHeader">
+                    <h5 class="modal-title" id="messageModalTitle">
+                        <i class="bi bi-info-circle me-2"></i>Información
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="messageModalMessage"></p>
+                    <div id="messageModalDetails" style="display: none;">
+                        <hr>
+                        <pre id="messageModalDetailsContent" class="bg-light p-3 rounded" style="max-height: 200px; overflow-y: auto;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Aceptar</button>
+                </div>
+            </div>
+        </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="user-management-v2.js?v=202606251200"></script>
+</body>
+</html>

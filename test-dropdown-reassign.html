@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Dropdown Reasignación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>🧪 Prueba del Dropdown de Reasignación</h2>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Información de Debugging</h4>
+                <div id="debugInfo" class="alert alert-info">
+                    <strong>Estado:</strong> <span id="status">Inicializando...</span><br>
+                    <strong>Usuarios cargados:</strong> <span id="userCount">0</span><br>
+                    <strong>Elemento select:</strong> <span id="selectStatus">No verificado</span><br>
+                    <strong>Usuarios filtrados:</strong> <span id="filteredCount">0</span>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <h4>Simulación del Modal</h4>
+                <button class="btn btn-primary" onclick="testDropdown()">Probar Dropdown</button>
+                <button class="btn btn-secondary" onclick="createTestModal()">Crear Modal de Prueba</button>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <h4>Logs de Debugging</h4>
+                <div id="logs" class="bg-dark text-light p-3" style="height: 300px; overflow-y: auto; font-family: monospace;">
+                    <div>🔍 Iniciando prueba del dropdown...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de prueba -->
+    <div class="modal fade" id="testReassignModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Prueba de Reasignación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Estudio:</label>
+                        <div id="testStudyInfo" class="form-control-plaintext">Estudio de Prueba - ID: TEST123</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Usuario actual:</label>
+                        <div id="testFromUserInfo" class="form-control-plaintext">Usuario Actual - email@test.com</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="testReassignToUserId" class="form-label">Asignar a:</label>
+                        <select class="form-select" id="testReassignToUserId" required>
+                            <option value="">Seleccionar usuario...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="testConfirmReassign()">Probar Reasignación</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Simular datos de usuarios para la prueba
+        const testUsers = [
+            { id: 1, nombre: 'Usuario', apellido: 'ROOT', email: 'root@test.com', nivel: 'root', activo: 1 },
+            { id: 2, nombre: 'Usuario', apellido: 'ADMIN', email: 'admin@test.com', nivel: 'admin', activo: 1 },
+            { id: 3, nombre: 'Usuario', apellido: 'USER1', email: 'user1@test.com', nivel: 'user', activo: 1 },
+            { id: 4, nombre: 'Usuario', apellido: 'USER2', email: 'user2@test.com', nivel: 'user', activo: 1 },
+            { id: 5, nombre: 'Usuario', apellido: 'INACTIVO', email: 'inactive@test.com', nivel: 'user', activo: 0 }
+        ];
+
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function updateStatus() {
+            document.getElementById('userCount').textContent = testUsers.length;
+            document.getElementById('status').textContent = 'Datos de prueba cargados';
+        }
+
+        function loadUsersForReassign(excludeUserId) {
+            log('🔍 Debug - loadUsersForReassign ejecutada con excludeUserId: ' + excludeUserId);
+            log('🔍 Debug - testUsers disponible: ' + testUsers.length);
+            
+            const select = document.getElementById('testReassignToUserId');
+            log('🔍 Debug - Elemento select encontrado: ' + !!select);
+            
+            if (!select) {
+                log('❌ Debug - No se encontró el elemento testReassignToUserId');
+                return;
+            }
+            
+            if (!testUsers || testUsers.length === 0) {
+                log('⚠️ Debug - No hay usuarios disponibles en testUsers');
+                select.innerHTML = '<option value="">No hay usuarios disponibles</option>';
+                return;
+            }
+            
+            const availableUsers = testUsers.filter(user => user.id != excludeUserId && user.activo);
+            log('🔍 Debug - Usuarios filtrados: ' + availableUsers.length);
+            log('🔍 Debug - Usuarios disponibles: ' + JSON.stringify(availableUsers.map(u => ({id: u.id, nombre: u.nombre + ' ' + u.apellido}))));
+            
+            if (availableUsers.length === 0) {
+                log('⚠️ Debug - No hay usuarios disponibles después del filtro');
+                select.innerHTML = '<option value="">No hay usuarios disponibles</option>';
+                return;
+            }
+            
+            select.innerHTML = '<option value="">Seleccionar usuario...</option>' +
+                availableUsers.map(user => 
+                    `<option value="${user.id}">
+                        ${user.nombre} ${user.apellido} (${user.nivel.toUpperCase()}) - ${user.email}
+                    </option>`
+                ).join('');
+            
+            log('✅ Debug - Dropdown poblado con ' + availableUsers.length + ' usuarios');
+            log('🔍 Debug - HTML del select: ' + select.innerHTML.substring(0, 200) + '...');
+            
+            // Actualizar contadores
+            document.getElementById('filteredCount').textContent = availableUsers.length;
+            document.getElementById('selectStatus').textContent = 'Encontrado y poblado';
+        }
+
+        function testDropdown() {
+            log('🧪 Iniciando prueba del dropdown...');
+            loadUsersForReassign(1); // Excluir usuario ID 1
+        }
+
+        function createTestModal() {
+            log('🧪 Creando modal de prueba...');
+            const modal = new bootstrap.Modal(document.getElementById('testReassignModal'));
+            modal.show();
+            log('✅ Modal de prueba mostrado');
+        }
+
+        function testConfirmReassign() {
+            const selectedUserId = document.getElementById('testReassignToUserId').value;
+            log('🧪 Confirmando reasignación con usuario ID: ' + selectedUserId);
+            
+            if (!selectedUserId) {
+                log('❌ No se seleccionó ningún usuario');
+                return;
+            }
+            
+            const selectedUser = testUsers.find(u => u.id == selectedUserId);
+            log('✅ Usuario seleccionado: ' + selectedUser.nombre + ' ' + selectedUser.apellido);
+            log('🎉 Prueba de reasignación completada exitosamente');
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Página de prueba cargada');
+            updateStatus();
+            log('📊 Datos de prueba inicializados: ' + testUsers.length + ' usuarios');
+        });
+    </script>
+</body>
+</html>

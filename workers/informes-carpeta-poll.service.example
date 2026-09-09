@@ -1,0 +1,15 @@
+# Copiar a /etc/systemd/system/informes-carpeta-poll.service y ajustar User/Group.
+# Respaldo por mtime cuando inotify no ve eventos en CIFS/SMB.
+
+[Unit]
+Description=Rescaneo reciente PDF/TXT informes carpeta (respaldo CIFS)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=dicomsuites
+Group=www-data
+WorkingDirectory=/var/www/tjsiddse
+# Ventana en segundos hacia atrás (archivos tocados en ese lapso se reintentan; duplicados se omiten por SHA256)
+Environment=IC_POLL_WINDOW_SEC=900
+ExecStart=/usr/bin/php /var/www/tjsiddse/workers/informes-carpeta-poll-recent.php

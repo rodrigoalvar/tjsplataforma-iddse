@@ -1,0 +1,14 @@
+# Copiar a /etc/systemd/system/informes-carpeta-poll.timer
+# Luego: systemctl daemon-reload && systemctl enable --now informes-carpeta-poll.timer
+
+[Unit]
+Description=Timer rescaneo informes carpeta (cada 2 min)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=2min
+Unit=informes-carpeta-poll.service
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

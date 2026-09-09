@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simular Informe en Progreso</title>
+</head>
+<body>
+    <h1>Simular Informe en Progreso</h1>
+    <button onclick="createTestReport()">Crear Informe de Prueba</button>
+    <button onclick="checkGlobalState()">Verificar Estado Global</button>
+    <button onclick="goToDashboard()">Ir al Dashboard</button>
+    <div id="output"></div>
+
+    <script src="assets/js/global-state-manager.js"></script>
+    <script>
+        function createTestReport() {
+            console.log('Creando informe de prueba...');
+            
+            if (window.globalStateManager) {
+                // Crear un informe activo
+                window.globalStateManager.setActiveReport('STUDY123', {
+                    patientId: 'TEST001',
+                    patientName: 'Paciente Prueba',
+                    modality: 'CT',
+                    studyDescription: 'Estudio de Prueba',
+                    studyInstanceUID: '1.2.3.4.5',
+                    startedAt: Date.now()
+                });
+                
+                // También crear contenido persistido simulado
+                const persistenceKey = `editor_persistence_STUDY123_TEST001`;
+                const persistenceData = {
+                    tinymce: {
+                        content: '<p>Este es un informe de prueba con contenido significativo que debería ser detectado por el sistema de persistencia. Contiene más de 200 caracteres para asegurar que se detecte como contenido real y no como template vacío.</p>'
+                    },
+                    hasUnsavedChanges: true,
+                    timestamp: Date.now()
+                };
+                
+                localStorage.setItem(persistenceKey, JSON.stringify(persistenceData));
+                
+                document.getElementById('output').innerHTML = '<p>✅ Informe de prueba creado con studyId: STUDY123</p>';
+                console.log('Informe de prueba creado');
+            } else {
+                document.getElementById('output').innerHTML = '<p>❌ Global State Manager no disponible</p>';
+            }
+        }
+        
+        function checkGlobalState() {
+            if (window.globalStateManager) {
+                const state = window.globalStateManager.getState();
+                const activeReports = window.globalStateManager.getActiveReports();
+                
+                document.getElementById('output').innerHTML = `
+                    <h3>Estado Global:</h3>
+                    <pre>${JSON.stringify(state, null, 2)}</pre>
+                    <h3>Informes Activos:</h3>
+                    <pre>${JSON.stringify(activeReports, null, 2)}</pre>
+                `;
+            }
+        }
+        
+        function goToDashboard() {
+            window.location.href = 'dashboard-unified.html';
+        }
+        
+        // Auto-inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                if (window.globalStateManager) {
+                    document.getElementById('output').innerHTML = '<p>✅ Global State Manager cargado correctamente</p>';
+                } else {
+                    document.getElementById('output').innerHTML = '<p>❌ Global State Manager NO cargado</p>';
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

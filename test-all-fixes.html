@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test All Fixes - TJSMEDICAL</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+        button { padding: 10px 20px; margin: 10px 5px; }
+        .test-section { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .test-result { background: #f5f5f5; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .token-display { background: #e8f4fd; padding: 10px; border-radius: 5px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Test All Fixes - Sistema de Informes Médicos</h1>
+    
+    <div class="test-section">
+        <h2>1. Autenticación y Token</h2>
+        <button onclick="testAuthentication()">Test Authentication</button>
+        <button onclick="setValidToken()">Set Valid Token</button>
+        <div id="authResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. API de Informes</h2>
+        <button onclick="testInformesAPI()">Test Informes API</button>
+        <div id="informesResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. API de Audios</h2>
+        <button onclick="testAudiosAPI()">Test Audios API</button>
+        <div id="audiosResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>4. Tabla audios_informe</h2>
+        <button onclick="testAudiosTable()">Test Audios Table</button>
+        <div id="audiosTableResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>5. Campos DICOM en tabla informes</h2>
+        <button onclick="testDICOMFields()">Test DICOM Fields</button>
+        <div id="dicomResult" class="test-result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>6. Test Completo</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="allTestsResult" class="test-result"></div>
+    </div>
+    
+    <div class="token-display">
+        <strong>Current Token:</strong> <span id="currentToken">Not set</span>
+    </div>
+    
+    <script>
+    const API_BASE = '/PORTAL_ESTUDIOS/api';
+    
+    function log(message, type = 'info', containerId = null) {
+        const className = type;
+        const logMessage = `<p class="${className}">${message}</p>`;
+        
+        if (containerId) {
+            document.getElementById(containerId).innerHTML += logMessage;
+        } else {
+            console.log(message);
+        }
+    }
+    
+    async function setValidToken() {
+        try {
+            const response = await fetch('/PORTAL_ESTUDIOS/get-token.php');
+            const data = await response.json();
+            
+            if (data.success && data.token) {
+                localStorage.setItem('sessionToken', data.token);
+                document.getElementById('currentToken').textContent = data.token.substring(0, 20) + '...';
+                log('✓ Token establecido correctamente', 'success', 'authResult');
+                return true;
+            } else {
+                log('✗ Error obteniendo token', 'error', 'authResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error: ${error.message}`, 'error', 'authResult');
+            return false;
+        }
+    }
+    
+    async function testAuthentication() {
+        document.getElementById('authResult').innerHTML = '';
+        
+        const token = localStorage.getItem('sessionToken');
+        if (!token) {
+            log('No hay token. Estableciendo uno válido...', 'warning', 'authResult');
+            const tokenSet = await setValidToken();
+            if (!tokenSet) return;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE}/auth/validate-session.php`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('sessionToken')}`
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                log('✓ Autenticación exitosa', 'success', 'authResult');
+                log(`Usuario: ${data.user.nombre} ${data.user.apellido}`, 'info', 'authResult');
+                return true;
+            } else {
+                log('✗ Autenticación falló', 'error', 'authResult');
+                log(`Mensaje: ${data.message}`, 'error', 'authResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error en autenticación: ${error.message}`, 'error', 'authResult');
+            return false;
+        }
+    }
+    
+    async function testInformesAPI() {
+        document.getElementById('informesResult').innerHTML = '';
+        
+        const token = localStorage.getItem('sessionToken');
+        if (!token) {
+            log('No hay token válido', 'error', 'informesResult');
+            return false;
+        }
+        
+        try {
+            // Test GET informes
+            const response = await fetch(`${API_BASE}/informes/get.php`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                log('✓ API de informes funciona correctamente', 'success', 'informesResult');
+                log(`Informes encontrados: ${data.data ? data.data.length : 0}`, 'info', 'informesResult');
+                
+                // Test específico con ID
+                if (data.data && data.data.length > 0) {
+                    const firstReport = data.data[0];
+                    const specificResponse = await fetch(`${API_BASE}/informes/get.php?informe_id=${firstReport.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (specificResponse.ok) {
+                        log('✓ GET específico por ID funciona', 'success', 'informesResult');
+                    } else {
+                        log(`✗ GET específico falló: ${specificResponse.status}`, 'error', 'informesResult');
+                    }
+                }
+                
+                return true;
+            } else {
+                log(`✗ API de informes falló: ${response.status}`, 'error', 'informesResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error en API de informes: ${error.message}`, 'error', 'informesResult');
+            return false;
+        }
+    }
+    
+    async function testAudiosAPI() {
+        document.getElementById('audiosResult').innerHTML = '';
+        
+        const token = localStorage.getItem('sessionToken');
+        if (!token) {
+            log('No hay token válido', 'error', 'audiosResult');
+            return false;
+        }
+        
+        try {
+            // Primero obtener un informe para probar audios
+            const informesResponse = await fetch(`${API_BASE}/informes/get.php`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (!informesResponse.ok) {
+                log('✗ No se pueden obtener informes para probar audios', 'error', 'audiosResult');
+                return false;
+            }
+            
+            const informesData = await informesResponse.json();
+            if (!informesData.data || informesData.data.length === 0) {
+                log('⚠ No hay informes para probar audios', 'warning', 'audiosResult');
+                return true;
+            }
+            
+            const reportId = informesData.data[0].id;
+            
+            // Test API de audios
+            const audiosResponse = await fetch(`${API_BASE}/audios/get.php?informe_id=${reportId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (audiosResponse.ok) {
+                const audiosData = await audiosResponse.json();
+                log('✓ API de audios funciona correctamente', 'success', 'audiosResult');
+                log(`Audios encontrados para informe ${reportId}: ${audiosData.data ? audiosData.data.length : 0}`, 'info', 'audiosResult');
+                return true;
+            } else {
+                log(`✗ API de audios falló: ${audiosResponse.status}`, 'error', 'audiosResult');
+                const errorText = await audiosResponse.text();
+                log(`Error: ${errorText.substring(0, 200)}...`, 'error', 'audiosResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error en API de audios: ${error.message}`, 'error', 'audiosResult');
+            return false;
+        }
+    }
+    
+    async function testAudiosTable() {
+        document.getElementById('audiosTableResult').innerHTML = '';
+        
+        try {
+            const response = await fetch('/PORTAL_ESTUDIOS/create-audios-table.php');
+            const text = await response.text();
+            
+            if (text.includes('audios_informe') && text.includes('✅')) {
+                log('✓ Tabla audios_informe existe y está correcta', 'success', 'audiosTableResult');
+                return true;
+            } else {
+                log('✗ Problema con tabla audios_informe', 'error', 'audiosTableResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error verificando tabla audios_informe: ${error.message}`, 'error', 'audiosTableResult');
+            return false;
+        }
+    }
+    
+    async function testDICOMFields() {
+        document.getElementById('dicomResult').innerHTML = '';
+        
+        try {
+            const response = await fetch('/PORTAL_ESTUDIOS/update-informes-table.php');
+            const text = await response.text();
+            
+            if (text.includes('study_instance_uid') && text.includes('study_id')) {
+                log('✓ Campos DICOM existen en tabla informes', 'success', 'dicomResult');
+                return true;
+            } else {
+                log('✗ Problema con campos DICOM', 'error', 'dicomResult');
+                return false;
+            }
+        } catch (error) {
+            log(`✗ Error verificando campos DICOM: ${error.message}`, 'error', 'dicomResult');
+            return false;
+        }
+    }
+    
+    async function runAllTests() {
+        document.getElementById('allTestsResult').innerHTML = '<p class="info">Ejecutando todos los tests...</p>';
+        
+        const tests = [
+            { name: 'Autenticación', func: testAuthentication },
+            { name: 'API Informes', func: testInformesAPI },
+            { name: 'API Audios', func: testAudiosAPI },
+            { name: 'Tabla Audios', func: testAudiosTable },
+            { name: 'Campos DICOM', func: testDICOMFields }
+        ];
+        
+        let passed = 0;
+        let failed = 0;
+        
+        for (const test of tests) {
+            try {
+                const result = await test.func();
+                if (result) {
+                    passed++;
+                    log(`✓ ${test.name}: PASSED`, 'success', 'allTestsResult');
+                } else {
+                    failed++;
+                    log(`✗ ${test.name}: FAILED`, 'error', 'allTestsResult');
+                }
+            } catch (error) {
+                failed++;
+                log(`✗ ${test.name}: ERROR - ${error.message}`, 'error', 'allTestsResult');
+            }
+        }
+        
+        log(`<hr><strong>Resumen: ${passed} tests pasaron, ${failed} tests fallaron</strong>`, 
+             failed === 0 ? 'success' : 'warning', 'allTestsResult');
+        
+        if (failed === 0) {
+            log('🎉 ¡Todos los problemas han sido resueltos!', 'success', 'allTestsResult');
+        }
+    }
+    
+    // Inicializar al cargar
+    window.onload = function() {
+        const currentToken = localStorage.getItem('sessionToken');
+        if (currentToken) {
+            document.getElementById('currentToken').textContent = currentToken.substring(0, 20) + '...';
+        }
+    }
+    </script>
+</body>
+</html>

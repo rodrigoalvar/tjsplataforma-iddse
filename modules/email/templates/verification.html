@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifica tu cuenta</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #667eea;
+            margin: 0;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #667eea;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #5568d3;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .code {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{app_name}}</h1>
+        </div>
+        
+        <div class="content">
+            <h2>¡Bienvenido, {{nombre_usuario}}!</h2>
+            
+            <p>Gracias por registrarte en nuestro sistema. Para completar tu registro, necesitamos verificar tu dirección de email.</p>
+            
+            <p>Por favor, haz clic en el siguiente botón para verificar tu cuenta:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{app_url}}/api/auth/verify-email.php?token={{token_verificacion}}" class="button">
+                    Verificar mi cuenta
+                </a>
+            </div>
+            
+            <p>O copia y pega el siguiente enlace en tu navegador:</p>
+            
+            <div class="code">
+                {{app_url}}/api/auth/verify-email.php?token={{token_verificacion}}
+            </div>
+            
+            <p><strong>Importante:</strong> Este enlace expirará en 24 horas por seguridad.</p>
+            
+            <p>Si no creaste una cuenta en nuestro sistema, puedes ignorar este email.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un email automático, por favor no respondas a este mensaje.</p>
+            <!-- Footer inyectado automáticamente desde config/branding.php -->
+        </div>
+    </div>
+</body>
+</html>
+

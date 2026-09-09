@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visor de Estudios - TJS Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="../js/auth-middleware.js"></script>
+    <script src="../assets/js/iframe-detector.js"></script>
+    <style>
+        .viewer-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewer-toolbar {
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .viewer-content {
+            flex: 1;
+            display: flex;
+        }
+
+        .viewer-sidebar {
+            width: 300px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .viewer-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .viewer-frame {
+            flex: 1;
+            border: none;
+        }
+
+        .study-info {
+            padding: 15px;
+            background-color: #fff;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .series-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .series-item {
+            padding: 10px;
+            margin-bottom: 5px;
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .series-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .series-item.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .toolbar-button {
+            margin-right: 10px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="viewer-container">
+        <!-- Barra de herramientas -->
+        <div class="viewer-toolbar">
+            <button class="btn btn-outline-primary toolbar-button" onclick="ViewerModule.toggleSidebar()">
+                <i class="bi bi-layout-sidebar"></i> Toggle Sidebar
+            </button>
+            <button class="btn btn-outline-primary toolbar-button" onclick="ViewerModule.downloadStudy()">
+                <i class="bi bi-download"></i> Descargar
+            </button>
+            <button class="btn btn-outline-primary toolbar-button" onclick="ViewerModule.openReport()">
+                <i class="bi bi-file-text"></i> Ver Informe
+            </button>
+        </div>
+
+        <div class="viewer-content">
+            <!-- Barra lateral -->
+            <div id="viewerSidebar" class="viewer-sidebar">
+                <div class="study-info">
+                    <h5>Información del Estudio</h5>
+                    <div id="studyDetails">
+                        <!-- Los detalles del estudio se cargarán aquí -->
+                    </div>
+                </div>
+
+                <h6 class="mt-3">Series</h6>
+                <ul id="seriesList" class="series-list">
+                    <!-- La lista de series se cargará aquí -->
+                </ul>
+            </div>
+
+            <!-- Contenido principal -->
+            <div class="viewer-main">
+                <iframe id="viewerFrame" class="viewer-frame" src="about:blank"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay de carga -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../assets/js/dicom.js"></script>
+
+    <script>
+        const ViewerModule = {
+            state: {
+                currentStudyId: null,
+                currentSeriesIndex: 0,
+                sidebarVisible: true
+            },
+
+            // Inicializar el visor
+            init: async function(studyId) {
+                this.state.currentStudyId = studyId;
+                this.showLoading();
+
+                try {
+                    // Inicializar conexión DICOM
+                    await DICOMModule.initConnection();
+
+                    // Cargar detalles del estudio
+                    const studyDetails = await DICOMModule.getStudyDetails(studyId);
+                    this.displayStudyDetails(studyDetails);
+
+                    // Cargar el visor
+                    const viewerUrl = DICOMModule.getViewer(studyId);
+                    document.getElementById('viewerFrame').src = viewerUrl;
+
+                } catch (error) {
+                    console.error('Error al inicializar el visor:', error);
+                    alert('Error al cargar el estudio');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            // Mostrar detalles del estudio
+            displayStudyDetails: function(study) {
+                const detailsContainer = document.getElementById('studyDetails');
+                detailsContainer.innerHTML = `
+                    <p><strong>Paciente:</strong> ${study.patientName}</p>
+                    <p><strong>ID:</strong> ${study.patientId}</p>
+                    <p><strong>Fecha:</strong> ${new Date(study.studyDate).toLocaleDateString()}</p>
+                    <p><strong>Modalidad:</strong> ${study.modality}</p>
+                    <p><strong>Descripción:</strong> ${study.studyDescription}</p>
+                `;
+
+                // Cargar lista de series
+                const seriesList = document.getElementById('seriesList');
+                seriesList.innerHTML = study.series.map((series, index) => `
+                    <li class="series-item ${index === 0 ? 'active' : ''}" 
+                        onclick="ViewerModule.selectSeries(${index})">
+                        ${series.description}
+                    </li>
+                `).join('');
+            },
+
+            // Seleccionar serie
+            selectSeries: function(index) {
+                this.state.currentSeriesIndex = index;
+                
+                // Actualizar UI
+                document.querySelectorAll('.series-item').forEach((item, i) => {
+                    item.classList.toggle('active', i === index);
+                });
+
+                // Aquí se implementará la lógica para cambiar la serie en el visor
+            },
+
+            // Toggle sidebar
+            toggleSidebar: function() {
+                const sidebar = document.getElementById('viewerSidebar');
+                this.state.sidebarVisible = !this.state.sidebarVisible;
+                sidebar.style.display = this.state.sidebarVisible ? 'block' : 'none';
+            },
+
+            // Descargar estudio
+            downloadStudy: async function() {
+                this.showLoading();
+                try {
+                    // Aquí se implementará la lógica de descarga
+                    console.log('Descargando estudio:', this.state.currentStudyId);
+                } catch (error) {
+                    console.error('Error al descargar:', error);
+                    alert('Error al descargar el estudio');
+                } finally {
+                    this.hideLoading();
+                }
+            },
+
+            // Abrir informe
+            openReport: function() {
+                window.open(`editor.html?studyId=${this.state.currentStudyId}`, '_blank');
+            },
+
+            // Mostrar loading
+            showLoading: function() {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+            },
+
+            // Ocultar loading
+            hideLoading: function() {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+        };
+
+        // Inicializar con el ID de estudio desde la URL
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const studyId = urlParams.get('studyId');
+            if (studyId) {
+                ViewerModule.init(studyId);
+            } else {
+                alert('ID de estudio no proporcionado');
+            }
+        });
+    </script>
+</body>
+</html>

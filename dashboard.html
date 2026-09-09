@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - TJS Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+        });
+    </script>
+    <!-- Mobile Header -->
+    <div class="mobile-header d-lg-none">
+        <div class="d-flex justify-content-between align-items-center p-3">
+            <button class="btn btn-link sidebar-toggle" type="button">
+                <i class="bi bi-list fs-4"></i>
+            </button>
+            <img src="logo.svg" alt="TJS Medical" height="30">
+            <div class="dropdown">
+                <button class="btn btn-link dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-person-circle fs-4"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><span class="dropdown-item-text user-name">Cargando...</span></li>
+                    <li><span class="dropdown-item-text small text-muted user-matricula"></span></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item logout-btn" href="#" onclick="handleLogout(event)"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="text-center flex-grow-1">
+                    <img src="logo.svg" alt="TJS Medical" class="sidebar-logo mb-2">
+                    <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                </div>
+                <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="sidebar-user d-none d-lg-block">
+            <div class="user-avatar">
+                <i class="bi bi-person-circle"></i>
+            </div>
+            <div class="user-info">
+                <div class="user-name">Cargando...</div>
+                <div class="user-role user-matricula"></div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <i class="bi bi-file-medical"></i>
+                        <span>Estudios</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="components/editor.html?v=202606251200">
+                        <i class="bi bi-file-text"></i>
+                        <span>Informes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                        <i class="bi bi-search"></i>
+                        <span>Gestión Informes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                        <i class="bi bi-share"></i>
+                        <span>Gestión Estudios</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                        <i class="bi bi-person-badge"></i>
+                        <span>Gestión Pacientes</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="components/workspace.html?v=202606251200">
+                        <i class="bi bi-grid-3x3-gap-fill"></i>
+                        <span>WorkSpace</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                        <i class="bi bi-mic"></i>
+                        <span>Grabación</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="template-manager.html?v=202606251200">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Plantillas</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="components/viewer.html?v=202606251200">
+                        <i class="bi bi-eye"></i>
+                        <span>Visor DICOM</span>
+                    </a>
+                </li>
+                <li class="nav-item" id="userManagementNavItem" style="display: none;">
+                    <a class="nav-link" href="user-management.html?v=202606251200">
+                        <i class="bi bi-people"></i>
+                        <span>Gestión Usuarios</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                        <i class="bi bi-database"></i>
+                        <span>PACS Manager</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                        <i class="fas fa-network-wired"></i>
+                        <span>PACS Nodes Manager</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                        <i class="fas fa-history"></i>
+                        <span>Historial estudios</span>
+                    </a>
+                </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                        <i class="fas fa-cloud"></i>
+                        <span>Cloud Storage</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="audit-manager.html?v=202606251200">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Auditoría</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer d-none d-lg-block">
+            <a href="#" class="btn btn-outline-danger btn-sm w-100 logout-btn" onclick="handleLogout(event)">
+                <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+            </a>
+        </div>
+    </div>
+
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay d-lg-none" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Desktop Sidebar Toggle (when hidden) -->
+        <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        <div class="container-fluid px-3 py-4">
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3 d-none d-md-block">Filtros de Búsqueda</h6>
+                        <div class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small d-block d-md-none">Desde</label>
+                                <input type="date" class="form-control form-control-sm" value="2025-09-25">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small d-block d-md-none">Hasta</label>
+                                <input type="date" class="form-control form-control-sm" value="2025-09-25">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small d-block d-md-none">Paciente</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="Nombre del Paciente">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small d-block d-md-none">ID</label>
+                                <input type="text" class="form-control form-control-sm" placeholder="ID del Paciente">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col">
+                <div class="card d-block d-md-none">
+                    <div class="card-body py-2">
+                        <h6 class="card-title mb-2 small">Modalidades</h6>
+                        <div class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-primary btn-sm">CT</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">MR</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">RX</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">US</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">MG</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">GAMMA</button>
+                            <button type="button" class="btn btn-outline-primary btn-sm">DOC</button>
+                        </div>
+                        <div class="d-flex gap-1 mt-2">
+                            <button type="button" class="btn btn-primary btn-sm flex-fill">TODAS</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm flex-fill">NINGUNA</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="btn-group d-none d-md-flex" role="group">
+                    <button type="button" class="btn btn-outline-primary">CT</button>
+                    <button type="button" class="btn btn-outline-primary">MR</button>
+                    <button type="button" class="btn btn-outline-primary">RX</button>
+                    <button type="button" class="btn btn-outline-primary">US</button>
+                    <button type="button" class="btn btn-outline-primary">MG</button>
+                    <button type="button" class="btn btn-outline-primary">GAMMA</button>
+                    <button type="button" class="btn btn-outline-primary">DOC</button>
+                    <button type="button" class="btn btn-primary">TODAS</button>
+                    <button type="button" class="btn btn-outline-secondary">NINGUNA</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th class="d-none d-md-table-cell">Fecha</th>
+                                <th>Paciente</th>
+                                <th class="d-none d-lg-table-cell">ID</th>
+                                <th class="d-none d-sm-table-cell">Tipo de Estudio</th>
+                                <th class="d-none d-lg-table-cell">Descripción</th>
+                                <th class="d-none d-xl-table-cell">Info</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="d-none d-md-table-cell">25/09/2025</td>
+                                <td>
+                                    <div class="fw-bold">PACIENTE ANONIMO TEST</div>
+                                    <small class="text-muted d-block d-md-none">25/09/2025 - RM</small>
+                                </td>
+                                <td class="d-none d-lg-table-cell">7823491</td>
+                                <td class="d-none d-sm-table-cell">RESONANCIA MAGNÉTICA</td>
+                                <td class="d-none d-lg-table-cell">ARTICULACIONES^RODILLA</td>
+                                <td class="d-none d-xl-table-cell"><i class="bi bi-info-circle"></i></td>
+                                <td class="action-buttons">
+                                    <div class="d-flex flex-column d-md-flex-row gap-1">
+                                        <a href="https://tuc-i310100.tail186bcc.ts.net/?studyId=20cdb9f3-1d77f1d7-3b104c9b-8e081cd4-eb95a0a1" target="_blank" class="btn btn-primary btn-sm" title="Ver"><i class="bi bi-eye"></i><span class="d-none d-lg-inline ms-1">Ver</span></a>
+                                        <button class="btn btn-secondary btn-sm" title="Descargar"><i class="bi bi-download"></i><span class="d-none d-lg-inline ms-1">Descargar</span></button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="d-none d-md-table-cell">25/09/2025</td>
+                                <td>
+                                    <div class="fw-bold">LOPEZ^ANDREA</div>
+                                    <small class="text-muted d-block d-md-none">25/09/2025 - RX</small>
+                                </td>
+                                <td class="d-none d-lg-table-cell">9345672</td>
+                                <td class="d-none d-sm-table-cell">RADIOLOGÍA</td>
+                                <td class="d-none d-lg-table-cell">N/A</td>
+                                <td class="d-none d-xl-table-cell"><i class="bi bi-info-circle"></i></td>
+                                <td class="action-buttons">
+                                    <div class="d-flex flex-column d-md-flex-row gap-1">
+                                        <button class="btn btn-primary btn-sm" title="Ver"><i class="bi bi-eye"></i><span class="d-none d-lg-inline ms-1">Ver</span></button>
+                                        <button class="btn btn-secondary btn-sm" title="Descargar"><i class="bi bi-download"></i><span class="d-none d-lg-inline ms-1">Descargar</span></button>
+                                        <a href="components/editor.html?v=202606251200" class="btn btn-info btn-sm" title="Informe"><i class="bi bi-file-text"></i><span class="d-none d-lg-inline ms-1">Informe</span></a>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>25/09/2025</td>
+                                <td class="text-truncate-mobile">GARCIA PATRICIA 72A</td>
+                                <td class="hide-mobile">8467123</td>
+                                <td class="text-truncate-mobile">TOMOGRAFÍA</td>
+                                <td class="hide-mobile">TxAbdPelvis CC</td>
+                                <td class="hide-mobile"><i class="bi bi-info-circle"></i></td>
+                                <td class="action-buttons">
+                                    <button class="btn btn-primary btn-sm" title="Ver"><i class="bi bi-eye"></i></button>
+                                    <button class="btn btn-secondary btn-sm" title="Descargar"><i class="bi bi-download"></i></button>
+                                    <a href="components/editor.html?v=202606251200" class="btn btn-info btn-sm" title="Informe"><i class="bi bi-file-text"></i></a>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end mt-3">
+                    <small>Total: 192 estudios (7 informes)</small>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/url-study-manager.js?v=202606251200"></script>
+    <script src="assets/js/reports.js?v=202606251200"></script>
+    <script src="assets/js/audio.js?v=202606251200"></script>
+    <script src="assets/js/pdf.js?v=202606251200"></script>
+    <script src="assets/js/dicom.js?v=202606251200"></script>
+    <script src="assets/js/speech.js?v=202606251200"></script>
+    <script>
+        // Función para verificar permisos desde JavaScript
+        async function checkUserPermission(permission) {
+            try {
+                const response = await fetch('api/users/check-permission.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ permission: permission })
+                });
+                
+                const result = await response.json();
+                return result.success && result.hasPermission;
+            } catch (error) {
+                console.error('Error verificando permisos:', error);
+                return false;
+            }
+        }
+        
+        // Sidebar functionality
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Verificar permisos de gestión de usuarios
+            try {
+                const canManageUsers = await checkUserPermission('usuarios');
+                const userManagementNavItem = document.getElementById('userManagementNavItem');
+                
+                if (canManageUsers && userManagementNavItem) {
+                    userManagementNavItem.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error verificando permisos de gestión de usuarios:', error);
+            }
+            
+            const sidebarToggle = document.querySelector('.sidebar-toggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const body = document.body;
+            
+            // Mobile sidebar toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                    sidebarOverlay.classList.toggle('show');
+                });
+            }
+            
+            // Desktop sidebar toggle
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', function() {
+                    body.classList.add('sidebar-hidden');
+                });
+            }
+            
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', function() {
+                    body.classList.remove('sidebar-hidden');
+                });
+            }
+            
+            // Close sidebar when clicking overlay
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
+                });
+            }
+            
+            // Close sidebar when clicking nav link on mobile
+            const navLinks = document.querySelectorAll('.sidebar .nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                        sidebarOverlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            // Función para manejar logout - muestra el modal de confirmación
+            function handleLogout(event) {
+                event.preventDefault();
+                if (window.authManager && typeof window.authManager.showLogoutModal === 'function') {
+                    window.authManager.showLogoutModal();
+                } else if (window.auth && typeof window.auth.showLogoutModal === 'function') {
+                    window.auth.showLogoutModal();
+                }
+            }
+            
+            // Configurar botones de logout usando el modal de confirmación
+            if (window.authManager && typeof window.authManager.setupLogoutButtons === 'function') {
+                window.authManager.setupLogoutButtons();
+            } else if (window.auth && typeof window.auth.setupLogoutButtons === 'function') {
+                window.auth.setupLogoutButtons();
+            }
+        });
+    </script>
+</body>
+</html>

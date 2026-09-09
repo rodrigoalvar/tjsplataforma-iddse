@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="assets/js/app-version.js?v=202606262000"></script>
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <style>
+        /* Ocultar elementos del sidebar inicialmente */
+        .sidebar-nav .nav-item { display: none !important; }
+        
+        /* Contenedor de secciones */
+        .section-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none !important;
+        }
+        
+        .section-container.active {
+            display: block !important;
+        }
+        
+        /* El workspace siempre está presente pero oculto */
+        #workspaceFrame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        
+        .main-content {
+            position: relative;
+            overflow: hidden;
+            height: calc(100vh - 60px);
+        }
+        
+        #sectionsContainer {
+            height: 100%;
+            width: 100%;
+        }
+    </style>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Inicializar el contenedor de aplicaciones
+            if (window.AppContainer) {
+                window.AppContainer.init();
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column" id="mainSidebarNav">
+                    <!-- Los elementos del sidebar se cargarán dinámicamente -->
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- ══════════════════════════════════════════════════════════════
+             Modal: Advertencia de cambio de estudio con datos sin guardar
+             ══════════════════════════════════════════════════════════════ -->
+        <div class="modal fade" id="workspaceUnsavedModal" tabindex="-1" aria-labelledby="workspaceUnsavedModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-warning">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold" id="workspaceUnsavedModalLabel">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Informe sin finalizar
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <div id="workspaceUnsavedModalBody">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex flex-column gap-2 align-items-stretch">
+                        <button type="button" class="btn btn-primary w-100" id="btnWorkspaceUnsavedGoBack">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Volver al workspace para finalizar el informe
+                        </button>
+                        <button type="button" class="btn btn-outline-danger w-100" id="btnWorkspaceUnsavedContinue">
+                            <i class="fas fa-forward me-2"></i>
+                            Abrir nuevo estudio sin guardar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: Advertencia de cambio de estudio con grabadora móvil activa
+             ══════════════════════════════════════════════════════════════════ -->
+        <div class="modal fade" id="workspaceMobilePendingModal" tabindex="-1" aria-labelledby="workspaceMobilePendingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-warning">
+                    <div class="modal-header bg-warning text-dark">
+                        <h5 class="modal-title fw-bold" id="workspaceMobilePendingModalLabel">
+                            <i class="fas fa-mobile-alt me-2"></i>
+                            Grabadora móvil con actividad pendiente
+                        </h5>
+                    </div>
+                    <div class="modal-body">
+                        <div id="workspaceMobilePendingModalBody">
+                            <!-- Se llena dinámicamente -->
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex flex-column gap-2 align-items-stretch">
+                        <button type="button" class="btn btn-primary w-100" id="btnMobilePendingGoBack">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Cancelar (esperar al móvil)
+                        </button>
+                        <button type="button" class="btn btn-outline-warning w-100" id="btnMobilePendingContinue">
+                            <i class="fas fa-forward me-2"></i>
+                            Continuar de todas formas
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <!-- Contenedor para todas las secciones -->
+            <div id="sectionsContainer" style="position: relative; width: 100%; height: 100%;">
+                <!-- Las secciones se cargarán aquí como iframes -->
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        // Contenedor de aplicaciones
+        const AppContainer = {
+            sections: {},
+            currentSection: null,
+            workspaceFrame: null,
+
+            withCacheBust(url) {
+                return typeof window.appendAppVersion === 'function'
+                    ? window.appendAppVersion(url)
+                    : url;
+            },
+            
+            // Mapeo de URLs a IDs de sección
+            sectionMap: {
+                'dashboard-unified.html': 'dashboard',
+                'dashboard.html': 'dashboard',
+                'paciente.html': 'estudios',
+                'components/editor.html': 'informes',
+                'components/informes-manager.html': 'gestion-informes',
+                'estudios-manager.html': 'gestion-estudios',
+                'pacientes-manager.html': 'gestion-pacientes',
+                'components/workspace.html': 'workspace',
+                'workspace.html': 'workspace',
+                'components/audio-recorder.html': 'grabacion',
+                'components/viewer.html': 'visor-dicom',
+                'user-management.html': 'gestion-usuarios',
+                'pacs-manager.html': 'pacs-manager',
+                'pacs-nodes-manager.html': 'pacs-nodes-manager',
+                'study-history-manager.html': 'study-history-manager',
+                'modules/qa-publicacion/qa-manager.html': 'qa-publicacion',
+                'cloud-storage.html': 'cloud-storage',
+                'audit-manager.html': 'audit-manager',
+                'worklist.html': 'worklist',
+                'ai-informes.html': 'ai-informes',
+                'configuracion.html': 'configuracion',
+                'modules/email/admin.php': 'email-admin'
+            },
+            
+            // Mapeo inverso: ID de sección a URL
+            sectionUrlMap: {
+                'dashboard': 'dashboard-unified.html',
+                'estudios': 'paciente.html',
+                'informes': 'components/editor.html',
+                'gestion-informes': 'components/informes-manager.html',
+                'gestion-estudios': 'estudios-manager.html',
+                'gestion-pacientes': 'pacientes-manager.html',
+                'workspace': 'components/workspace.html',
+                'grabacion': 'components/audio-recorder.html',
+                'visor-dicom': 'components/viewer.html',
+                'gestion-usuarios': 'user-management.html',
+                'pacs-manager': 'pacs-manager.html',
+                'pacs-nodes-manager': 'pacs-nodes-manager.html',
+                'study-history-manager': 'study-history-manager.html',
+                'qa-publicacion': 'modules/qa-publicacion/qa-manager.html',
+                'cloud-storage': 'cloud-storage.html',
+                'audit-manager': 'audit-manager.html',
+                'worklist': 'worklist.html',
+                'ai-informes': 'ai-informes.html',
+                'configuracion': 'configuracion.html',
+                'email-admin': 'modules/email/admin.php'
+            },
+            
+            init: function() {
+                console.log('🚀 Inicializando AppContainer...');
+                
+                // Interceptar navegación del sidebar (debe ser antes de cargar secciones)
+                this.setupNavigation();
+                
+                // Cargar configuración del sidebar
+                this.loadSidebar();
+                
+                // Cargar sección inicial basada en la URL (después de configurar navegación)
+                // Usar setTimeout para asegurar que el sidebar esté cargado y los permisos aplicados
+                setTimeout(() => {
+                    this.loadInitialSection();
+                }, 600); // Aumentado a 600ms para dar tiempo a que se apliquen los permisos
+                
+                // Configurar funcionalidad del sidebar
+                this.setupSidebarFunctionality();
+            },
+            
+            // Cargar sidebar desde el archivo compartido
+            loadSidebar: async function() {
+                try {
+                    // Cargar el sidebar desde dashboard-unified o workspace
+                    const response = await fetch('dashboard-unified.html');
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const sidebarNav = doc.querySelector('.sidebar-nav ul');
+                    if (sidebarNav) {
+                        const mainNav = document.getElementById('mainSidebarNav');
+                        if (mainNav) {
+                            mainNav.innerHTML = sidebarNav.innerHTML;
+                            console.log('✅ Sidebar cargado');
+                        }
+                    }
+                    
+                    // Aplicar permisos GUI después de cargar el sidebar
+                    // Usar reapply() que es la función correcta
+                    // Esperar un poco más para asegurar que el DOM esté completamente listo
+                    // y que la inicialización automática del SidebarGUIManager no interfiera
+                    const applyPermissionsAfterLoad = () => {
+                        if (window.SidebarGUIManager && typeof window.SidebarGUIManager.reapply === 'function') {
+                            console.log('🔄 Aplicando permisos GUI después de cargar sidebar...');
+                            // Verificar si ya hay elementos visibles antes de aplicar
+                            const sidebar = window.SidebarGUIManager.findMainSidebar();
+                            const hasVisibleItems = sidebar && sidebar.querySelectorAll('.nav-item.sidebar-item-visible').length > 0;
+                            
+                            if (hasVisibleItems) {
+                                console.log('ℹ️ Permisos ya aplicados, omitiendo reapply');
+                                return;
+                            }
+                            
+                            // Marcar que estamos aplicando permisos para evitar que hideAllSidebarItems interfiera
+                            window.SidebarGUIManager.isApplying = true;
+                            window.SidebarGUIManager.reapply().finally(() => {
+                                // La bandera se liberará automáticamente en reapply()
+                            });
+                        } else {
+                            console.warn('⚠️ SidebarGUIManager.reapply no disponible aún');
+                        }
+                    };
+                    
+                    // Esperar un poco más para asegurar que el DOM esté listo y evitar conflictos
+                    // Aumentar el delay para que la inicialización automática termine primero
+                    // Usar un delay más largo para asegurar que todo esté listo
+                    setTimeout(applyPermissionsAfterLoad, 800);
+                    
+                    // También intentar después de un delay adicional por si acaso
+                    if (!window.SidebarGUIManager || typeof window.SidebarGUIManager.reapply !== 'function') {
+                        const checkSidebarManager = setInterval(() => {
+                            if (window.SidebarGUIManager && typeof window.SidebarGUIManager.reapply === 'function') {
+                                clearInterval(checkSidebarManager);
+                                console.log('🔄 Aplicando permisos GUI después de cargar sidebar (retardado)...');
+                                applyPermissionsAfterLoad();
+                            }
+                        }, 100);
+                        
+                        // Timeout después de 5 segundos
+                        setTimeout(() => {
+                            clearInterval(checkSidebarManager);
+                        }, 5000);
+                    }
+                } catch (error) {
+                    console.error('Error cargando sidebar:', error);
+                }
+            },
+            
+            // Configurar navegación interceptada
+            setupNavigation: function() {
+                // Interceptar clics en el sidebar principal
+                document.addEventListener('click', (e) => {
+                    const navLink = e.target.closest('.sidebar .nav-link');
+                    if (navLink) {
+                        const href = navLink.getAttribute('href');
+                        const section = navLink.getAttribute('data-section');
+                        
+                        if (href && !href.startsWith('#') && !href.startsWith('http')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            // Si tiene data-section, usar ese, sino extraer de href
+                            if (section) {
+                                console.log('🔄 Navegando a sección:', section);
+                                this.loadSectionById(section);
+                            } else {
+                                console.log('🔄 Navegando a:', href);
+                                this.loadSection(href);
+                            }
+                            
+                            // Actualizar URL sin recargar
+                            const finalSection = section || this.getSectionId(href);
+                            const newUrl = `app-container.html?section=${finalSection || 'dashboard'}`;
+                            window.history.pushState({ section: finalSection }, '', newUrl);
+                        }
+                    }
+                }, true);
+                
+                // Escuchar mensajes de navegación desde los iframes
+                window.addEventListener('message', (e) => {
+                    if (e.data && e.data.type === 'navigate') {
+                        console.log('📥 Mensaje de navegación recibido desde iframe:', e.data);
+                        
+                        const href = e.data.url;
+                        let section = e.data.section;
+                        
+                        // Si no hay sección, intentar extraerla del href
+                        if (!section && href) {
+                            if (href.includes('app-container.html')) {
+                                const urlParams = new URLSearchParams(href.split('?')[1] || '');
+                                section = urlParams.get('section');
+                            } else {
+                                section = this.getSectionId(href);
+                            }
+                        }
+                        
+                        if (section) {
+                            this.loadSectionById(section);
+                        } else if (href) {
+                            this.loadSection(href);
+                        }
+                        
+                        // Actualizar URL y estado del sidebar
+                        const finalSection = section || this.getSectionId(href) || 'dashboard';
+                        const newUrl = `app-container.html?section=${finalSection}`;
+                        window.history.pushState({ section: finalSection }, '', newUrl);
+                        
+                        // Actualizar estado activo del sidebar usando la función centralizada
+                        if (finalSection) {
+                            this.updateSidebarActiveState(finalSection);
+                        }
+                    }
+                });
+                
+                // Manejar navegación del historial
+                window.addEventListener('popstate', (e) => {
+                    if (e.state && e.state.section) {
+                        this.loadSectionById(e.state.section);
+                    }
+                });
+            },
+            
+            // Cargar sección por ID
+            loadSectionById: function(sectionId) {
+                // Obtener URL desde el mapeo inverso
+                const url = this.sectionUrlMap[sectionId];
+                if (url) {
+                    if (sectionId === 'workspace') {
+                        this.loadWorkspace(url);
+                    } else {
+                        this.loadSection(url);
+                    }
+                } else {
+                    console.warn('⚠️ No se encontró URL para la sección:', sectionId);
+                    // Fallback: intentar obtener desde sectionMap
+                    const fallbackUrl = Object.keys(this.sectionMap).find(key => this.sectionMap[key] === sectionId);
+                    if (fallbackUrl) {
+                        if (sectionId === 'workspace') {
+                            this.loadWorkspace(fallbackUrl);
+                        } else {
+                            this.loadSection(fallbackUrl);
+                        }
+                    } else {
+                        console.error('❌ No se pudo encontrar URL para la sección:', sectionId);
+                    }
+                }
+            },
+            
+            // Cargar una sección
+            loadSection: function(url) {
+                url = this.withCacheBust(url);
+                const sectionId = this.getSectionId(url);
+                if (!sectionId) {
+                    console.warn('⚠️ No se pudo determinar el ID de sección para:', url);
+                    return;
+                }
+                
+                // Si es workspace, usar iframe especial que se mantiene en DOM
+                if (sectionId === 'workspace') {
+                    this.loadWorkspace(url);
+                    return;
+                }
+                
+                // Para otras secciones, cargar en iframe normal
+                let sectionFrame = this.sections[sectionId];
+                
+                if (!sectionFrame) {
+                    // Crear nuevo iframe para esta sección
+                    sectionFrame = document.createElement('iframe');
+                    sectionFrame.id = `section-${sectionId}`;
+                    sectionFrame.className = 'section-container';
+                    
+                    // Agregar parámetro para indicar que está en iframe (si la URL no lo tiene)
+                    let finalUrl = url;
+                    if (!url.includes('?')) {
+                        finalUrl = url + '?iframe=1';
+                    } else if (!url.includes('iframe=')) {
+                        finalUrl = url + '&iframe=1';
+                    }
+                    
+                    sectionFrame.src = this.withCacheBust(finalUrl);
+                    sectionFrame.setAttribute('data-section-id', sectionId);
+                    
+                    document.getElementById('sectionsContainer').appendChild(sectionFrame);
+                    this.sections[sectionId] = sectionFrame;
+                    
+                    console.log(`📦 Nueva sección cargada: ${sectionId}`);
+                } else {
+                    // La sección ya existe, limpiar TODOS los estilos inline que puedan estar bloqueando la visualización
+                    sectionFrame.style.display = '';
+                    sectionFrame.style.visibility = '';
+                    sectionFrame.style.opacity = '';
+                    
+                    // Verificar que el iframe tenga un src válido (por si se perdió)
+                    if (!sectionFrame.src || sectionFrame.src === 'about:blank' || sectionFrame.src.includes('about:')) {
+                        let finalUrl = url;
+                        if (!url.includes('?')) {
+                            finalUrl = url + '?iframe=1';
+                        } else if (!url.includes('iframe=')) {
+                            finalUrl = url + '&iframe=1';
+                        }
+                        sectionFrame.src = this.withCacheBust(finalUrl);
+                        console.log(`   🔄 Re-cargando src del iframe: ${finalUrl}`);
+                    }
+                    
+                    console.log(`♻️ Reutilizando sección existente: ${sectionId}`);
+                }
+                
+                // Ocultar todas las secciones (usando clase, no estilo inline)
+                Object.values(this.sections).forEach(frame => {
+                    frame.classList.remove('active');
+                    // Limpiar TODOS los estilos inline que puedan estar bloqueando la visualización
+                    // El CSS manejará la visibilidad mediante la clase .active
+                    frame.style.display = '';
+                    frame.style.visibility = '';
+                    frame.style.opacity = '';
+                });
+                
+                // Si existe el workspace frame, ocultarlo también
+                if (this.workspaceFrame) {
+                    this.workspaceFrame.style.display = 'none';
+                    this.workspaceFrame.style.visibility = 'hidden';
+                }
+                
+                // Mostrar la sección seleccionada
+                sectionFrame.classList.add('active');
+                // Limpiar TODOS los estilos inline para que el CSS maneje la visibilidad
+                sectionFrame.style.display = '';
+                sectionFrame.style.visibility = '';
+                sectionFrame.style.opacity = '';
+                this.currentSection = sectionId;
+                
+                console.log(`👁️ Mostrando sección ${sectionId}, iframe existe: ${!!sectionFrame}, tiene clase active: ${sectionFrame.classList.contains('active')}, display: ${sectionFrame.style.display || 'CSS'}`);
+                
+                // Verificar que la sección esté realmente visible después de un pequeño delay
+                setTimeout(() => {
+                    const computedStyle = window.getComputedStyle(sectionFrame);
+                    const isVisible = computedStyle.display !== 'none' && 
+                                     computedStyle.visibility !== 'hidden' && 
+                                     sectionFrame.classList.contains('active');
+                    
+                    if (!isVisible) {
+                        console.warn(`⚠️ Sección ${sectionId} no está visible después de mostrar, forzando visibilidad...`);
+                        sectionFrame.classList.add('active');
+                        sectionFrame.style.display = 'block';
+                        sectionFrame.style.visibility = 'visible';
+                        sectionFrame.style.opacity = '1';
+                    } else {
+                        console.log(`✅ Sección ${sectionId} está visible correctamente`);
+                    }
+                }, 100);
+                
+                // Ajustar tamaño
+                this.adjustFramesSize();
+                
+                // Actualizar estado activo del sidebar (con un pequeño delay para asegurar que el DOM esté listo)
+                setTimeout(() => {
+                    this.updateSidebarActiveState(sectionId);
+                }, 50);
+                
+                console.log(`✅ Sección activa: ${sectionId}`);
+                console.log(`   Workspace permanece en DOM pero oculto (preserva estado)`);
+            },
+            
+            // Cargar workspace en iframe especial que se mantiene en DOM
+            loadWorkspace: async function(url) {
+                url = this.withCacheBust(url);
+                console.log('🔧 loadWorkspace llamado con URL:', url);
+                console.log('   Workspace frame existe:', !!this.workspaceFrame);
+                console.log('   Sección actual:', this.currentSection);
+                
+                // Ocultar TODAS las demás secciones PRIMERO (forzar ocultación explícita y completa)
+                Object.values(this.sections).forEach(frame => {
+                    frame.classList.remove('active');
+                    // Forzar ocultación explícita y completa para asegurar que no queden visibles
+                    frame.style.display = 'none';
+                    frame.style.visibility = 'hidden';
+                    frame.style.opacity = '0';
+                });
+                
+                console.log(`🚫 Ocultando ${Object.keys(this.sections).length} secciones completamente antes de mostrar workspace`);
+                
+                    // Si el workspace frame ya existe, verificar si hay un nuevo estudio
+                    if (this.workspaceFrame) {
+                        // Obtener parámetros de la nueva URL
+                        const newUrlParams = new URLSearchParams(url.split('?')[1] || '');
+                        const newStudyId = newUrlParams.get('studyId');
+                        const newStudyInstanceUID = newUrlParams.get('studyInstanceUID');
+                        const newModality = newUrlParams.get('modality');
+                        const newStudyDescription = newUrlParams.get('studyDescription');
+                        const hasNewStudyParams = newStudyId || newStudyInstanceUID;
+                        
+                        // Obtener parámetros de la URL actual del iframe
+                        const currentSrc = this.workspaceFrame.src;
+                        const currentUrlParams = new URLSearchParams(currentSrc.split('?')[1] || '');
+                        const currentStudyId = currentUrlParams.get('studyId');
+                        const currentStudyInstanceUID = currentUrlParams.get('studyInstanceUID');
+                        const currentModality = currentUrlParams.get('modality');
+                        const currentStudyDescription = currentUrlParams.get('studyDescription');
+                        
+                        // Comparar si es un estudio diferente
+                        const isDifferentStudy = hasNewStudyParams && (
+                            (newStudyId && newStudyId !== currentStudyId) ||
+                            (newStudyInstanceUID && newStudyInstanceUID !== currentStudyInstanceUID)
+                        );
+                        
+                        // Verificar si es el mismo estudio
+                        const isSameStudy = hasNewStudyParams && (
+                            (newStudyId && newStudyId === currentStudyId) ||
+                            (newStudyInstanceUID && newStudyInstanceUID === currentStudyInstanceUID)
+                        );
+                        
+                        // Verificar si faltan parámetros importantes (modality, studyDescription)
+                        const missingParams = (newModality && !currentModality) || 
+                                             (newStudyDescription && !currentStudyDescription) ||
+                                             (!currentModality && newModality) ||
+                                             (!currentStudyDescription && newStudyDescription);
+                        
+                        if (isDifferentStudy) {
+                        // Es un estudio diferente — verificar datos sin guardar ANTES de recargar
+                        console.log('📋 Nuevo estudio detectado, verificando datos sin guardar...');
+                        console.log(`   Estudio anterior: ${currentStudyId || currentStudyInstanceUID}`);
+                        console.log(`   Estudio nuevo: ${newStudyId || newStudyInstanceUID}`);
+
+                        // ⚠️ Verificar con workspace si hay datos sin guardar (Bootstrap modal)
+                        const navChoice = await this.checkWorkspaceBeforeNav();
+                        if (navChoice === 'cancel') {
+                            console.log('❌ Cambio de estudio cancelado por el usuario (informe sin finalizar)');
+                            // Asegurarse de que el workspace esté visible
+                            if (this.workspaceFrame) {
+                                this.workspaceFrame.style.display = 'block';
+                                this.workspaceFrame.style.visibility = 'visible';
+                                this.workspaceFrame.style.opacity = '1';
+                            }
+                            this.currentSection = 'workspace';
+                            return; // Salir sin cambiar el estudio
+                        }
+
+                        // Limpiar sessionStorage del workspace para que se comporte como primer estudio
+                        // NOTA: NO limpiar workspace_mobile_sessions porque contiene sesiones activas del móvil
+                        const PRESERVED_KEYS = ['workspace_mobile_sessions'];
+                        try {
+                            const keysToRemove = [];
+                            for (let i = 0; i < sessionStorage.length; i++) {
+                                const key = sessionStorage.key(i);
+                                if (key && (key.startsWith('workspace_') || key.includes('workspace')) && !PRESERVED_KEYS.includes(key)) {
+                                    keysToRemove.push(key);
+                                }
+                            }
+                            keysToRemove.forEach(key => {
+                                sessionStorage.removeItem(key);
+                                console.log(`   🧹 Limpiado: ${key}`);
+                            });
+                            console.log(`   ✅ Datos previos del workspace limpiados (${keysToRemove.length} items). Sesiones móviles preservadas.`);
+                        } catch (e) {
+                            console.warn('⚠️ Error al limpiar sessionStorage:', e);
+                        }
+                        
+                        // Asegurarse de que TODAS las secciones estén completamente ocultas ANTES de actualizar el workspace
+                        Object.values(this.sections).forEach(frame => {
+                            frame.classList.remove('active');
+                            frame.style.display = 'none';
+                            frame.style.visibility = 'hidden';
+                            frame.style.opacity = '0';
+                        });
+                        
+                        // Construir la URL final con parámetros de estudio
+                        let finalUrl = url;
+                        if (!finalUrl.includes('iframe=')) {
+                            finalUrl += (finalUrl.includes('?') ? '&' : '?') + 'iframe=1';
+                        }
+                        
+                        // Guardar datos del nuevo estudio en localStorage para que el workspace los use
+                        // (El workspace los leerá al cargar para actualizar sesiones móviles)
+                        try {
+                            const pendingStudyData = {
+                                studyId: newStudyId || null,
+                                studyInstanceUID: newStudyInstanceUID || null,
+                                patientId: newUrlParams.get('patientId') || null,
+                                patientName: newUrlParams.get('patientName') || null,
+                                modality: newModality || null,
+                                studyDescription: newStudyDescription || null,
+                                timestamp: Date.now()
+                            };
+                            localStorage.setItem('workspace_pending_study_update', JSON.stringify(pendingStudyData));
+                            console.log('   📦 Datos del nuevo estudio guardados en localStorage para actualización de sesiones móviles');
+                        } catch (e) {
+                            console.warn('⚠️ No se pudo guardar pending study update:', e);
+                        }
+                        
+                        // ── Verificar grabadora móvil antes de recargar ──────────────────────
+                        // El iframe se va a recargar (nuevo src), por lo que todo el estado JS
+                        // se pierde y readStudyParams NUNCA puede mostrar el aviso.
+                        // Aquí es el único lugar donde podemos interceptarlo.
+                        const mobileChoice = await this.checkMobilePendingBeforeNav();
+                        if (mobileChoice === 'cancel') {
+                            console.log('❌ Cambio de estudio cancelado por el usuario (grabadora móvil activa)');
+                            // Revertir el pendingStudyData que ya guardamos (no se va a cambiar estudio)
+                            try { localStorage.removeItem('workspace_pending_study_update'); } catch (_) {}
+                            if (this.workspaceFrame) {
+                                this.workspaceFrame.style.display = 'block';
+                                this.workspaceFrame.style.visibility = 'visible';
+                                this.workspaceFrame.style.opacity = '1';
+                            }
+                            this.currentSection = 'workspace';
+                            return;
+                        }
+
+                        // Actualizar el src del workspace (esto recargará el iframe con el nuevo estudio)
+                        this.workspaceFrame.src = this.withCacheBust(finalUrl);
+                        console.log(`   🔄 Workspace recargado con nuevo estudio: ${finalUrl}`);
+                    } else if (isSameStudy) {
+                        // Mismo estudio, verificar si faltan parámetros importantes
+                        if (missingParams) {
+                            // Faltan parámetros, actualizar URL sin recargar completamente
+                            console.log('🔧 Mismo estudio pero faltan parámetros, actualizando URL del iframe');
+                            console.log(`   Estudio: ${newStudyId || newStudyInstanceUID}`);
+                            console.log(`   Parámetros faltantes: modality=${!currentModality && newModality ? 'SÍ' : 'NO'}, studyDescription=${!currentStudyDescription && newStudyDescription ? 'SÍ' : 'NO'}`);
+                            
+                            // Construir nueva URL con todos los parámetros
+                            const updatedParams = new URLSearchParams(currentSrc.split('?')[1] || '');
+                            if (newModality) updatedParams.set('modality', newModality);
+                            if (newStudyDescription) updatedParams.set('studyDescription', newStudyDescription);
+                            
+                            const baseUrl = currentSrc.split('?')[0];
+                            const updatedUrl = `${baseUrl}?${updatedParams.toString()}`;
+                            
+                            // Actualizar URL del iframe (esto puede causar una recarga parcial, pero es necesario)
+                            this.workspaceFrame.src = this.withCacheBust(updatedUrl);
+                            console.log(`   🔄 URL del workspace actualizada: ${updatedUrl}`);
+                        } else {
+                            // Mismo estudio, solo mostrar sin recargar (preserva estado exacto)
+                            console.log('✅ Mismo estudio detectado, mostrando workspace sin recargar');
+                            console.log(`   Estudio: ${newStudyId || newStudyInstanceUID}`);
+                            console.log('   Esto mantiene la imagen, zoom y posición exactos donde estaban');
+                        }
+                    } else if (!hasNewStudyParams) {
+                        // No hay parámetros de estudio, solo mostrar sin recargar
+                        console.log('✅ Workspace ya existe, mostrando sin recargar (preserva estado exacto del visor)');
+                    }
+                    
+                    // SIEMPRE mostrar el workspace y asegurar que otras secciones estén ocultas
+                    // Asegurarse PRIMERO de que todas las demás secciones estén completamente ocultas
+                    Object.values(this.sections).forEach(frame => {
+                        frame.classList.remove('active');
+                        frame.style.display = 'none';
+                        frame.style.visibility = 'hidden';
+                        frame.style.opacity = '0';
+                    });
+                    
+                    // Luego mostrar el workspace
+                    this.workspaceFrame.style.display = 'block';
+                    this.workspaceFrame.style.visibility = 'visible';
+                    this.workspaceFrame.style.opacity = '1';
+                    this.currentSection = 'workspace';
+                    
+                    console.log(`✅ Workspace mostrado, todas las demás secciones completamente ocultas`);
+                    
+                    // Actualizar estado activo del sidebar (con delay)
+                    setTimeout(() => {
+                        this.updateSidebarActiveState('workspace');
+                    }, 50);
+                    
+                    // Ajustar tamaño
+                    this.adjustFramesSize();
+                    
+                    // Re-aplicar controles del sidebar cuando se muestra el workspace existente
+                    // Solo si no hay una re-aplicación en progreso y si los elementos no están ya visibles
+                    setTimeout(() => {
+                        if (window.SidebarGUIManager && 
+                            typeof window.SidebarGUIManager.reapply === 'function' &&
+                            !window.SidebarGUIManager.isApplying) {
+                            // Verificar si ya hay elementos visibles antes de aplicar
+                            const sidebar = window.SidebarGUIManager.findMainSidebar();
+                            const hasVisibleItems = sidebar && sidebar.querySelectorAll('.nav-item.sidebar-item-visible').length > 0;
+                            
+                            if (!hasVisibleItems) {
+                                window.SidebarGUIManager.reapply();
+                            } else {
+                                console.log('ℹ️ Elementos del sidebar ya visibles, omitiendo reapply');
+                            }
+                        }
+                    }, 300);
+                    
+                    return;
+                }
+                
+                // Crear iframe para workspace (solo la primera vez)
+                this.workspaceFrame = document.createElement('iframe');
+                this.workspaceFrame.id = 'workspaceFrame';
+                this.workspaceFrame.style.cssText = `
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                    display: block;
+                `;
+                
+                // Agregar parámetro para indicar que está en iframe
+                let finalUrl = url;
+                if (!url.includes('?')) {
+                    finalUrl = url + '?iframe=1';
+                } else if (!url.includes('iframe=')) {
+                    finalUrl = url + '&iframe=1';
+                }
+                
+                this.workspaceFrame.src = this.withCacheBust(finalUrl);
+                
+                document.getElementById('sectionsContainer').appendChild(this.workspaceFrame);
+                this.currentSection = 'workspace';
+                
+                // Asegurarse de que otras secciones estén completamente ocultas (forzar ocultación explícita)
+                Object.values(this.sections).forEach(frame => {
+                    frame.classList.remove('active');
+                    frame.style.display = 'none';
+                    frame.style.visibility = 'hidden';
+                    frame.style.opacity = '0';
+                });
+                
+                // Asegurar que el workspace esté visible
+                this.workspaceFrame.style.display = 'block';
+                this.workspaceFrame.style.visibility = 'visible';
+                this.workspaceFrame.style.opacity = '1';
+                
+                console.log(`✅ Workspace creado, todas las demás secciones completamente ocultas`);
+                
+                // Ajustar tamaño inicial
+                this.adjustFramesSize();
+                
+                // Actualizar estado activo del sidebar (con un pequeño delay para asegurar que el DOM esté listo)
+                setTimeout(() => {
+                    this.updateSidebarActiveState('workspace');
+                }, 50);
+                
+                // Re-aplicar controles del sidebar después de que el workspace se cargue completamente
+                // Esto asegura que los enlaces se muestren correctamente
+                // Solo si no hay una re-aplicación en progreso y si los elementos no están ya visibles
+                this.workspaceFrame.addEventListener('load', () => {
+                    setTimeout(() => {
+                        if (window.SidebarGUIManager && 
+                            typeof window.SidebarGUIManager.reapply === 'function' &&
+                            !window.SidebarGUIManager.isApplying) {
+                            // Verificar si ya hay elementos visibles antes de aplicar
+                            const sidebar = window.SidebarGUIManager.findMainSidebar();
+                            const hasVisibleItems = sidebar && sidebar.querySelectorAll('.nav-item.sidebar-item-visible').length > 0;
+                            
+                            if (!hasVisibleItems) {
+                                window.SidebarGUIManager.reapply();
+                            } else {
+                                console.log('ℹ️ Elementos del sidebar ya visibles después de cargar workspace, omitiendo reapply');
+                            }
+                        }
+                    }, 300);
+                }, { once: true });
+                
+                console.log('✅ Workspace cargado en iframe persistente (se mantendrá en DOM)');
+                console.log('   Al cambiar de sección, el workspace se ocultará pero permanecerá en el DOM');
+                console.log('   Al regresar, se mostrará sin recargar, preservando el estado exacto');
+            },
+            
+            // Actualizar estado activo del sidebar
+            updateSidebarActiveState: function(sectionId) {
+                if (!sectionId) {
+                    console.warn('⚠️ updateSidebarActiveState: sectionId no proporcionado');
+                    return;
+                }
+                
+                console.log(`🔄 Actualizando estado activo del sidebar para: ${sectionId}`);
+                
+                // Remover clase active de todos los enlaces
+                document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                    link.classList.remove('active');
+                });
+                
+                // Buscar y activar el enlace correspondiente
+                const navLinks = document.querySelectorAll('.sidebar .nav-link');
+                let found = false;
+                
+                navLinks.forEach(link => {
+                    const linkSection = link.getAttribute('data-section');
+                    const linkHref = link.getAttribute('href');
+                    
+                    // Verificar si coincide por data-section (más confiable)
+                    if (linkSection === sectionId) {
+                        link.classList.add('active');
+                        found = true;
+                        console.log(`✅ Sidebar actualizado: ${sectionId} marcado como activo (por data-section)`);
+                        return;
+                    }
+                    
+                    // Verificar si coincide por href con section=
+                    if (linkHref && linkHref.includes(`section=${sectionId}`)) {
+                        link.classList.add('active');
+                        found = true;
+                        console.log(`✅ Sidebar actualizado: ${sectionId} marcado como activo (por href con section=)`);
+                        return;
+                    }
+                    
+                    // Verificar si el href contiene la URL de la sección
+                    const sectionUrl = this.sectionUrlMap[sectionId];
+                    if (sectionUrl && linkHref) {
+                        // Verificar si el href contiene la URL de la sección
+                        if (linkHref.includes(sectionUrl) || linkHref.includes(sectionUrl.replace('components/', ''))) {
+                            link.classList.add('active');
+                            found = true;
+                            console.log(`✅ Sidebar actualizado: ${sectionId} marcado como activo (por URL: ${sectionUrl})`);
+                            return;
+                        }
+                    }
+                });
+                
+                if (!found) {
+                    console.warn(`⚠️ No se encontró enlace del sidebar para la sección: ${sectionId}`);
+                    console.log('   Enlaces disponibles:', Array.from(navLinks).map(l => ({
+                        href: l.getAttribute('href'),
+                        dataSection: l.getAttribute('data-section'),
+                        text: l.textContent.trim()
+                    })));
+                }
+            },
+            
+            // Obtener ID de sección desde URL
+            getSectionId: function(url) {
+                for (const [pattern, sectionId] of Object.entries(this.sectionMap)) {
+                    if (url.includes(pattern)) {
+                        return sectionId;
+                    }
+                }
+                return null;
+            },
+            
+            // Cargar sección inicial
+            loadInitialSection: function() {
+                const currentPath = window.location.pathname;
+                const currentFile = currentPath.split('/').pop();
+                
+                // Si estamos en app-container.html, cargar dashboard por defecto
+                if (currentFile === 'app-container.html') {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const section = urlParams.get('section');
+                    
+                    if (section === 'workspace') {
+                        // Construir URL del workspace con parámetros de estudio
+                        const studyParams = new URLSearchParams();
+                        if (urlParams.has('studyId')) studyParams.set('studyId', urlParams.get('studyId'));
+                        if (urlParams.has('studyInstanceUID')) studyParams.set('studyInstanceUID', urlParams.get('studyInstanceUID'));
+                        if (urlParams.has('orthancStudyId')) studyParams.set('orthancStudyId', urlParams.get('orthancStudyId'));
+                        if (urlParams.has('patientId')) studyParams.set('patientId', urlParams.get('patientId'));
+                        if (urlParams.has('patientName')) studyParams.set('patientName', urlParams.get('patientName'));
+                        if (urlParams.has('modality')) studyParams.set('modality', urlParams.get('modality'));
+                        if (urlParams.has('studyDescription')) studyParams.set('studyDescription', urlParams.get('studyDescription'));
+                        
+                        const workspaceUrl = `components/workspace.html?${studyParams.toString()}`;
+                        console.log('📋 Cargando workspace desde loadInitialSection con estudio:', {
+                            studyId: urlParams.get('studyId'),
+                            studyInstanceUID: urlParams.get('studyInstanceUID'),
+                            url: workspaceUrl
+                        });
+                        
+                        // Asegurarse de que NO se cargue el dashboard primero
+                        // Forzar ocultación explícita de TODAS las secciones antes de cargar workspace
+                        Object.values(this.sections).forEach(frame => {
+                            frame.classList.remove('active');
+                            frame.style.display = 'none';
+                            frame.style.visibility = 'hidden';
+                            frame.style.opacity = '0';
+                        });
+                        
+                        console.log(`🚫 [loadInitialSection] Ocultando ${Object.keys(this.sections).length} secciones antes de cargar workspace`);
+                        console.log(`   ⚠️ NO se cargará dashboard - ir directo a workspace`);
+                        
+                        // Cargar workspace directamente sin cargar dashboard
+                        this.loadWorkspace(workspaceUrl);
+                    } else if (section) {
+                        // Cargar la sección especificada
+                        this.loadSectionById(section);
+                    } else {
+                        // Cargar dashboard por defecto
+                        this.loadSection('dashboard-unified.html');
+                    }
+                } else {
+                    // Si estamos en otra página, redirigir al contenedor
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const newUrl = `app-container.html?section=${this.getSectionId(currentFile) || 'dashboard'}&${urlParams.toString()}`;
+                    window.location.href = newUrl;
+                }
+            },
+            
+            // Configurar funcionalidad del sidebar
+            setupSidebarFunctionality: function() {
+                const sidebarToggle = document.getElementById('sidebarToggle');
+                const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+                const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+                const sidebar = document.getElementById('sidebar');
+                const sidebarOverlay = document.getElementById('sidebarOverlay');
+                const sidebarLayout = document.getElementById('sidebarLayout');
+                const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+                function closeMobileSidebar() {
+                    if (sidebar) sidebar.classList.remove('show');
+                    if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+                }
+
+                if (sidebarToggle) {
+                    sidebarToggle.addEventListener('click', () => {
+                        if (sidebar) sidebar.classList.add('show');
+                        if (sidebarOverlay) sidebarOverlay.classList.add('show');
+                    });
+                }
+
+                if (sidebarCloseMobile) {
+                    sidebarCloseMobile.addEventListener('click', closeMobileSidebar);
+                }
+
+                if (sidebarOverlay) {
+                    sidebarOverlay.addEventListener('click', closeMobileSidebar);
+                }
+
+                if (sidebarToggleDesktop) {
+                    sidebarToggleDesktop.addEventListener('click', () => {
+                        if (sidebarLayout) {
+                            sidebarLayout.classList.toggle('sidebar-hidden');
+                            const isHidden = sidebarLayout.classList.contains('sidebar-hidden');
+                            sidebarToggleDesktop.innerHTML = isHidden ? 
+                                '<i class="fas fa-angle-double-right"></i>' : 
+                                '<i class="fas fa-angle-double-left"></i>';
+                            
+                            // Notificar a los iframes sobre el cambio del sidebar
+                            this.notifyFramesAboutSidebarChange(isHidden);
+                            
+                            // Ajustar tamaño de iframes cuando se oculta/muestra el sidebar
+                            setTimeout(() => {
+                                this.adjustFramesSize();
+                            }, 300);
+                        }
+                    });
+                }
+
+                if (sidebarToggleShow) {
+                    sidebarToggleShow.addEventListener('click', () => {
+                        if (sidebarLayout) {
+                            sidebarLayout.classList.remove('sidebar-hidden');
+                            if (sidebarToggleDesktop) {
+                                sidebarToggleDesktop.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+                            }
+                            
+                            // Notificar a los iframes sobre el cambio del sidebar
+                            this.notifyFramesAboutSidebarChange(false);
+                            
+                            // Ajustar tamaño de iframes
+                            setTimeout(() => {
+                                this.adjustFramesSize();
+                            }, 300);
+                        }
+                    });
+                }
+                
+                // Ajustar tamaño de iframes al redimensionar ventana
+                window.addEventListener('resize', () => {
+                    this.adjustFramesSize();
+                });
+            },
+            
+            // Notificar a los iframes sobre cambios del sidebar
+            notifyFramesAboutSidebarChange: function(isHidden) {
+                const message = {
+                    type: 'sidebar-toggle',
+                    hidden: isHidden
+                };
+                
+                // Notificar al workspace frame
+                if (this.workspaceFrame && this.workspaceFrame.contentWindow) {
+                    try {
+                        this.workspaceFrame.contentWindow.postMessage(message, '*');
+                    } catch (e) {
+                        console.warn('No se pudo notificar al workspace frame:', e);
+                    }
+                }
+                
+                // Notificar a otras secciones
+                Object.values(this.sections).forEach(frame => {
+                    if (frame.contentWindow) {
+                        try {
+                            frame.contentWindow.postMessage(message, '*');
+                        } catch (e) {
+                            // Ignorar errores de cross-origin
+                        }
+                    }
+                });
+            },
+            
+            // Ajustar tamaño de todos los iframes
+            adjustFramesSize: function() {
+                const container = document.getElementById('sectionsContainer');
+                if (container) {
+                    const height = container.offsetHeight;
+                    const width = container.offsetWidth;
+                    
+                    // Ajustar workspace frame
+                    if (this.workspaceFrame) {
+                        this.workspaceFrame.style.width = width + 'px';
+                        this.workspaceFrame.style.height = height + 'px';
+                    }
+                    
+                    // Ajustar otras secciones
+                    Object.values(this.sections).forEach(frame => {
+                        frame.style.width = width + 'px';
+                        frame.style.height = height + 'px';
+                    });
+                }
+            },
+
+            // Verifica si la grabadora móvil tiene audios pendientes antes de cambiar estudio.
+            // Devuelve una promesa que resuelve 'proceed' o 'cancel'.
+            checkMobilePendingBeforeNav: function() {
+                return new Promise((resolve) => {
+                    let mobilePending = { hasPending: false, isRecording: false, count: 0 };
+
+                    try {
+                        const wm = this.workspaceFrame?.contentWindow?.WorkspaceManager;
+                        if (wm && typeof wm.getMobilePendingStatus === 'function') {
+                            mobilePending = wm.getMobilePendingStatus();
+                        }
+                    } catch (e) {
+                        console.warn('AppContainer: no se pudo verificar estado del móvil:', e.message);
+                        resolve('proceed');
+                        return;
+                    }
+
+                    if (!mobilePending.hasPending) {
+                        resolve('proceed');
+                        return;
+                    }
+
+                    const statusLabel = mobilePending.isRecording
+                        ? 'está grabando un audio en este momento'
+                        : `tiene ${mobilePending.count} grabación(es) sin enviar al workspace`;
+
+                    let bodyHtml = `<p class="mb-2">La grabadora móvil <strong>${statusLabel}</strong>.</p>`;
+                    bodyHtml += '<p class="mb-2">Si cambiás de estudio ahora, los audios pendientes quedarán resguardados en el servidor (papelera) pero <strong>NO estarán vinculados al nuevo estudio</strong>.</p>';
+                    bodyHtml += '<p class="text-muted small mb-0">Podés recuperarlos abriendo nuevamente el estudio actual y usando la <strong>Papelera de audios</strong>.</p>';
+                    document.getElementById('workspaceMobilePendingModalBody').innerHTML = bodyHtml;
+
+                    const modalEl = document.getElementById('workspaceMobilePendingModal');
+                    const modal = new bootstrap.Modal(modalEl);
+
+                    const btnGoBack   = document.getElementById('btnMobilePendingGoBack');
+                    const btnContinue = document.getElementById('btnMobilePendingContinue');
+
+                    const newGoBack   = btnGoBack.cloneNode(true);
+                    const newContinue = btnContinue.cloneNode(true);
+                    btnGoBack.parentNode.replaceChild(newGoBack, btnGoBack);
+                    btnContinue.parentNode.replaceChild(newContinue, btnContinue);
+
+                    newGoBack.addEventListener('click', () => {
+                        modal.hide();
+                        if (this.workspaceFrame) {
+                            this.workspaceFrame.style.display = 'block';
+                            this.workspaceFrame.style.visibility = 'visible';
+                            this.workspaceFrame.style.opacity = '1';
+                        }
+                        this.currentSection = 'workspace';
+                        this.updateSidebarActiveState('workspace');
+                        resolve('cancel');
+                    });
+
+                    newContinue.addEventListener('click', () => {
+                        modal.hide();
+                        resolve('proceed');
+                    });
+
+                    modal.show();
+                });
+            },
+
+            checkWorkspaceBeforeNav: function() {
+                return new Promise((resolve) => {
+                    // Intentar acceder al WorkspaceManager del iframe (same-origin)
+                    let hasUnsaved = false;
+                    let details = { totalUnsavedRecordings: 0, unfinishedReports: [] };
+
+                    try {
+                        const wm = this.workspaceFrame?.contentWindow?.WorkspaceManager;
+                        if (wm && typeof wm.hasUnsavedData === 'function') {
+                            hasUnsaved = wm.hasUnsavedData();
+                            if (hasUnsaved && typeof wm.getUnsavedDataDetails === 'function') {
+                                details = wm.getUnsavedDataDetails();
+                            }
+                        }
+                    } catch (e) {
+                        // Cross-origin o iframe sin cargar — no bloquear la navegación
+                        console.warn('AppContainer: no se pudo verificar unsaved data del workspace:', e.message);
+                        resolve('proceed');
+                        return;
+                    }
+
+                    if (!hasUnsaved) {
+                        resolve('proceed');
+                        return;
+                    }
+
+                    // Construir mensaje descriptivo
+                    let bodyHtml = '<p class="mb-2">El estudio actual tiene datos pendientes:</p><ul class="mb-3">';
+                    if (details.totalUnsavedRecordings > 0) {
+                        bodyHtml += `<li><strong>${details.totalUnsavedRecordings} audio(s)</strong> grabado(s) sin guardar</li>`;
+                    }
+                    if (details.unfinishedReports && details.unfinishedReports.length > 0) {
+                        bodyHtml += `<li><strong>${details.unfinishedReports.length} informe(s)</strong> sin finalizar</li>`;
+                    }
+                    bodyHtml += '</ul>';
+                    bodyHtml += '<p class="text-muted small mb-0">Si abrís el nuevo estudio sin guardar, los audios quedarán en la <strong>papelera de audios</strong> y podrás recuperarlos desde allí.</p>';
+                    document.getElementById('workspaceUnsavedModalBody').innerHTML = bodyHtml;
+
+                    // Mostrar modal Bootstrap
+                    const modalEl = document.getElementById('workspaceUnsavedModal');
+                    const modal = new bootstrap.Modal(modalEl);
+
+                    const btnGoBack = document.getElementById('btnWorkspaceUnsavedGoBack');
+                    const btnContinue = document.getElementById('btnWorkspaceUnsavedContinue');
+
+                    // Limpiar listeners previos clonando los botones
+                    const newGoBack = btnGoBack.cloneNode(true);
+                    const newContinue = btnContinue.cloneNode(true);
+                    btnGoBack.parentNode.replaceChild(newGoBack, btnGoBack);
+                    btnContinue.parentNode.replaceChild(newContinue, btnContinue);
+
+                    newGoBack.addEventListener('click', () => {
+                        modal.hide();
+                        // Asegurarnos de mostrar el workspace (puede estar oculto)
+                        if (this.workspaceFrame) {
+                            this.workspaceFrame.style.display = 'block';
+                            this.workspaceFrame.style.visibility = 'visible';
+                            this.workspaceFrame.style.opacity = '1';
+                        }
+                        this.currentSection = 'workspace';
+                        this.updateSidebarActiveState('workspace');
+                        resolve('cancel');
+                    });
+
+                    newContinue.addEventListener('click', () => {
+                        modal.hide();
+                        // Indicar al workspace que permita la navegación (suprime beforeunload nativo)
+                        try {
+                            const wm = this.workspaceFrame?.contentWindow?.WorkspaceManager;
+                            if (wm) wm._allowNavigation = true;
+                        } catch (e) { /* ignorar */ }
+                        resolve('proceed');
+                    });
+
+                    modal.show();
+                });
+            }
+        };
+        
+        window.AppContainer = AppContainer;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

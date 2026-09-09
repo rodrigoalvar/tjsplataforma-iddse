@@ -1,0 +1,25 @@
+<div class="container">
+<div class="header">
+<h1><span style="color: rgb(230, 126, 35);">{{app_name}}</span></h1>
+</div>
+<div class="content">
+<h2>Nuevo estudio asignado</h2>
+<p>Estimado/a <strong>{{nombre_medico}}</strong>,</p>
+<p>Se le ha asignado un nuevo estudio m&eacute;dico para su revisi&oacute;n e informe.</p>
+<div class="info-box">
+<div class="info-row"><span class="info-label">Paciente:</span> {{nombre_paciente}}</div>
+{{#if estudio_id}}
+<div class="info-row"><span class="info-label">ID de Estudio:</span> {{estudio_id}}</div>
+{{/if}} {{#if tipo_estudio}}
+<div class="info-row"><span class="info-label">Tipo de Estudio:</span> {{tipo_estudio}}</div>
+{{/if}} {{#if fecha_asignacion}}
+<div class="info-row"><span class="info-label">Fecha de Asignaci&oacute;n:</span> {{fecha_asignacion}}</div>
+{{/if}}</div>
+<p>Por favor, acceda al sistema para revisar y completar el informe correspondiente.</p>
+<div style="text-align: center;"><a href="{{app_url}}/dashboard-unified.html" class="button"> Ver estudio asignado </a></div>
+<p>Gracias por su atenci&oacute;n.</p>
+</div>
+<div class="footer">
+<p>Este es un email autom&aacute;tico, por favor no respondas a este mensaje.</p>
+<!-- Footer inyectado automáticamente desde config/branding.php --></div>
+</div>

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Storage - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <style>
+        /* Estilos similares a pacs-manager */
+        .modality-filters {
+            margin-bottom: 0.75rem !important;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+        
+        .modality-btn {
+            flex-shrink: 0;
+            padding: 0.5rem 0.9rem !important;
+            font-size: 0.85rem !important;
+            white-space: nowrap;
+            margin-right: 0.5rem;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+        }
+        
+        .modality-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+        }
+        
+        .modality-btn.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        
+        #studiesTable tbody tr {
+            cursor: pointer;
+        }
+        
+        #studiesTable tbody tr.selected {
+            background-color: #cfe2ff !important;
+            box-shadow: inset 3px 0 0 #0d6efd;
+        }
+
+        /* Estudios en R2: fila clicable + selección (Ctrl/Cmd/Shift) */
+        #r2StudiesTable tbody tr.r2-study-data-row {
+            cursor: pointer;
+            user-select: none;
+        }
+        #r2StudiesTable tbody tr.r2-study-data-row code {
+            user-select: text;
+        }
+        /* Fila seleccionada: tono distinto en toda la fila (incl. celdas, pisa table-hover) */
+        #r2StudiesTable tbody tr.r2-study-data-row.r2-row-selected {
+            box-shadow: inset 4px 0 0 #0d6efd;
+        }
+        #r2StudiesTable tbody tr.r2-study-data-row.r2-row-selected > td {
+            background-color: #b6d4fe !important;
+            color: #052c65;
+            border-color: rgba(13, 110, 253, 0.2);
+        }
+        #r2StudiesTable.table-hover > tbody > tr.r2-study-data-row.r2-row-selected:hover > td {
+            background-color: #9ec5fe !important;
+        }
+        #r2StudiesTable tbody tr.r2-study-data-row.r2-row-selected .badge {
+            /* mantiene legibles los badges de sync */
+            filter: saturate(1.05);
+        }
+        
+        .r2-status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        
+        .r2-status-online { background-color: #28a745; color: white; }
+        .r2-status-pending { background-color: #ffc107; color: #000; }
+        .r2-status-none { background-color: #6c757d; color: white; }
+        .r2-status-queue { background-color: #0d6efd; color: white; }
+        .r2-status-primary { background-color: #0d6efd; color: white; }
+        .r2-status-info { background-color: #0dcaf0; color: #000; }
+        .r2-status-success { background-color: #28a745; color: white; }
+        .r2-status-warning { background-color: #ffc107; color: #000; }
+        .r2-status-danger { background-color: #dc3545; color: white; }
+        .r2-status-secondary { background-color: #6c757d; color: white; }
+        
+        .config-section {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Estilos para ordenamiento de columnas */
+        #studiesTable thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+        
+        #studiesTable thead th.sortable:hover {
+            background-color: #f8f9fa;
+        }
+        
+        #studiesTable thead th.sortable .sort-icon {
+            font-size: 0.75rem;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+        
+        #studiesTable thead th.sortable:hover .sort-icon {
+            opacity: 1;
+        }
+    </style>
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+</head>
+<body>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) return;
+            
+            // Verificar permisos
+            const hasAccess = await requirePermissionSimple('cloud_storage', 'Cloud Storage', {
+                title: 'Acceso Denegado',
+                message: 'No tienes permisos para acceder a <strong>Cloud Storage</strong>.',
+                redirectUrl: 'dashboard-unified.html'
+            });
+            
+            if (!hasAccess) return;
+        });
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        <div class="container-fluid py-4">
+            <!-- Welcome Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="welcome-card card shadow-sm">
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-lg-8">
+                                    <h4 class="mb-2">
+                                        <i class="fas fa-cloud me-2 text-primary"></i>
+                                        Cloud Storage - R2
+                                    </h4>
+                                    <p class="text-muted mb-0">
+                                        Gestiona el almacenamiento de estudios DICOM en Cloudflare R2
+                                    </p>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="d-flex justify-content-end align-items-center gap-4">
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="totalEstudios">0</div>
+                                            <div class="stat-label">ESTUDIOS DISPONIBLES</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="r2Estudios">0</div>
+                                            <div class="stat-label">EN R2</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="r2Usage">--</div>
+                                            <div class="stat-label">USO R2</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="r2Objects">--</div>
+                                            <div class="stat-label">OBJETOS R2</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <button class="btn btn-sm btn-outline-primary" id="refreshR2UsageBtn" title="Actualizar uso R2">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <div class="stat-label">ACTUALIZAR USO</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="studies-tab" data-bs-toggle="tab" data-bs-target="#studies" type="button" role="tab">
+                        <i class="fas fa-list me-2"></i>Estudios PACS
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="queue-tab" data-bs-toggle="tab" data-bs-target="#queue" type="button" role="tab">
+                        <i class="fas fa-tasks me-2"></i>Cola de Subida
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="r2-studies-tab" data-bs-toggle="tab" data-bs-target="#r2-studies" type="button" role="tab">
+                        <i class="fas fa-cloud me-2"></i>Estudios en R2
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="r2-audit-tab" data-bs-toggle="tab" data-bs-target="#r2-audit" type="button" role="tab">
+                        <i class="fas fa-shield-alt me-2"></i>Auditoría R2
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="auto-enqueue-tab" data-bs-toggle="tab" data-bs-target="#auto-enqueue" type="button" role="tab">
+                        <i class="fas fa-robot me-2"></i>Encolado automático
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab">
+                        <i class="fas fa-file-alt me-2"></i>Logs
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="config-tab" data-bs-toggle="tab" data-bs-target="#config" type="button" role="tab">
+                        <i class="fas fa-cog me-2"></i>Configuración
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="quote-manager-tab" data-bs-toggle="tab" data-bs-target="#quote-manager" type="button" role="tab">
+                        <i class="fas fa-scale-balanced me-2"></i>Quote Manager
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabsContent">
+                <!-- Tab: Estudios PACS -->
+                <div class="tab-pane fade show active" id="studies" role="tabpanel">
+                    <!-- Search Filters -->
+                    <div class="search-filters mb-4">
+                        <h6 class="filter-title mb-3"><i class="fas fa-search me-2"></i>Filtros de Búsqueda</h6>
+                        <div class="row g-3">
+                            <div class="col-md-3 col-lg-2">
+                                <input type="date" class="form-control" id="dateFrom" title="Fecha Inicio">
+                                <small class="text-muted">Fecha Inicio</small>
+                            </div>
+                            <div class="col-md-3 col-lg-2">
+                                <input type="date" class="form-control" id="dateTo" title="Fecha Fin">
+                                <small class="text-muted">Fecha Fin</small>
+                            </div>
+                            <div class="col-md-6 col-lg-2">
+                                <input type="text" class="form-control" placeholder="ID Paciente" id="patientId">
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <button class="btn btn-primary w-100" id="searchButton">
+                                    <i class="fas fa-search me-2"></i>Buscar
+                                </button>
+                            </div>
+                            <div class="col-md-6 col-lg-2">
+                                <button class="btn btn-success w-100" id="enqueueSelectedBtn" disabled>
+                                    <i class="fas fa-cloud-upload-alt me-2"></i>Encolar a R2
+                                </button>
+                            </div>
+                            <div class="col-12 col-md-7">
+                                <input type="text" class="form-control" id="searchFilter" placeholder="Buscar en estudios...">
+                                <small class="text-muted">Búsqueda general</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modality Filters -->
+                    <div class="modality-filters mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="filter-label mb-0">Filtrar por Modalidad:</h6>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2" id="modalityButtonsContainer">
+                            <button class="btn modality-btn active" data-modality="all">Todas</button>
+                        </div>
+                    </div>
+
+                    <!-- Studies Table -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-list me-2"></i>Lista de Estudios
+                            </h5>
+                            <span class="badge bg-primary" id="studiesCount">0 estudios</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-striped mb-0" id="studiesTable">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40px;">
+                                                <input type="checkbox" id="selectAllCheckbox">
+                                            </th>
+                                            <th class="sortable" data-column="date">Fecha <i class="sort-icon ms-1"></i></th>
+                                            <th class="d-none d-md-table-cell sortable" data-column="time">Hora <i class="sort-icon ms-1"></i></th>
+                                            <th class="sortable" data-column="patient_name">Paciente <i class="sort-icon ms-1"></i></th>
+                                            <th class="d-none d-lg-table-cell sortable" data-column="patient_id">ID <i class="sort-icon ms-1"></i></th>
+                                            <th class="d-none d-sm-table-cell sortable" data-column="modality">Modalidad <i class="sort-icon ms-1"></i></th>
+                                            <th class="d-none d-xl-table-cell sortable" data-column="study_description">Estudio <i class="sort-icon ms-1"></i></th>
+                                            <th>Estado R2</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="studiesTableBody">
+                                        <tr>
+                                            <td colspan="9" class="text-center py-4 text-muted">
+                                                <i class="fas fa-search fa-2x mb-3 text-muted"></i>
+                                                <div class="mt-2">Usa los filtros de búsqueda para consultar estudios desde PACS</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cola de Subida -->
+                <div class="tab-pane fade" id="queue" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-tasks me-2"></i>Cola de Estudios Pendientes
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-danger" id="stopWorkerBtn" title="Detener procesamiento de la cola">
+                                    <i class="fas fa-stop me-1"></i>Detener Worker
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" id="cancelPendingBtn" title="Cancelar trabajos en progreso">
+                                    <i class="fas fa-ban me-1"></i>Cancelar Trabajos
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" id="clearQueueBtn" title="Limpiar cola completa">
+                                    <i class="fas fa-trash me-1"></i>Limpiar Cola
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" id="refreshQueueBtn">
+                                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="queueTable">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Study ID</th>
+                                            <th>Estado</th>
+                                            <th>Progreso</th>
+                                            <th>Reintentos</th>
+                                            <th>Error</th>
+                                            <th>Creado</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="queueTableBody">
+                                        <tr>
+                                            <td colspan="7" class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status"></div>
+                                                <div class="mt-2">Cargando cola...</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Estudios en R2 -->
+                <div class="tab-pane fade" id="r2-studies" role="tabpanel">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-cloud me-2"></i>Estudios Almacenados en R2
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary" id="refreshR2Btn">
+                                <i class="fas fa-sync-alt me-1"></i>Actualizar
+                            </button>
+                        </div>
+                        <div class="px-3 py-2 border-bottom bg-light d-flex flex-wrap align-items-center gap-2" id="r2StudiesBulkBar">
+                            <span class="text-muted small" id="r2StudiesSelectedCount">0 seleccionados</span>
+                            <button type="button" class="btn btn-sm btn-outline-warning" id="r2BulkLockBtn" disabled title="Bloquear estudios seleccionados">
+                                <i class="fas fa-lock me-1"></i>Bloquear
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="r2BulkUnlockBtn" disabled title="Desbloquear estudios seleccionados">
+                                <i class="fas fa-unlock me-1"></i>Desbloquear
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" id="r2BulkDeleteBtn" disabled title="Eliminar de R2 solo estudios no bloqueados">
+                                <i class="fas fa-trash me-1"></i>Eliminar de R2
+                            </button>
+                            <small class="text-muted ms-auto d-none d-lg-inline" title="Atajos de selección">Clic en fila · <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> añadir o quitar · <kbd>Shift</kbd> rango</small>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0" id="r2StudiesTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-center" style="width: 42px;" title="Selección múltiple">
+                                                <input type="checkbox" class="form-check-input" id="selectAllR2StudiesCheckbox" aria-label="Seleccionar todos los estudios en R2 visibles">
+                                            </th>
+                                            <th>Study ID</th>
+                                            <th>StudyInstanceUID</th>
+                                            <th>Instancias</th>
+                                            <th>Tamaño</th>
+                                            <th>Subido</th>
+                                            <th>Sincronización</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="r2StudiesTableBody">
+                                        <tr>
+                                            <td colspan="8" class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status"></div>
+                                                <div class="mt-2">Cargando estudios en R2...</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Auditoría R2 -->
+                <div class="tab-pane fade" id="r2-audit" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-shield-alt me-2"></i>Auditoría de Consistencia R2 vs BD
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary" id="refreshR2AuditBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Escanear
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h4 mb-1" id="r2AuditTotalDirs">0</div>
+                                        <small class="text-muted">UIDs en R2</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h4 mb-1 text-danger" id="r2AuditOrphansCount">0</div>
+                                        <small class="text-muted">Huérfanos en R2</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h4 mb-1 text-warning" id="r2AuditMissingCount">0</div>
+                                        <small class="text-muted">Faltantes en R2</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="fas fa-trash-alt me-2 text-danger"></i>Huérfanos en R2</h6>
+                                    <small class="text-muted">Se pueden purgar</small>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>StudyInstanceUID</th>
+                                                    <th style="width: 90px;">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="r2OrphansTableBody">
+                                                <tr><td colspan="2" class="text-center py-3 text-muted">Sin datos</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="fas fa-unlink me-2 text-warning"></i>Registrados en BD pero faltan en R2</h6>
+                                    <small class="text-muted">Revisar/normalizar</small>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>StudyInstanceUID</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="r2MissingTableBody">
+                                                <tr><td class="text-center py-3 text-muted">Sin datos</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Encolado automático (Orthanc OnStableStudy → r2_queue) -->
+                <div class="tab-pane fade" id="auto-enqueue" role="tabpanel">
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0"><i class="fas fa-robot me-2"></i>Encolado automático a R2</h5>
+                            <small class="text-muted">Orthanc avisa con <code>OnStableStudy</code>; este portal encola en la misma <strong>Cola de Subida</strong>. El worker de cron sube a R2 como siempre.</small>
+                        </div>
+                        <div class="card-body">
+                            <form id="r2AutoEnqueueForm">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Encolado automático activo</label>
+                                        <select class="form-select" id="r2AutoEnqueueEnabled">
+                                            <option value="false">No</option>
+                                            <option value="true">Sí</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Modalidades (coma)</label>
+                                        <input type="text" class="form-control" id="r2AutoEnqueueModalities" placeholder="CT, MR" autocomplete="off">
+                                        <small class="text-muted">El estudio debe tener <strong>alguna</strong> de estas modalidades (todas las series).</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Mínimo de instancias (>=)</label>
+                                        <input type="number" min="0" step="1" class="form-control" id="r2AutoEnqueueMinInstances" placeholder="0">
+                                        <small class="text-muted">0 deshabilita el filtro por cantidad.</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Fuente del conteo</label>
+                                        <select class="form-select" id="r2AutoEnqueueInstancesSource">
+                                            <option value="orthanc">Orthanc local</option>
+                                            <option value="pacs_nodes">PACS Nodes (C-FIND)</option>
+                                        </select>
+                                        <small class="text-muted">Si falla el conteo, se aplica fail-open (no bloquear).</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Nodos PACS para conteo (multi-selección)</label>
+                                        <select class="form-select" id="r2AutoEnqueuePacsNodes" multiple size="4"></select>
+                                        <small class="text-muted">Se usa agregación <strong>MAX</strong> entre nodos seleccionados.</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">URL del webhook (POST desde Orthanc)</label>
+                                        <div class="input-group">
+                                            <input type="text" class="form-control font-monospace small" id="r2AutoEnqueueWebhookUrl" placeholder="https://tu-dominio/modules/cloud-storage/api/auto-enqueue.php" autocomplete="off">
+                                            <button type="button" class="btn btn-outline-secondary" id="r2AutoEnqueueUseSuggestedUrl" title="Rellenar con URL sugerida">Sugerida</button>
+                                            <button type="button" class="btn btn-outline-primary" id="r2AutoEnqueueCopyUrl" title="Copiar URL"><i class="fas fa-copy"></i></button>
+                                        </div>
+                                        <small class="text-muted">Debe ser alcanzable <strong>desde el servidor Orthanc</strong> (no desde el navegador). Ruta relativa en el servidor: <code id="r2AutoEnqueueEndpointPath">/modules/cloud-storage/api/auto-enqueue.php</code></small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Token secreto (Bearer)</label>
+                                        <div class="input-group">
+                                            <input type="password" class="form-control font-monospace small" id="r2AutoEnqueueSecret" placeholder="Generar o pegar el mismo valor que en Lua" autocomplete="new-password">
+                                            <button type="button" class="btn btn-outline-secondary" id="r2AutoEnqueueGenerateTokenBtn" title="Generar token aleatorio seguro (64 hex)">
+                                                <i class="fas fa-dice me-1"></i>Generar
+                                            </button>
+                                        </div>
+                                        <small class="text-muted">Sin token, el endpoint rechaza peticiones. Tras <strong>Generar</strong>, pulsá <strong>Guardar</strong> y copiá el Lua abajo a Orthanc.</small>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="button" class="btn btn-primary me-2" id="r2AutoEnqueueSaveBtn">
+                                            <i class="fas fa-save me-1"></i>Guardar encolado automático
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary" id="r2AutoEnqueueRefreshLuaBtn">
+                                            <i class="fas fa-code me-1"></i>Actualizar ejemplo Lua
+                                        </button>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Fragmento para <code>notify-r2.lua</code></label>
+                                        <textarea class="form-control font-monospace small" id="r2AutoEnqueueLuaSnippet" rows="14" readonly></textarea>
+                                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="r2AutoEnqueueCopyLuaBtn"><i class="fas fa-copy me-1"></i>Copiar Lua</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Logs -->
+                <div class="tab-pane fade" id="logs" role="tabpanel">
+                    <div class="card mb-3">
+                        <div class="card-header d-flex flex-wrap align-items-center gap-2 justify-content-between">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-file-alt me-2"></i>Logs del módulo Cloud Storage
+                            </h5>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <select class="form-select form-select-sm" id="cloudLogsFileSelect" style="min-width: 220px;" title="Archivo de log">
+                                </select>
+                                <select class="form-select form-select-sm" id="cloudLogsLinesSelect" style="width: auto;" title="Cantidad de líneas">
+                                    <option value="200">200 líneas</option>
+                                    <option value="500" selected>500 líneas</option>
+                                    <option value="1000">1000 líneas</option>
+                                    <option value="2000">2000 líneas</option>
+                                    <option value="5000">5000 líneas</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-primary" id="cloudLogsRefreshBtn" title="Recargar">
+                                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body py-2">
+                            <p class="text-muted small mb-2" id="cloudLogsHint"></p>
+                            <p class="text-muted small mb-0" id="cloudLogsMeta"></p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-body p-0">
+                            <pre id="cloudLogsPre" class="mb-0 p-3 small text-light bg-dark rounded-bottom" style="max-height: 65vh; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.8rem;">Selecciona un log y pulsa Actualizar.</pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Configuración -->
+                <div class="tab-pane fade" id="config" role="tabpanel">
+                    <div class="config-section">
+                        <h5 class="mb-4"><i class="fas fa-cog me-2"></i>Configuración R2</h5>
+                        <form id="r2ConfigForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">R2 Habilitado</label>
+                                    <select class="form-select" id="r2Enabled">
+                                        <option value="true">Sí</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Account ID</label>
+                                    <input type="text" class="form-control" id="r2AccountId" autocomplete="username">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Access Key</label>
+                                    <input type="password" class="form-control" id="r2AccessKey" placeholder="Ingresar Access Key completo para actualizar" autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Secret Key</label>
+                                    <input type="password" class="form-control" id="r2SecretKey" placeholder="Ingresar Secret Key completo para actualizar" autocomplete="new-password">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Cloudflare API Token (lectura uso R2)</label>
+                                    <input type="password" class="form-control" id="r2CfApiTokenRead" placeholder="Token con permisos de lectura para usage de R2" autocomplete="new-password">
+                                    <small class="text-muted">Se usa para consultar cuota/uso real del bucket en Cloudflare API.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Bucket Name</label>
+                                    <input type="text" class="form-control" id="r2BucketName">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Custom Domain (opcional)</label>
+                                    <input type="text" class="form-control" id="r2CustomDomain" placeholder="https://r2.tanjousoft.com.ar">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">URL pública del portal (manifest / Study routing)</label>
+                                    <input type="text" class="form-control" id="r2PublicPortalBaseUrl" placeholder="https://plataforma.ejemplo.com">
+                                    <small class="text-muted">Base para <code>manifest.php</code> que el visor usará. Vacío = misma URL del sitio. Las firmas de objetos .dcm siguen usando Custom Domain si está configurado.</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Storage Prefix</label>
+                                    <input type="text" class="form-control" id="r2StoragePrefix" placeholder="studies/">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Upload Concurrency</label>
+                                    <input type="number" class="form-control" id="r2UploadConcurrency" value="2" min="1" max="10">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Presigned URL TTL (segundos)</label>
+                                    <input type="number" class="form-control" id="r2PresignedTtl" value="600" min="60" max="3600">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Método de Upload</label>
+                                    <select class="form-select" id="r2UploadMethod">
+                                        <option value="instance">Instance Upload (stream en memoria)</option>
+                                        <option value="zip">ZIP Upload (comprime y sube como ZIP)</option>
+                                        <option value="pre-download">Pre-Download (descarga a disco, luego sube)</option>
+                                        <option value="zip-extract-upload">ZIP-Extract-Upload (descarga ZIP desde Orthanc, extrae, sube con workers persistentes)</option>
+                                        <option value="rclone">Rclone (descarga ZIP desde Orthanc, extrae, sube con rclone - más rápido)</option>
+                                    </select>
+                                    <small class="text-muted">
+                                        Instance: Stream en memoria (rápido pero muchos requests). ZIP: Comprime todo en un archivo. Pre-Download: Descarga a disco primero, luego sube. ZIP-Extract-Upload: Descarga ZIP desde Orthanc, extrae localmente, sube con workers persistentes (reutiliza conexiones).
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Carpeta Temp para ZIPs</label>
+                                    <input type="text" class="form-control" id="r2ZipTempDir" 
+                                           placeholder="/var/www/tjsiddse/modules/cloud-storage/temp/zips">
+                                    <small class="text-muted">
+                                        Carpeta donde se guardan temporalmente los ZIPs antes de subirlos a R2.
+                                        Se eliminan automáticamente después del upload.
+                                    </small>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Guardar Configuración
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="testR2ConnectionBtn">
+                                        <i class="fas fa-plug me-2"></i>Probar Conexión
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tab: Quote Manager -->
+                <div class="tab-pane fade" id="quote-manager" role="tabpanel">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-scale-balanced me-2"></i>Quote Manager (Cuotas + Reciclado)
+                            </h5>
+                            <button class="btn btn-sm btn-outline-primary" id="refreshR2UsageBtnQuote" title="Actualizar uso R2">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h5 mb-1" id="quoteUsageEl">--</div>
+                                        <small class="text-muted d-block">Uso R2</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h5 mb-1" id="quoteLimitEl">--</div>
+                                        <small class="text-muted d-block">Límite (GB)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="h5 mb-1" id="quoteAvailableEl">--</div>
+                                        <small class="text-muted d-block">Disponible estimado</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 text-muted small">
+                                El enforcement se realiza en el worker antes de subir. Para que el cálculo sea preciso también se usa el tamaño real guardado por estudio (DB) y/o el uso del bucket.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-lock me-2"></i>Política de cuota</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="r2QuoteManagerForm">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Cuota habilitada</label>
+                                        <select class="form-select" id="r2QuotaEnabled">
+                                            <option value="false">No</option>
+                                            <option value="true">Sí</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Límite de cuota (GB)</label>
+                                        <input type="number" class="form-control" id="r2QuotaLimitGb" value="0" min="0" step="0.01">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Reciclado habilitado</label>
+                                        <select class="form-select" id="r2RecycleEnabled">
+                                            <option value="false">No</option>
+                                            <option value="true">Sí</option>
+                                        </select>
+                                        <small class="text-muted d-block mt-1">
+                                            Si está activo, se eliminarán estudios más viejos que NO estén bloqueados para liberar espacio.
+                                        </small>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Disparar reciclado cuando el uso supere (%)</label>
+                                        <input type="number" class="form-control" id="r2RecycleTriggerPercent" value="90" min="0" max="100" step="0.1">
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label">Disparar reciclado cuando el uso supere (GB)</label>
+                                        <input type="number" class="form-control" id="r2RecycleTriggerGb" value="0" min="0" step="0.01">
+                                        <small class="text-muted d-block mt-1">
+                                            Si ambos disparadores están en 0, el reciclado no se activa.
+                                        </small>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save me-2"></i>Guardar Quote Manager
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- Cierre de sidebarLayout -->
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script src="assets/js/cloud-storage.js?v=202606251200"></script>
+</body>
+</html>

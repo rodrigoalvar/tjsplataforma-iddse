@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Establecer Cookie de Sesion</title>
+    <meta charset="utf-8">
+</head>
+<body>
+    <h1>Establecer Cookie de Sesion</h1>
+    <p>Token: ba22f765b6b44fe4a76d65cf1c957dd8b1e59f98bcff611e39c8669adcd94e32</p>
+    <p>Usuario: Admin (root@portal.com)</p>
+    
+    <script>
+        // Establecer cookie
+        document.cookie = "session_token=ba22f765b6b44fe4a76d65cf1c957dd8b1e59f98bcff611e39c8669adcd94e32; path=/; max-age=86400";
+        
+        // Verificar cookie
+        setTimeout(function() {
+            const cookies = document.cookie.split(";");
+            let sessionToken = null;
+            
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split("=");
+                if (name === "session_token") {
+                    sessionToken = value;
+                    break;
+                }
+            }
+            
+            if (sessionToken) {
+                document.body.innerHTML += "<p style=\"color: green;\">Cookie establecida correctamente: " + sessionToken + "</p>";
+                document.body.innerHTML += "<p><a href=\"components/informes-manager.html\">Probar Informes Manager</a></p>";
+            } else {
+                document.body.innerHTML += "<p style=\"color: red;\">Cookie NO establecida</p>";
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

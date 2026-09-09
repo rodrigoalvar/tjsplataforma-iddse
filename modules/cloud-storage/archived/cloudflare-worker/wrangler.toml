@@ -1,0 +1,15 @@
+name = "r2-zip-extractor"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Binding al bucket R2
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "tjsmedical"
+
+# Variables de entorno (se pueden sobrescribir con wrangler secret put)
+[vars]
+# Estas variables se pueden configurar como secretos con:
+# wrangler secret put AUTH_TOKEN
+# wrangler secret put CALLBACK_URL
+# O definirlas aquí si no son sensibles

@@ -1,0 +1,22 @@
+[Unit]
+Description=TJSMEDICAL HL7 MLLP Worklist Listener
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/tjsiddse/modules/hl7-worklist/listener
+ExecStart=/usr/bin/node /var/www/tjsiddse/modules/hl7-worklist/listener/hl7-mllp-listener.js
+Restart=always
+RestartSec=3
+# Recarga config sin matar (opcional: systemctl reload)
+ExecReload=/bin/kill -HUP $MAINPID
+StandardOutput=journal
+StandardError=journal
+
+# Ajustar si Node está en otra ruta
+# Environment=PATH=/usr/bin
+
+[Install]
+WantedBy=multi-user.target

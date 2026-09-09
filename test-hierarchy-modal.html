@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Prueba Modal Jerarquías</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="fas fa-bug"></i> Prueba Modal de Jerarquías
+                </h1>
+                <p class="text-muted">Verificar que el modal funciona correctamente</p>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Usuarios Disponibles:</h5>
+                        <div id="usersList" class="list-group">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Pruebas del Modal:</h5>
+                        <div class="d-grid gap-2">
+                            <button onclick="testNewAssignment()" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Probar Nueva Asignación
+                            </button>
+                            <button onclick="testEditAssignment()" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Probar Editar Asignación
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Log de Pruebas:</h6>
+                            <div id="testLog" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                                <small class="text-muted">Los logs aparecerán aquí...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para asignar jerarquía -->
+    <div class="modal fade" id="assignModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Asignar Jerarquía</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="assignForm">
+                        <div class="mb-3">
+                            <label class="form-label">Usuario:</label>
+                            <select class="form-select" id="assignUserId" required>
+                                <option value="">Seleccionar usuario...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nivel:</label>
+                            <select class="form-select" id="assignLevel" required>
+                                <option value="">Seleccionar nivel...</option>
+                                <option value="root">ROOT</option>
+                                <option value="admin">ADMIN</option>
+                                <option value="user">USER</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cuenta Principal (Padre):</label>
+                            <select class="form-select" id="assignParentId">
+                                <option value="">Sin cuenta principal</option>
+                            </select>
+                            <small class="form-text text-muted">Cualquier usuario puede ser padre de otro usuario</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAssignment()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allUsers = [];
+        
+        // Cargar usuarios al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+            
+            // Agregar evento para actualizar padres cuando cambie el usuario
+            document.getElementById('assignUserId').addEventListener('change', function() {
+                loadPossibleParents();
+                logTest('Usuario seleccionado: ' + this.value);
+            });
+        });
+        
+        async function loadUsers() {
+            try {
+                logTest('Cargando usuarios...');
+                const response = await fetch('api/users/hierarchy.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allUsers = result.data.users;
+                    renderUsersList();
+                    logTest('✓ Usuarios cargados: ' + allUsers.length);
+                } else {
+                    logTest('✗ Error cargando usuarios: ' + result.error);
+                }
+            } catch (error) {
+                logTest('✗ Error: ' + error.message);
+            }
+        }
+        
+        function renderUsersList() {
+            const container = document.getElementById('usersList');
+            container.innerHTML = allUsers.map(user => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${user.nombre} ${user.apellido}</strong>
+                        <br>
+                        <small class="text-muted">${user.email} (${user.nivel.toUpperCase()})</small>
+                    </div>
+                    <button onclick="testEditUser(${user.id})" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function testNewAssignment() {
+            logTest('🧪 Probando nueva asignación...');
+            
+            // Limpiar formulario
+            document.getElementById('assignForm').reset();
+            
+            // Cargar usuarios en el dropdown
+            const select = document.getElementById('assignUserId');
+            select.innerHTML = '<option value="">Seleccionar usuario...</option>' +
+                allUsers.map(user => 
+                    `<option value="${user.id}">${user.nombre} ${user.apellido} (${user.nivel.toUpperCase()})</option>`
+                ).join('');
+            
+            // Cargar posibles padres
+            loadPossibleParents();
+            
+            logTest('✓ Dropdown de usuarios cargado: ' + (select.options.length - 1) + ' usuarios');
+            
+            const modal = new bootstrap.Modal(document.getElementById('assignModal'));
+            modal.show();
+        }
+        
+        function testEditUser(userId) {
+            logTest('🧪 Probando edición de usuario ID: ' + userId);
+            
+            const user = allUsers.find(u => u.id == userId);
+            if (!user) {
+                logTest('✗ Usuario no encontrado');
+                return;
+            }
+            
+            // Cargar usuarios en el dropdown primero
+            const select = document.getElementById('assignUserId');
+            select.innerHTML = '<option value="">Seleccionar usuario...</option>' +
+                allUsers.map(u => 
+                    `<option value="${u.id}">${u.nombre} ${u.apellido} (${u.nivel.toUpperCase()})</option>`
+                ).join('');
+            
+            // Cargar posibles padres
+            loadPossibleParents();
+            
+            // Establecer valores del usuario seleccionado
+            document.getElementById('assignUserId').value = userId;
+            document.getElementById('assignLevel').value = user.nivel;
+            document.getElementById('assignParentId').value = user.padre_id || '';
+            
+            logTest('✓ Usuario seleccionado: ' + user.nombre + ' ' + user.apellido);
+            logTest('✓ Nivel: ' + user.nivel);
+            logTest('✓ Padre actual: ' + (user.padre_id || 'Ninguno'));
+            
+            const modal = new bootstrap.Modal(document.getElementById('assignModal'));
+            modal.show();
+        }
+        
+        function testEditAssignment() {
+            if (allUsers.length === 0) {
+                logTest('✗ No hay usuarios para probar');
+                return;
+            }
+            
+            // Probar con el primer usuario
+            testEditUser(allUsers[0].id);
+        }
+        
+        function loadPossibleParents() {
+            const select = document.getElementById('assignParentId');
+            const currentUserId = document.getElementById('assignUserId').value;
+            
+            // Todos los usuarios pueden ser padres, excluyendo al usuario actual
+            const parents = allUsers.filter(user => user.id != currentUserId);
+            
+            select.innerHTML = '<option value="">Sin cuenta principal</option>' +
+                parents.map(parent => 
+                    `<option value="${parent.id}">${parent.nombre} ${parent.apellido} (${parent.nivel.toUpperCase()})</option>`
+                ).join('');
+            
+            logTest('✓ Padres posibles cargados: ' + parents.length);
+        }
+        
+        async function saveAssignment() {
+            const userId = document.getElementById('assignUserId').value;
+            const level = document.getElementById('assignLevel').value;
+            const parentId = document.getElementById('assignParentId').value || null;
+            
+            logTest('💾 Guardando asignación...');
+            logTest('  - Usuario ID: ' + userId);
+            logTest('  - Nivel: ' + level);
+            logTest('  - Padre ID: ' + (parentId || 'Ninguno'));
+            
+            if (!userId || !level) {
+                logTest('✗ Campos requeridos faltantes');
+                return;
+            }
+            
+            try {
+                // Actualizar nivel
+                const levelResponse = await fetch('api/users/hierarchy.php', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        level: level
+                    })
+                });
+                
+                const levelResult = await levelResponse.json();
+                
+                if (!levelResult.success) {
+                    throw new Error(levelResult.error);
+                }
+                
+                // Actualizar jerarquía
+                const hierarchyResponse = await fetch('api/users/hierarchy.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        parent_id: parentId
+                    })
+                });
+                
+                const hierarchyResult = await hierarchyResponse.json();
+                
+                if (!hierarchyResult.success) {
+                    throw new Error(hierarchyResult.error);
+                }
+                
+                logTest('✓ Asignación guardada exitosamente');
+                
+                // Cerrar modal y recargar
+                const modal = bootstrap.Modal.getInstance(document.getElementById('assignModal'));
+                modal.hide();
+                
+                await loadUsers();
+                
+            } catch (error) {
+                logTest('✗ Error guardando: ' + error.message);
+            }
+        }
+        
+        function logTest(message) {
+            const log = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div><small class="text-muted">[${timestamp}]</small> ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+
+

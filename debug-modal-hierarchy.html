@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔍 Debug Modal Jerarquía</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="bi bi-bug"></i> Debug Modal de Jerarquía
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Datos de Usuarios:</h5>
+                        <div id="usersData" class="bg-light p-3 rounded" style="height: 300px; overflow-y: auto;">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Log de Debug:</h5>
+                        <div id="debugLog" class="bg-light p-3 rounded" style="height: 300px; overflow-y: auto;">
+                            <small class="text-muted">Los logs aparecerán aquí...</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Prueba del Modal:</h5>
+                    <div class="d-grid gap-2">
+                        <button onclick="testModalWithUser()" class="btn btn-primary">
+                            <i class="bi bi-test-tube"></i> Probar Modal con Usuario
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allUsers = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+        });
+        
+        async function loadUsers() {
+            try {
+                logDebug('Cargando usuarios desde la API...');
+                
+                const response = await fetch('api/users/hierarchy.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allUsers = result.data.users;
+                    renderUsersData();
+                    logDebug('✓ Usuarios cargados: ' + allUsers.length);
+                    
+                    // Debug específico de dependientes
+                    allUsers.forEach(user => {
+                        logDebug(`Usuario: ${user.nombre} ${user.apellido}`);
+                        logDebug(`  - dependientes_count: ${user.dependientes_count}`);
+                        logDebug(`  - Tipo: ${typeof user.dependientes_count}`);
+                        logDebug(`  - Valor: "${user.dependientes_count}"`);
+                        logDebug('  ---');
+                    });
+                    
+                } else {
+                    logDebug('✗ Error cargando usuarios: ' + result.error);
+                }
+            } catch (error) {
+                logDebug('✗ Error: ' + error.message);
+            }
+        }
+        
+        function renderUsersData() {
+            const container = document.getElementById('usersData');
+            container.innerHTML = allUsers.map(user => `
+                <div class="mb-2 p-2 border rounded">
+                    <strong>${user.nombre} ${user.apellido}</strong><br>
+                    <small class="text-muted">ID: ${user.id} | Nivel: ${user.nivel}</small><br>
+                    <small class="text-info">Dependientes: ${user.dependientes_count}</small><br>
+                    <button onclick="testModalWithUser(${user.id})" class="btn btn-sm btn-outline-primary">
+                        Probar Modal
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function testModalWithUser(userId = null) {
+            if (!userId) {
+                // Buscar usuario con dependientes
+                const userWithDependents = allUsers.find(u => u.dependientes_count > 0);
+                if (userWithDependents) {
+                    userId = userWithDependents.id;
+                } else {
+                    logDebug('✗ No hay usuarios con dependientes para probar');
+                    return;
+                }
+            }
+            
+            const user = allUsers.find(u => u.id == userId);
+            if (!user) {
+                logDebug('✗ Usuario no encontrado');
+                return;
+            }
+            
+            logDebug('🧪 Probando modal con usuario: ' + user.nombre + ' ' + user.apellido);
+            logDebug('  - Dependientes según API: ' + user.dependientes_count);
+            logDebug('  - Tipo de dato: ' + typeof user.dependientes_count);
+            
+            // Simular la función del modal
+            showTestHierarchyModal(user);
+        }
+        
+        function showTestHierarchyModal(user) {
+            logDebug('📋 Creando modal de prueba...');
+            
+            const modalHtml = `
+                <div class="modal fade" id="testHierarchyModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-diagram-3 me-2"></i>
+                                    Test - ${user.nombre} ${user.apellido}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Información del Usuario</h6>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <p><strong>Nombre:</strong> ${user.nombre} ${user.apellido}</p>
+                                                <p><strong>Email:</strong> ${user.email}</p>
+                                                <p><strong>Nivel:</strong> ${user.nivel.toUpperCase()}</p>
+                                                <p><strong>Padre actual:</strong> ${user.padre_nombre ? `${user.padre_nombre} ${user.padre_apellido}` : 'Sin padre'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Dependientes</h6>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <p><strong>Cantidad:</strong> ${user.dependientes_count || 0} dependientes</p>
+                                                <p><strong>Tipo de dato:</strong> ${typeof user.dependientes_count}</p>
+                                                <p><strong>Valor crudo:</strong> "${user.dependientes_count}"</p>
+                                                <p><strong>Valor numérico:</strong> ${Number(user.dependientes_count)}</p>
+                                                ${user.dependientes_count > 0 ? '<p class="text-success"><i class="bi bi-check-circle me-1"></i>Tiene usuarios dependientes</p>' : '<p class="text-muted"><i class="bi bi-info-circle me-1"></i>No tiene dependientes</p>'}
+                                                
+                                                ${user.dependientes_count > 0 ? `
+                                                    <hr>
+                                                    <h6 class="text-primary">Lista de Dependientes:</h6>
+                                                    <div id="dependentsList" class="list-group list-group-flush">
+                                                        <!-- Se cargará dinámicamente -->
+                                                    </div>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal existente
+            const existingModal = document.getElementById('testHierarchyModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Agregar modal
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Cargar lista de dependientes si los tiene
+            if (user.dependientes_count > 0) {
+                loadDependentsList(user.id);
+            }
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('testHierarchyModal'));
+            modal.show();
+            
+            logDebug('✓ Modal mostrado');
+        }
+        
+        function loadDependentsList(userId) {
+            const dependentsList = document.getElementById('dependentsList');
+            if (!dependentsList) return;
+            
+            // Buscar usuarios que tienen este usuario como padre
+            const dependents = allUsers.filter(user => user.padre_id == userId && user.activo);
+            
+            logDebug('🔍 Buscando dependientes para usuario ID: ' + userId);
+            logDebug('  - Usuarios encontrados: ' + dependents.length);
+            
+            if (dependents.length === 0) {
+                dependentsList.innerHTML = '<div class="text-muted text-center"><small>No se encontraron dependientes</small></div>';
+                logDebug('  - No se encontraron dependientes');
+                return;
+            }
+            
+            dependentsList.innerHTML = dependents.map(dependent => `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${dependent.nombre} ${dependent.apellido}</strong>
+                        <br>
+                        <small class="text-muted">${dependent.email}</small>
+                        <br>
+                        <span class="badge bg-${dependent.nivel === 'root' ? 'danger' : dependent.nivel === 'admin' ? 'warning' : 'info'}">${dependent.nivel.toUpperCase()}</span>
+                    </div>
+                </div>
+            `).join('');
+            
+            logDebug('  - Lista de dependientes cargada: ' + dependents.length);
+        }
+        
+        function logDebug(message) {
+            const log = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div><small class="text-muted">[${timestamp}]</small> ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+
+

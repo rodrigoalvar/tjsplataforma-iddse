@@ -1,0 +1,456 @@
+/**
+ * Estilos para el Módulo de Grabación Sincronizada
+ * Incluye botón SYNC, timer, estado y transcripción interactiva
+ */
+
+/* Contenedor principal del grabador sincronizado */
+.sync-recorder-container {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sync-recorder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* Botón SYNC principal */
+.sync-button {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,123,255,0.3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 140px;
+}
+
+.sync-button:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0,123,255,0.4);
+}
+
+.sync-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+}
+
+/* Botón en estado de grabación */
+.sync-button.recording {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    animation: pulse-recording 2s infinite;
+}
+
+.sync-button.recording:hover {
+    background: linear-gradient(135deg, #c82333, #a71e2a);
+}
+
+@keyframes pulse-recording {
+    0% {
+        box-shadow: 0 4px 8px rgba(220,53,69,0.3);
+    }
+    50% {
+        box-shadow: 0 4px 8px rgba(220,53,69,0.6), 0 0 20px rgba(220,53,69,0.3);
+    }
+    100% {
+        box-shadow: 0 4px 8px rgba(220,53,69,0.3);
+    }
+}
+
+/* Timer de sincronización */
+.sync-timer {
+    font-family: 'Courier New', monospace;
+    font-size: 24px;
+    font-weight: bold;
+    color: #495057;
+    background: #ffffff;
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 2px solid #dee2e6;
+    min-width: 80px;
+    text-align: center;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sync-timer.recording {
+    color: #dc3545;
+    border-color: #dc3545;
+    animation: timer-blink 1s infinite;
+}
+
+@keyframes timer-blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0.7;
+    }
+}
+
+/* Estado de sincronización */
+.sync-status {
+    font-size: 14px;
+    color: #6c757d;
+    font-style: italic;
+    padding: 5px 10px;
+    background: #ffffff;
+    border-radius: 15px;
+    border: 1px solid #e9ecef;
+    flex-grow: 1;
+    text-align: center;
+    min-width: 200px;
+}
+
+.sync-status.recording {
+    color: #dc3545;
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+/* Contenedor del reproductor de audio */
+.sync-audio-container {
+    margin: 15px 0;
+    padding: 15px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.sync-audio-container h4 {
+    margin: 0 0 10px 0;
+    color: #495057;
+    font-size: 16px;
+}
+
+#sync-audio-player {
+    width: 100%;
+    height: 40px;
+    outline: none;
+}
+
+#sync-audio-player::-webkit-media-controls-panel {
+    background-color: #f8f9fa;
+}
+
+/* Contenedor de transcripción */
+.sync-transcription-container {
+    margin-top: 15px;
+    padding: 15px;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.sync-transcription-container h4 {
+    margin: 0 0 15px 0;
+    color: #495057;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sync-transcription-container h4::before {
+    content: "🎯";
+    font-size: 18px;
+}
+
+/* Transcripción interactiva */
+#sync-transcription {
+    line-height: 1.8;
+    font-size: 16px;
+    color: #495057;
+    min-height: 50px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px dashed #dee2e6;
+}
+
+#sync-transcription:empty::before {
+    content: "La transcripción aparecerá aquí cuando inicies la grabación sincronizada...";
+    color: #adb5bd;
+    font-style: italic;
+}
+
+/* Palabras clickeables en la transcripción */
+.sync-word {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    display: inline-block;
+    margin: 1px;
+}
+
+.sync-word:hover {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    transform: scale(1.05);
+}
+
+.sync-word:active {
+    background-color: #bbdefb;
+    transform: scale(0.98);
+}
+
+/* Palabra actualmente reproduciéndose */
+.sync-word.current-word {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+    font-weight: bold;
+    animation: highlight-current 1s ease-in-out;
+}
+
+@keyframes highlight-current {
+    0% {
+        background-color: #fff3cd;
+    }
+    50% {
+        background-color: #ffeaa7;
+    }
+    100% {
+        background-color: #fff3cd;
+    }
+}
+
+/* Indicadores de confianza */
+.sync-word[data-confidence="high"] {
+    border-bottom: 2px solid #28a745;
+}
+
+.sync-word[data-confidence="medium"] {
+    border-bottom: 2px solid #ffc107;
+}
+
+.sync-word[data-confidence="low"] {
+    border-bottom: 2px solid #dc3545;
+}
+
+/* Scrollbar personalizada para la transcripción */
+.sync-transcription-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sync-transcription-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.sync-transcription-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.sync-transcription-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .sync-recorder-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .sync-button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .sync-timer {
+        align-self: center;
+        margin-bottom: 10px;
+    }
+    
+    .sync-status {
+        text-align: center;
+    }
+    
+    .sync-transcription-container {
+        max-height: 200px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sync-recorder-container {
+        padding: 15px;
+        margin: 10px 0;
+    }
+    
+    .sync-timer {
+        font-size: 20px;
+    }
+    
+    #sync-transcription {
+        font-size: 14px;
+    }
+    
+    .sync-word {
+        padding: 1px 2px;
+    }
+}
+
+/* Animaciones de entrada */
+.sync-recorder-container {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Estados de carga */
+.sync-loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.sync-loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Tooltips para ayuda */
+.sync-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.sync-tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #555;
+    color: white;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+}
+
+.sync-tooltip .tooltiptext::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+.sync-tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Botón de modo de reproducción */
+.play-mode-button {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 160px;
+}
+
+.play-mode-button:hover {
+    background: linear-gradient(135deg, #1e7e34, #155724);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+.play-mode-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+/* Modo continuo (verde) */
+.play-mode-button.continuous {
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    box-shadow: 0 2px 6px rgba(40, 167, 69, 0.3);
+}
+
+.play-mode-button.continuous:hover {
+    background: linear-gradient(135deg, #1e7e34, #155724);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.4);
+}
+
+/* Modo palabra individual (naranja) */
+.play-mode-button.individual {
+    background: linear-gradient(135deg, #fd7e14, #e55a00);
+    box-shadow: 0 2px 6px rgba(253, 126, 20, 0.3);
+}
+
+.play-mode-button.individual:hover {
+    background: linear-gradient(135deg, #e55a00, #cc4900);
+    box-shadow: 0 4px 8px rgba(253, 126, 20, 0.4);
+}
+
+/* Responsive para botones en header */
+@media (max-width: 768px) {
+    .sync-recorder-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .sync-button,
+    .play-mode-button {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}

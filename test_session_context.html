@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Session Context</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
+        .error { background: #ffe6e6; border-color: #ff9999; }
+        .success { background: #e6ffe6; border-color: #99ff99; }
+        pre { white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-left: 4px solid #007bff; }
+    </style>
+</head>
+<body>
+    <h1>Test Session Context - Simular Dashboard</h1>
+    
+    <button onclick="testSessionValidation()">1. Validar Sesión</button>
+    <button onclick="testAssignedStudies()">2. Cargar Estudios Asignados</button>
+    <button onclick="testFullFlow()">3. Flujo Completo</button>
+    <button onclick="clearResults()">Limpiar</button>
+    
+    <div id="results"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            console.log(message);
+            const resultsDiv = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            resultsDiv.innerHTML += `<div class="log">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testSessionValidation() {
+            log('🔍 Probando validación de sesión...');
+            
+            try {
+                const response = await fetch('api/auth/validate-session-simple.php');
+                log(`📡 Response status: ${response.status}`);
+                
+                const text = await response.text();
+                log(`📄 Response text (primeros 200 chars): ${text.substring(0, 200)}`);
+                
+                const result = JSON.parse(text);
+                log(`✅ Sesión validada: ${result.success ? 'SÍ' : 'NO'}`);
+                log(`👤 Usuario: ${result.user?.name || 'N/A'}`);
+                log(`🔐 Permisos: ${result.user?.permissions?.join(', ') || 'N/A'}`);
+                
+                return result;
+                
+            } catch (error) {
+                log(`❌ Error validando sesión: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testAssignedStudies() {
+            log('📋 Probando carga de estudios asignados...');
+            
+            try {
+                // Simular la lógica exacta de dashboard-with-permissions.js
+                const apiBaseUrl = window.location.pathname.includes('/components/') ? '../api/' : 'api/';
+                const url = apiBaseUrl + 'get_user_assigned_studies_fixed.php';
+                
+                log(`📍 URL construida: ${url}`);
+                
+                const response = await fetch(url);
+                log(`📡 Response status: ${response.status}`);
+                log(`📡 Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const text = await response.text();
+                log(`📄 Response text (primeros 200 chars): ${text.substring(0, 200)}`);
+                
+                // Intentar parsear como JSON (aquí es donde falla en dashboard)
+                let result;
+                try {
+                    result = JSON.parse(text);
+                    log(`✅ JSON parseado correctamente`);
+                    log(`📊 Estudios encontrados: ${result.data?.studies?.length || 0}`);
+                } catch (parseError) {
+                    log(`❌ Error parseando JSON: ${parseError.message}`, 'error');
+                    log(`📄 Contenido completo de la respuesta:`, 'error');
+                    log(text, 'error');
+                    throw parseError;
+                }
+                
+                return result;
+                
+            } catch (error) {
+                log(`❌ Error cargando estudios asignados: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        async function testFullFlow() {
+            log('🚀 Iniciando flujo completo...');
+            
+            try {
+                // 1. Validar sesión
+                const sessionResult = await testSessionValidation();
+                
+                // 2. Determinar modo basado en permisos
+                const hasPacksQuery = sessionResult.user?.permissions?.includes('pacs_query') || 
+                                     sessionResult.user?.permissions?.includes('all');
+                const mode = hasPacksQuery ? 'PACS Query' : 'Estudios Asignados';
+                
+                log(`🔍 Modo determinado: ${mode}`);
+                
+                // 3. Si es modo "Estudios Asignados", cargar estudios
+                if (mode === 'Estudios Asignados') {
+                    const studiesResult = await testAssignedStudies();
+                    log(`✅ Flujo completo exitoso - ${studiesResult.data?.studies?.length || 0} estudios cargados`);
+                } else {
+                    log(`ℹ️ Modo PACS Query - no se cargan estudios asignados`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error en flujo completo: ${error.message}`, 'error');
+                
+                // Mostrar información adicional del error
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        <h3>❌ Error Detallado</h3>
+                        <p><strong>Mensaje:</strong> ${error.message}</p>
+                        <p><strong>Stack:</strong></p>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-ejecutar información del contexto al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Página de test cargada');
+            log(`📍 URL actual: ${window.location.href}`);
+            log(`📍 Pathname: ${window.location.pathname}`);
+            log(`📍 API Base URL: ${window.location.pathname.includes('/components/') ? '../api/' : 'api/'}`);
+        });
+    </script>
+</body>
+</html>

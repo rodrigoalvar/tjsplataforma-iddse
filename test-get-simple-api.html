@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API get-simple.php</title>
+</head>
+<body>
+    <h1>Test API get-simple.php</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            try {
+                const response = await fetch('api/informes/get-simple.php?informe_id=35');
+                const data = await response.json();
+                
+                document.getElementById('result').innerHTML = 
+                    '<h2>Resultado:</h2>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+                console.log('API Response:', data);
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<h2>Error:</h2>' +
+                    '<pre>' + error.message + '</pre>';
+                console.error('Error:', error);
+            }
+        }
+        
+        // Ejecutar test al cargar la página
+        testAPI();
+    </script>
+</body>
+</html>

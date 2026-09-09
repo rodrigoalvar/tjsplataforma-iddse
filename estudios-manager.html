@@ -1,0 +1,2129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión Estudios - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+            
+            // Verificar permisos específicos para Gestión Estudios usando la API simplificada
+            const hasAccess = await requirePermissionSimple('estudios', 'Gestión Estudios', {
+                title: 'Acceso Denegado - Gestión Estudios',
+                message: 'No tienes permisos para acceder a <strong>Gestión Estudios</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            // Si no tiene permisos, no continuar con el resto del código
+            if (!hasAccess) {
+                return;
+            }
+        });
+
+        // Function to update welcome message with user name and especialidad
+        async function updateWelcomeMessage() {
+            try {
+                // Wait a bit for auth middleware to be fully initialized
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar título de bienvenida
+                        const welcomeTitle = document.getElementById('welcomeTitle');
+                        if (welcomeTitle) {
+                            welcomeTitle.textContent = `Gestión Estudios - ${fullName}`;
+                        }
+                        
+                        // Actualizar subtítulo con especialidad
+                        const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+                        if (welcomeSubtitle && user.especialidad) {
+                            welcomeSubtitle.textContent = user.especialidad;
+                        } else if (welcomeSubtitle && !user.especialidad) {
+                            welcomeSubtitle.textContent = 'Sistema de Gestión de Estudios Médicos';
+                        }
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    // If getCurrentUser is not available, try again after a delay
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                // Try again after a delay
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Dr. Usuario</div>
+                    <div class="user-role">Médico Radiólogo</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="container-fluid px-3 py-4">
+                <!-- Welcome Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="welcome-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h2 class="welcome-title" id="welcomeTitle">Gestión Estudios</h2>
+                                    <p class="welcome-subtitle" id="welcomeSubtitle">Asignación de estudios a usuarios del sistema</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="welcome-stats d-flex justify-content-end align-items-center gap-4">
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="assignedToday">0</div>
+                                            <div class="stat-label">ASIGNADOS HOY</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="totalAssigned">0</div>
+                                            <div class="stat-label">TOTAL ASIGNADOS</div>
+                                        </div>
+                                        <div class="stat-item text-center position-relative">
+                                            <div class="stat-number text-warning" id="estudiosUrgentes">0</div>
+                                            <div class="stat-label">URGENTES</div>
+                                            <span id="urgentesBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.65rem; padding: 0.25rem 0.4rem; min-width: 1.2rem; z-index: 10;">
+                                                0
+                                            </span>
+                                        </div>
+                                        <div class="welcome-logo-container">
+                                            <img id="welcomeLogo" src="logo.svg" alt="Logo" class="welcome-logo" style="display: none;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Filters -->
+                <div class="search-filters mb-4">
+                    <h6 class="filter-title mb-3"><i class="fas fa-search me-2"></i>Filtros de Búsqueda de Estudios</h6>
+                    <div class="row g-3">
+                        <!-- Primera fila -->
+                        <div class="col-md-3 col-lg-2">
+                            <input type="date" class="form-control" id="dateFrom" title="Fecha Inicio">
+                            <small class="text-muted">Fecha Inicio</small>
+                        </div>
+                        <div class="col-md-3 col-lg-2">
+                            <input type="date" class="form-control" id="dateTo" title="Fecha Fin">
+                            <small class="text-muted">Fecha Fin</small>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-auto filter-quick-dates">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="text-muted small text-nowrap mb-0">Atajos</span>
+                                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Rango de fechas rápido">
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateToday" title="Estudios del día actual (local)">Hoy</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateYesterday" title="Estudios de ayer">Ayer</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateLast7" title="Desde hace 7 días hasta hoy (inclusive)">Últimos 7 días</button>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">Aplica fechas y ejecuta la misma búsqueda que «Buscar Estudios»</small>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <input type="text" class="form-control" placeholder="ID Paciente" id="patientId">
+                            <small class="text-muted">ID Paciente</small>
+                        </div>
+                        <div class="col-12 mixed-search-controls" id="mixedSearchControlsRow" style="display: none;">
+                            <div class="d-flex flex-wrap align-items-center gap-3 p-2 rounded border bg-light">
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox" id="mixedSearchToggle">
+                                    <label class="form-check-label" for="mixedSearchToggle">Incluir PACS remoto (C-FIND)</label>
+                                </div>
+                                <div class="d-flex align-items-center gap-2 flex-grow-1 flex-wrap">
+                                    <label class="mb-0 small text-nowrap text-muted" for="mixedSearchRemoteNode">Nodo remoto</label>
+                                    <select class="form-select form-select-sm" id="mixedSearchRemoteNode" style="min-width: 200px; max-width: 360px;" disabled>
+                                        <option value="">Seleccione nodo…</option>
+                                    </select>
+                                </div>
+                                <small class="text-muted">Filas «solo remoto» pueden asignarse; al asignar se solicita recuperación (C-MOVE) si aplica.</small>
+                                <div class="col-12 small text-warning d-none mb-0" id="mixedSearchNeedPacsHint">
+                                    La búsqueda mixta está habilitada, pero falta el permiso <strong>Consulta PACS</strong> (<code>pacs_query</code>). Sin él no se puede consultar el PACS ni listar nodos remotos.
+                                </div>
+                                <div class="col-12 small text-muted d-none mb-0" id="mixedSearchNoNodesHint">
+                                    No hay nodos remotos activos en la base. Creá uno en <strong>PACS Nodes Manager</strong> con tipo distinto de «local» y marcado como activo.
+                                </div>
+                                <div class="col-12 small text-danger d-none mb-0" id="mixedSearchApiHint"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <button type="button" class="btn btn-search w-100" id="searchButton" aria-live="polite">
+                                <i class="fas fa-search me-2"></i>Buscar Estudios
+                            </button>
+                        </div>
+                        <!-- Búsqueda general e institución en la misma línea -->
+                        <div class="col-12 filter-search-institution-row">
+                            <div class="row g-2">
+                                <div class="col-12 col-md-7 filter-search-field">
+                                    <input type="text" class="form-control" id="searchFilter" placeholder="Buscar en estudios..." title="Buscar por paciente, ID, modalidad o estudio">
+                                    <small class="text-muted">Búsqueda general</small>
+                                </div>
+                                <div class="col-12 col-md-3 filter-institution">
+                                    <select class="form-control form-select" id="institutionFilter">
+                                        <option value="">Todas las Instituciones</option>
+                                    </select>
+                                    <small class="text-muted">Institución</small>
+                                </div>
+                                <div class="col-12 col-md-2 filter-priority">
+                                    <select class="form-control form-select form-select-sm" id="priorityFilter" style="min-width: 150px;">
+                                        <option value="">Todas las Prioridades</option>
+                                        <option value="urgente">Urgente</option>
+                                        <option value="promesa">Promesa</option>
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="normal">Normal</option>
+                                    </select>
+                                    <small class="text-muted">Prioridad</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-12 col-md-5 col-lg-4">
+                                    <select class="form-control form-select form-select-sm" id="assignmentScopeFilter" title="Filtrar por estado de asignación o derivación">
+                                        <option value="">Asignación / derivación: todos</option>
+                                        <option value="unassigned">Sin asignar ni derivar</option>
+                                        <option value="linked">Con asignación o derivación</option>
+                                        <option value="assigned_only">Con asignación</option>
+                                        <option value="derived_only">Con derivación</option>
+                                        <option value="both">Con asignación y derivación</option>
+                                    </select>
+                                    <small class="text-muted">Asignación / derivación</small>
+                                </div>
+                                <div class="col-12 col-md-5 col-lg-4">
+                                    <select class="form-control form-select form-select-sm" id="assignmentUserFilter" title="Estudios asignados o derivados a este usuario">
+                                        <option value="">Usuario (asignado o derivado a)</option>
+                                    </select>
+                                    <small class="text-muted">Usuario destino</small>
+                                </div>
+                                <div class="col-12 col-md-2 col-lg-4 filter-report-status">
+                                    <select class="form-control form-select form-select-sm" id="reportStatusFilter" title="Filtrar por estado de informe del estudio">
+                                        <option value="">Informe: todos</option>
+                                        <option value="informed">Informados</option>
+                                        <option value="not_informed">No informados</option>
+                                    </select>
+                                    <small class="text-muted">Estado informe</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modality Filters -->
+                <div class="modality-filters mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="filter-label mb-0">Filtrar por Modalidad: <span id="modalityCounter" class="badge bg-secondary ms-2" style="display: none;"></span></h6>
+                        <small id="cacheStatus" class="text-muted">
+                            <i class="fas fa-database me-1"></i>Listo para buscar estudios
+                        </small>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn modality-btn active" data-modality="all">
+                            <span class="modality-label">Todas</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="DX" style="display: none;">
+                            <span class="modality-label">DX</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="CT" style="display: none;">
+                            <span class="modality-label">CT</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="MR" style="display: none;">
+                            <span class="modality-label">MR</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="US" style="display: none;">
+                            <span class="modality-label">US</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="CR" style="display: none;">
+                            <span class="modality-label">CR</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="MG" style="display: none;">
+                            <span class="modality-label">MG</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="NM" style="display: none;">
+                            <span class="modality-label">NM</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="PT" style="display: none;">
+                            <span class="modality-label">PT</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="XA" style="display: none;">
+                            <span class="modality-label">XA</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <button type="button" class="btn modality-btn" data-modality="RF" style="display: none;">
+                            <span class="modality-label">RF</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Studies Table -->
+                <div class="studies-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="section-title mb-0">Estudios Disponibles para Asignación</h6>
+                        <div class="d-flex align-items-center gap-3">
+                            <div id="bulkActions" class="d-none">
+                                <button class="btn btn-primary btn-sm me-2" id="assignSelectedBtn" disabled>
+                                    <i class="fas fa-share-alt me-1"></i>
+                                    Asignar Seleccionados (<span id="selectedCount">0</span>)
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="clearSelectionBtn">
+                                    <i class="fas fa-times me-1"></i>
+                                    Limpiar Selección
+                                </button>
+                            </div>
+                            <small class="text-muted" id="studiesCount">0 estudios encontrados</small>
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover studies-table">
+                            <thead>
+                                <tr>
+                                    <th width="50">
+                                        <input type="checkbox" id="selectAllStudies" class="form-check-input" title="Seleccionar todos">
+                                    </th>
+                                    <th class="sortable" data-column="patient_name" style="cursor: pointer;">
+                                        Paciente <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="d-none d-lg-table-cell sortable" data-column="patient_id" style="cursor: pointer;">
+                                        ID Paciente <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="sortable" data-column="date" style="cursor: pointer;">
+                                        Fecha <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="d-none d-md-table-cell sortable" data-column="time" style="cursor: pointer;">
+                                        Hora <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="d-none d-sm-table-cell sortable" data-column="modality" style="cursor: pointer;">
+                                        Modalidad <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="d-none d-xl-table-cell sortable" data-column="study_description" style="cursor: pointer;">
+                                        Descripción <i class="fas fa-sort sort-icon" style="opacity: 0.3;"></i>
+                                    </th>
+                                    <th class="d-none d-lg-table-cell">Estado</th>
+                                    <th>Asignado a</th>
+                                    <th id="subassignmentsColumnHeader" style="display: none;">Derivaciones</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="studiesTableBody">
+                                <!-- Los estudios se cargarán dinámicamente aquí -->
+                                <tr id="emptyState">
+                                    <td colspan="10" class="text-center py-5">
+                                        <div class="empty-state">
+                                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                                            <h5 class="text-muted">No hay estudios para mostrar</h5>
+                                            <p class="text-muted">Utiliza los filtros de búsqueda para encontrar estudios del PACS</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Controles de paginación -->
+                    <div class="card-footer bg-white border-top">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-center gap-3">
+                                    <label for="perPageSelect" class="mb-0 text-muted small">Mostrar:</label>
+                                    <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;" onchange="derivacionesManager.changePerPage(this.value)">
+                                        <option value="10">10</option>
+                                        <option value="25" selected>25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    <span id="paginationInfo" class="text-muted small ms-2">Mostrando 0 - 0 de 0 estudios</span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div id="paginationContainer" class="d-flex justify-content-end">
+                                    <!-- La paginación se renderizará aquí dinámicamente -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para asignación de estudios -->
+    <div class="modal fade" id="assignStudyModal" tabindex="-1" aria-labelledby="assignStudyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="assignStudyModalLabel">
+                        <i class="fas fa-share-alt me-2"></i>Asignar Estudio
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6>Información del Estudio:</h6>
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Paciente:</strong> <span id="modalPatientName">-</span><br>
+                                            <strong>ID Paciente:</strong> <span id="modalPatientId">-</span><br>
+                                            <strong>Modalidad:</strong> <span id="modalModality">-</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Fecha:</strong> <span id="modalStudyDate">-</span><br>
+                                            <strong>Descripción:</strong> <span id="modalStudyDescription">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>Seleccionar Usuario(s) para Asignación:</h6>
+                            <div id="modalUsersContainer" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                <!-- Los usuarios se cargarán aquí -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmAssignBtn">
+                        <i class="fas fa-check me-2"></i>Asignar Estudio
+                    </button>
+                </div>
+            </div>
+        </div>
+    <!-- Modal para antecedentes médicos -->
+    <div class="modal fade" id="antecedentsModal" tabindex="-1" aria-labelledby="antecedentsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="antecedentsModalLabel">
+                        <i class="fas fa-file-medical me-2"></i>Antecedentes Médicos
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Información del Estudio -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">
+                                        <i class="fas fa-info-circle me-2"></i>Información del Estudio
+                                    </h6>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <strong>Paciente:</strong> <span id="antecedentsPatientName">-</span><br>
+                                            <strong>ID Paciente:</strong> <span id="antecedentsPatientId">-</span><br>
+                                            <strong>Modalidad:</strong> <span id="antecedentsModality">-</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <strong>Fecha:</strong> <span id="antecedentsStudyDate">-</span><br>
+                                            <strong>Descripción:</strong> <span id="antecedentsStudyDescription">-</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pestañas de Contenido -->
+                    <ul class="nav nav-tabs" id="antecedentsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab">
+                                <i class="fas fa-sticky-note me-2"></i>Notas y Texto
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="images-tab" data-bs-toggle="tab" data-bs-target="#images" type="button" role="tab">
+                                <i class="fas fa-images me-2"></i>Imágenes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera" type="button" role="tab">
+                                <i class="fas fa-camera me-2"></i>Cámara
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="files-tab" data-bs-toggle="tab" data-bs-target="#files" type="button" role="tab">
+                                <i class="fas fa-file-upload me-2"></i>Archivos
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="antecedentsTabContent">
+                        <!-- Pestaña de Notas -->
+                        <div class="tab-pane fade show active" id="notes" role="tabpanel">
+                            <div class="mt-3">
+                                <label for="antecedentsNotes" class="form-label">
+                                    <i class="fas fa-edit me-2"></i>Notas y Antecedentes Médicos
+                                </label>
+                                <textarea class="form-control" id="antecedentsNotes" rows="8" 
+                                          placeholder="Ingrese aquí los antecedentes médicos, pedido médico, síntomas, historial clínico, etc."></textarea>
+                                <div class="form-text">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Esta información será visible para el médico que informe el estudio.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pestaña de Imágenes -->
+                        <div class="tab-pane fade" id="images" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="imageUpload" class="form-label">
+                                            <i class="fas fa-upload me-2"></i>Subir Imágenes
+                                        </label>
+                                        <input type="file" class="form-control" id="imageUpload" multiple accept="image/*">
+                                        <div class="form-text">Seleccione una o múltiples imágenes (JPG, PNG, GIF)</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">
+                                            <i class="fas fa-images me-2"></i>Imágenes Adjuntas
+                                        </label>
+                                        <div id="uploadedImages" class="border rounded p-3" style="min-height: 100px;">
+                                            <div class="text-muted text-center">
+                                                <i class="fas fa-image fa-2x mb-2"></i><br>
+                                                No hay imágenes adjuntas
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pestaña de Cámara -->
+                        <div class="tab-pane fade" id="camera" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="card">
+                                            <div class="card-body text-center">
+                                                <video id="cameraVideo" class="img-fluid" style="max-height: 400px; display: none;"></video>
+                                                <canvas id="cameraCanvas" style="display: none;"></canvas>
+                                                <div id="cameraPlaceholder" class="text-muted">
+                                                    <i class="fas fa-camera fa-3x mb-3"></i><br>
+                                                    <p>Haga clic en "Iniciar Cámara" para capturar imágenes</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="d-grid gap-2">
+                                            <button class="btn btn-primary" id="startCameraBtn">
+                                                <i class="fas fa-video me-2"></i>Iniciar Cámara
+                                            </button>
+                                            <button class="btn btn-success" id="captureBtn" disabled>
+                                                <i class="fas fa-camera me-2"></i>Capturar Foto
+                                            </button>
+                                            <button class="btn btn-secondary" id="stopCameraBtn" disabled>
+                                                <i class="fas fa-stop me-2"></i>Detener Cámara
+                                            </button>
+                                        </div>
+                                        <div class="mt-3">
+                                            <label class="form-label">Fotos Capturadas:</label>
+                                            <div id="capturedImages" class="border rounded p-2" style="min-height: 100px;">
+                                                <div class="text-muted text-center small">
+                                                    No hay fotos capturadas
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pestaña de Archivos -->
+                        <div class="tab-pane fade" id="files" role="tabpanel">
+                            <div class="mt-3">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="fileUpload" class="form-label">
+                                            <i class="fas fa-file-upload me-2"></i>Subir Archivos
+                                        </label>
+                                        <input type="file" class="form-control" id="fileUpload" multiple>
+                                        <div class="form-text">Seleccione documentos, PDFs, u otros archivos</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">
+                                            <i class="fas fa-folder me-2"></i>Archivos Adjuntos
+                                        </label>
+                                        <div id="uploadedFiles" class="border rounded p-3" style="min-height: 100px;">
+                                            <div class="text-muted text-center">
+                                                <i class="fas fa-file fa-2x mb-2"></i><br>
+                                                No hay archivos adjuntos
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveAntecedentsBtn">
+                        <i class="fas fa-save me-2"></i>Guardar Antecedentes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/FileViewer.js?v=202606251200"></script>
+    <script src="assets/js/confirmation-modal.js?v=202606251200"></script>
+    <!-- Redirige window.open(_blank) al popup workspace cuando multi-monitor está activo -->
+    <script src="assets/js/mm-study-redirect.js?v=202606251200"></script>
+    <script src="assets/js/estudios-manager.js?v=202609021245"></script>
+    <script src="modules/qa-publicacion/assets/js/qa-quick-action.js?v=202607091420"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    
+    <script>
+        // Function to load logo from configuration
+        async function loadWelcomeLogo() {
+            try {
+                const logoElement = document.getElementById('welcomeLogo');
+                if (!logoElement) return;
+                
+                const configResponse = await fetch('api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.logo) {
+                    logoElement.src = configData.logo;
+                    logoElement.style.display = 'block';
+                } else {
+                    logoElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando logo de configuración:', error);
+                const logoElement = document.getElementById('welcomeLogo');
+                if (logoElement) {
+                    logoElement.style.display = 'none';
+                }
+            }
+        }
+        
+        // Function to load urgent studies counter
+        async function loadUrgentStudiesCounter() {
+            try {
+                const counterElement = document.getElementById('estudiosUrgentes');
+                const badgeElement = document.getElementById('urgentesBadge');
+                if (!counterElement) return;
+                
+                const response = await fetch('api/get_urgent_studies.php');
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.urgent_study_ids) {
+                    const urgentCount = result.data.urgent_study_ids.length;
+                    counterElement.textContent = urgentCount;
+                    
+                    // Actualizar badge
+                    if (badgeElement) {
+                        if (urgentCount > 0) {
+                            badgeElement.textContent = urgentCount;
+                            badgeElement.style.display = 'block';
+                        } else {
+                            badgeElement.style.display = 'none';
+                        }
+                    }
+                    
+                    console.log(`📊 Contador de urgentes actualizado: ${urgentCount}`);
+                } else {
+                    counterElement.textContent = '0';
+                    if (badgeElement) {
+                        badgeElement.style.display = 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error cargando contador de estudios urgentes:', error);
+                const counterElement = document.getElementById('estudiosUrgentes');
+                const badgeElement = document.getElementById('urgentesBadge');
+                if (counterElement) {
+                    counterElement.textContent = '0';
+                }
+                if (badgeElement) {
+                    badgeElement.style.display = 'none';
+                }
+            }
+        }
+        
+        // Function to refresh urgent studies counter periodically
+        function startUrgentCounterRefresh() {
+            // Cargar inicialmente
+            loadUrgentStudiesCounter();
+            
+            // Actualizar cada 30 segundos
+            setInterval(() => {
+                loadUrgentStudiesCounter();
+            }, 30000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update welcome message with user name
+            updateWelcomeMessage();
+            
+            // Cargar logo desde configuración
+            loadWelcomeLogo();
+            
+            // Cargar y actualizar contador de estudios urgentes
+            startUrgentCounterRefresh();
+
+            // Asegurar que el sidebar manager se inicialice correctamente
+            setTimeout(() => {
+                if (window.SidebarGUIManager) {
+                    window.SidebarGUIManager.reapply();
+                }
+            }, 500);
+
+            // Sidebar functionality
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+
+            // Mobile sidebar toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('show');
+                    sidebarOverlay.classList.toggle('show');
+                });
+            }
+
+            // Desktop sidebar toggle
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+            
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+            
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
+                });
+            }
+
+            // Close sidebar on nav link click (mobile)
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                        sidebarOverlay.classList.remove('show');
+                    }
+                });
+            });
+
+            // Handle active navigation state
+            function setActiveNavLink() {
+                const currentPage = window.location.pathname.split('/').pop() || 'estudios-manager.html';
+                const navLinks = document.querySelectorAll('.sidebar .nav-link');
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href');
+                    if (href && (href === currentPage || href.endsWith(currentPage))) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            // Set active nav link on page load
+            setActiveNavLink();
+
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Configurar botones de logout manualmente para asegurar que funcionen correctamente
+            // Esto es necesario porque el DOMContentLoaded de auth-middleware puede dispararse 
+            // antes de que los botones de logout se agreguen al DOM
+            if (window.authManager && typeof window.authManager.setupLogoutButtons === 'function') {
+                window.authManager.setupLogoutButtons();
+            } else if (window.auth && typeof window.auth.setupLogoutButtons === 'function') {
+                window.auth.setupLogoutButtons();
+            }
+        });
+    </script>
+
+    <style>
+        /* Estilos específicos para derivaciones */
+        .btn-assign {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+            color: white;
+        }
+        
+        .btn-assign:hover {
+            background-color: #138496;
+            border-color: #117a8b;
+            color: white;
+        }
+        
+        .btn-assign:focus {
+            box-shadow: 0 0 0 0.2rem rgba(23, 162, 184, 0.25);
+        }
+
+        .user-card {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .user-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.15);
+        }
+
+        .user-card.selected {
+            border-color: #007bff;
+            background-color: #f8f9ff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.25);
+        }
+
+        .user-card .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-card .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background-color: #007bff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            margin-right: 15px;
+        }
+
+        .user-card .user-details h6 {
+            margin: 0;
+            color: #333;
+        }
+
+        .user-card .user-details small {
+            color: #666;
+        }
+
+        .assignment-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+        }
+        
+        /* Estilos específicos para el modal de antecedentes */
+        #antecedentsModal {
+            z-index: 1055 !important;
+        }
+        
+        #antecedentsModal .modal-dialog {
+            z-index: 1056 !important;
+        }
+        
+        #antecedentsModal .modal-content {
+            z-index: 1057 !important;
+        }
+        
+        /* Asegurar que el modal sea visible */
+        #antecedentsModal.show {
+            display: block !important;
+        }
+        
+        #antecedentsModal.modal.show {
+            display: block !important;
+        }
+        
+        /* Debug: agregar borde rojo temporal para verificar visibilidad */
+        #antecedentsModal {
+            border: 3px solid red !important;
+        }
+        
+        /* Modal de emergencia de antecedentes debe tener z-index menor que confirmación */
+        #emergencyAntecedentsModal {
+            z-index: 1065 !important;
+        }
+        
+        #emergencyAntecedentsModal .modal-dialog {
+            z-index: 1066 !important;
+        }
+        
+        #emergencyAntecedentsModal .modal-content {
+            z-index: 1067 !important;
+        }
+        
+        /* Modal de confirmación debe aparecer sobre el modal de antecedentes */
+        #confirmationModal {
+            z-index: 9999 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            display: none !important;
+        }
+        
+        #confirmationModal.show {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        
+        #confirmationModal .modal-dialog {
+            z-index: 10000 !important;
+            position: relative !important;
+            margin: 1.75rem auto !important;
+            display: block !important;
+        }
+        
+        #confirmationModal .modal-content {
+            z-index: 10001 !important;
+            position: relative !important;
+            background-color: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 0.375rem !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+            display: block !important;
+        }
+        
+        /* Forzar visibilidad cuando el modal está activo */
+        #confirmationModal[aria-hidden="false"] {
+            display: block !important;
+        }
+        
+        #confirmationModal[aria-hidden="false"] .modal-dialog {
+            display: block !important;
+        }
+        
+        #confirmationModal[aria-hidden="false"] .modal-content {
+            display: block !important;
+        }
+        
+        /* Asegurar que el backdrop del modal de confirmación tenga z-index alto */
+        .modal-backdrop.show {
+            z-index: 9998 !important;
+        }
+        
+        /* Específico para el backdrop del modal de confirmación */
+        body.modal-open .modal-backdrop {
+            z-index: 9998 !important;
+        }
+        
+        /* Modal de confirmación múltiple también debe aparecer sobre antecedentes */
+        #multipleFilesConfirmationModal {
+            z-index: 9999 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        
+        #multipleFilesConfirmationModal.show {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        
+        #multipleFilesConfirmationModal .modal-dialog {
+            z-index: 10000 !important;
+            position: relative !important;
+            margin: 1.75rem auto !important;
+        }
+        
+        #multipleFilesConfirmationModal .modal-content {
+            z-index: 10001 !important;
+            position: relative !important;
+            background-color: white !important;
+            border: 1px solid #dee2e6 !important;
+            border-radius: 0.375rem !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+        
+        /* CSS específico para el contador de antecedentes */
+        .antecedents-counter {
+            z-index: 10 !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 100% !important;
+            transform: translate(-50%, -50%) !important;
+            display: none !important;
+            font-size: 0.7rem !important;
+            min-width: 18px !important;
+            height: 18px !important;
+            line-height: 18px !important;
+            background-color: #dc3545 !important;
+            color: white !important;
+            border-radius: 50% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        .antecedents-counter.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal de reasignación */
+        #reassignModal {
+            z-index: 10000 !important;
+        }
+        
+        #reassignModal .modal-dialog {
+            z-index: 10001 !important;
+        }
+        
+        #reassignModal .modal-content {
+            z-index: 10002 !important;
+        }
+        
+        /* Asegurar que el backdrop del modal de reasignación tenga z-index correcto */
+        body.modal-open #reassignModal + .modal-backdrop {
+            z-index: 9999 !important;
+        }
+        
+        /* Modal de reasignación debe aparecer sobre otros elementos */
+        #reassignModal.show {
+            display: block !important;
+        }
+        
+        #reassignModal.modal.show {
+            display: block !important;
+        }
+        
+        /* Asegurar que el backdrop del modal de reasignación no interfiera */
+        .modal-backdrop.show {
+            z-index: 9999 !important;
+        }
+        
+        /* Específico para el backdrop del modal de reasignación */
+        body.modal-open .modal-backdrop {
+            z-index: 9999 !important;
+        }
+        
+        /* Forzar que el modal de reasignación esté por encima de todo */
+        #reassignModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        /* Asegurar que el modal de reasignación sea completamente interactivo */
+        #reassignModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #reassignModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Asegurar que el backdrop no bloquee la interacción */
+        .modal-backdrop {
+            pointer-events: auto !important;
+        }
+        
+        /* CSS específico para el modal de desasignación */
+        #unassignConfirmModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #unassignConfirmModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #unassignConfirmModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal de desasignación debe aparecer sobre otros elementos */
+        #unassignConfirmModal.show {
+            display: block !important;
+        }
+        
+        #unassignConfirmModal.modal.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal de información del estudio */
+        #studyInfoModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #studyInfoModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #studyInfoModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal de información debe aparecer sobre otros elementos */
+        #studyInfoModal.show {
+            display: block !important;
+        }
+        
+        #studyInfoModal.modal.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal de logout */
+        #logoutConfirmModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #logoutConfirmModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #logoutConfirmModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal de logout debe aparecer sobre otros elementos */
+        #logoutConfirmModal.show {
+            display: block !important;
+        }
+        
+        #logoutConfirmModal.modal.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal de advertencia de datos no guardados */
+        #unsavedDataWarningModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #unsavedDataWarningModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #unsavedDataWarningModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal de advertencia debe aparecer sobre otros elementos */
+        #unsavedDataWarningModal.show {
+            display: block !important;
+        }
+        
+        #unsavedDataWarningModal.modal.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal dinámico de confirmación de eliminación */
+        #dynamicConfirmationModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #dynamicConfirmationModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #dynamicConfirmationModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal dinámico de confirmación debe aparecer sobre otros elementos */
+        #dynamicConfirmationModal.show {
+            display: block !important;
+        }
+        
+        #dynamicConfirmationModal.modal.show {
+            display: block !important;
+        }
+        
+        /* CSS específico para el modal de acceso denegado */
+        #permissionDeniedModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #permissionDeniedModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative !important;
+        }
+        
+        #permissionDeniedModal .modal-content {
+            z-index: 10002 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Modal de acceso denegado debe aparecer sobre otros elementos */
+        #permissionDeniedModal.show {
+            display: block !important;
+        }
+        
+        #permissionDeniedModal.modal.show {
+            display: block !important;
+        }
+        
+        /* Correcciones para modal de asignación */
+        #assignStudyModal {
+            z-index: 10000 !important;
+            position: fixed !important;
+        }
+        
+        #assignStudyModal.modal.show {
+            z-index: 10000 !important;
+            display: block !important;
+        }
+        
+        #assignStudyModal .modal-dialog {
+            z-index: 10001 !important;
+            position: relative;
+        }
+        
+        #assignStudyModal .modal-content {
+            z-index: 10002 !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Asegurar que backdrop no interfiera */
+        body.modal-open #assignStudyModal + .modal-backdrop {
+            z-index: 9999 !important;
+        }
+        
+        /* CSS específico para el modal de prioridad */
+        #priorityModal {
+            z-index: 1055 !important;
+            position: fixed !important;
+        }
+        
+        #priorityModal.modal.show {
+            z-index: 1055 !important;
+            display: block !important;
+        }
+        
+        #priorityModal .modal-dialog {
+            z-index: 1056 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        #priorityModal .modal-content {
+            z-index: 1057 !important;
+            position: relative !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Asegurar que el backdrop del modal de prioridad esté por debajo */
+        body.modal-open #priorityModal + .modal-backdrop,
+        body.modal-open .modal-backdrop:last-of-type {
+            z-index: 1054 !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Asegurar que los botones del modal de prioridad sean clickeables */
+        #priorityModal .priority-option,
+        #priorityModal #savePriorityBtn,
+        #priorityModal .btn-close {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+        }
+    </style>
+    
+    <!-- QR Code Library - Local -->
+    <script src="js/qrcode/qrcode.min.js?v=202606251200"></script>
+    
+    <script>
+        // Verificar carga de librería QR local
+        window.addEventListener('load', function() {
+            console.log('=== VERIFICACIÓN DE LIBRERÍA QR LOCAL ===');
+            console.log('Ruta local: js/qrcode/qrcode.min.js');
+            console.log('typeof QRCode:', typeof QRCode);
+            console.log('QRCode disponible:', typeof QRCode !== 'undefined');
+            
+            if (typeof QRCode !== 'undefined') {
+                console.log('✅ Librería QR local cargada correctamente');
+                console.log('Métodos disponibles:', Object.keys(QRCode));
+                console.log('Versión:', QRCode.version || 'No disponible');
+            } else {
+                console.error('❌ Error: Librería QR local no disponible');
+                console.log('Verificando archivo en: js/qrcode/qrcode.min.js');
+                
+                // Verificar si el archivo existe
+                fetch('js/qrcode/qrcode.min.js')
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('✅ Archivo QR local existe');
+                            console.log('Tamaño:', response.headers.get('content-length'), 'bytes');
+                        } else {
+                            console.error('❌ Archivo QR local no encontrado:', response.status);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('❌ Error verificando archivo QR local:', error);
+                    });
+            }
+        });
+    </script>
+
+    <!-- Modal de Confirmación Bootstrap -->
+    <div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmationModalLabel">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <p class="mb-1" id="confirmationMessage">
+                                ¿Está seguro de que desea eliminar este elemento?
+                            </p>
+                            <small class="text-muted" id="confirmationDetails">
+                                Esta acción no se puede deshacer.
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de archivos a eliminar (para múltiples) -->
+                    <div id="filesList" class="d-none">
+                        <h6 class="text-muted mb-2">Archivos a eliminar:</h6>
+                        <div class="border rounded p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
+                            <ul id="filesListContent" class="list-unstyled mb-0">
+                                <!-- Se llenará dinámicamente -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <i class="fas fa-trash me-1"></i>Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmación Nativo -->
+    <!-- Modal de Confirmación Nativo con Diagnóstico -->
+    <div id="nativeConfirmModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 99999; justify-content: center; align-items: center;">
+        <div style="background: white; border-radius: 8px; padding: 20px; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); animation: modalFadeIn 0.3s ease; position: relative; z-index: 100000;">
+            <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                <span style="color: #dc3545; font-size: 24px; margin-right: 10px;">⚠️</span>
+                <h4 style="margin: 0; color: #333;">Confirmar Eliminación</h4>
+            </div>
+            <p id="nativeConfirmMessage" style="margin: 15px 0; color: #666; line-height: 1.4;"></p>
+            <div id="nativeFileList" style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 4px; display: none;">
+                <strong>Archivos a eliminar:</strong>
+                <ul id="nativeFileListItems" style="margin: 5px 0 0 0; padding-left: 20px;"></ul>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button id="nativeCancelBtn" style="padding: 8px 16px; border: 1px solid #ccc; background: white; color: #666; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    Cancelar
+                </button>
+                <button id="nativeConfirmBtn" style="padding: 8px 16px; border: none; background: #dc3545; color: white; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicador de Estado del Modal (para diagnóstico) -->
+    <div id="modalDebugIndicator" style="position: fixed; top: 10px; right: 10px; background: #007bff; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px; z-index: 999999; display: none;">
+        Modal Status: <span id="modalStatusText">Unknown</span>
+    </div>
+
+    <style>
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        #nativeConfirmModal button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        #nativeCancelBtn:hover {
+            background: #f8f9fa;
+        }
+        
+        #nativeConfirmBtn:hover {
+            background: #c82333;
+        }
+        
+        /* Sticky header para welcome section */
+        .main-content .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .main-content .container-fluid > .row:first-child .welcome-card {
+            margin-bottom: 0;
+        }
+        
+        /* Botón flotante para volver al inicio */
+        .scroll-to-top-btn {
+            position: fixed !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 99999 !important;
+            transition: opacity 0.3s ease, transform 0.3s ease !important;
+            font-size: 20px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .scroll-to-top-btn:hover {
+            background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+        }
+        
+        .scroll-to-top-btn:active {
+            transform: translateY(-1px) !important;
+        }
+        
+        .scroll-to-top-btn.show {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        
+        @media (max-width: 767.98px) {
+            .scroll-to-top-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 18px !important;
+            }
+            
+            .main-content .container-fluid > .row:first-child {
+                top: 56px; /* Debajo del mobile-header */
+                z-index: 99;
+            }
+        }
+        
+        /* Estilos para contador de urgentes */
+        .stat-item.position-relative {
+            min-width: 80px;
+        }
+        
+        #estudiosUrgentes.text-warning {
+            color: #ffc107 !important;
+            font-weight: 700;
+        }
+        
+        #urgentesBadge {
+            box-shadow: 0 0 0 2px rgba(139, 13, 50, 0.3);
+        }
+        
+        /* Estilos para el logo en el header de bienvenida */
+        .welcome-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+        }
+        
+        .welcome-logo {
+            max-height: 80px;
+            max-width: 120px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+        }
+        
+        @media (max-width: 991.98px) {
+            .welcome-logo {
+                max-height: 50px;
+                max-width: 80px;
+            }
+            
+            .stat-item.position-relative {
+                min-width: 70px;
+            }
+        }
+        
+        @media (max-width: 767.98px) {
+            .welcome-logo {
+                max-height: 40px;
+                max-width: 60px;
+            }
+            
+            .welcome-logo-container {
+                margin-left: 0.5rem;
+            }
+            
+            .stat-item.position-relative {
+                min-width: 60px;
+            }
+            
+            #estudiosUrgentes {
+                font-size: 1rem !important;
+            }
+            
+            .stat-item.position-relative .stat-label {
+                font-size: 0.65rem !important;
+            }
+        }
+        
+        /* Estilos para el menú contextual (click derecho) */
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 4px 0;
+            min-width: 200px;
+            z-index: 10000;
+            font-size: 14px;
+            overflow: hidden;
+        }
+        
+        .context-menu-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            color: #333;
+            transition: background-color 0.2s ease;
+            user-select: none;
+        }
+        
+        .context-menu-item:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .context-menu-item:active {
+            background-color: #e0e0e0;
+        }
+        
+        .context-menu-item i {
+            width: 20px;
+            text-align: center;
+            color: #666;
+        }
+        
+        .context-menu-item:hover i {
+            color: #8B0D32;
+        }
+        
+        .context-menu-item span {
+            flex: 1;
+        }
+        
+        /* Separador opcional para el menú */
+        .context-menu-separator {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 4px 0;
+        }
+    </style>
+
+    <script>
+        // Capturar errores de JavaScript globalmente
+        window.addEventListener('error', function(e) {
+            console.error('🚨 ERROR JAVASCRIPT GLOBAL:', {
+                message: e.message,
+                filename: e.filename,
+                lineno: e.lineno,
+                colno: e.colno,
+                error: e.error
+            });
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('🚨 PROMISE REJECTION:', e.reason);
+        });
+        
+        // Modal de Confirmación Nativo
+        window.NativeConfirmModal = {
+            show: function(message, callback, files = null) {
+                console.log('🔍 NativeConfirmModal.show() INICIADO');
+                console.log('🔍 Parámetros recibidos:', { message, callback: !!callback, files });
+                
+                const modal = document.getElementById('nativeConfirmModal');
+                const messageEl = document.getElementById('nativeConfirmMessage');
+                const fileListEl = document.getElementById('nativeFileList');
+                const fileListItemsEl = document.getElementById('nativeFileListItems');
+                const confirmBtn = document.getElementById('nativeConfirmBtn');
+                const cancelBtn = document.getElementById('nativeCancelBtn');
+                
+                console.log('🔍 Elementos encontrados:', {
+                    modal: !!modal,
+                    messageEl: !!messageEl,
+                    fileListEl: !!fileListEl,
+                    fileListItemsEl: !!fileListItemsEl,
+                    confirmBtn: !!confirmBtn,
+                    cancelBtn: !!cancelBtn
+                });
+                
+                if (!modal) {
+                    console.error('❌ ERROR: Modal nativo no encontrado en DOM');
+                    return;
+                }
+                
+                // Configurar mensaje
+                messageEl.textContent = message;
+                
+                // Configurar lista de archivos si se proporciona
+                if (files && files.length > 0) {
+                    fileListItemsEl.innerHTML = '';
+                    files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.textContent = file;
+                        li.style.margin = '2px 0';
+                        fileListItemsEl.appendChild(li);
+                    });
+                    fileListEl.style.display = 'block';
+                } else {
+                    fileListEl.style.display = 'none';
+                }
+                
+                // Mostrar modal
+                console.log('🔍 Intentando mostrar modal...');
+                console.log('🔍 Estado actual del modal:', {
+                    display: modal.style.display,
+                    visibility: modal.style.visibility,
+                    zIndex: modal.style.zIndex,
+                    opacity: modal.style.opacity
+                });
+                
+                modal.style.display = 'flex';
+                
+                // Actualizar indicador de diagnóstico
+                const debugIndicator = document.getElementById('modalDebugIndicator');
+                const statusText = document.getElementById('modalStatusText');
+                if (debugIndicator && statusText) {
+                    debugIndicator.style.display = 'block';
+                    statusText.textContent = 'Showing';
+                    statusText.style.color = '#28a745';
+                }
+                
+                console.log('🔍 Modal configurado para mostrarse');
+                console.log('🔍 Estado después de configurar:', {
+                    display: modal.style.display,
+                    visibility: modal.style.visibility,
+                    zIndex: modal.style.zIndex,
+                    opacity: modal.style.opacity
+                });
+                
+                // Verificar si el modal es visible
+                setTimeout(() => {
+                    const rect = modal.getBoundingClientRect();
+                    const computedStyle = window.getComputedStyle(modal);
+                    console.log('🔍 Verificación de visibilidad:', {
+                        rect: rect,
+                        computedDisplay: computedStyle.display,
+                        computedVisibility: computedStyle.visibility,
+                        computedZIndex: computedStyle.zIndex,
+                        computedOpacity: computedStyle.opacity,
+                        isVisible: rect.width > 0 && rect.height > 0
+                    });
+                }, 100);
+                
+                // Limpiar eventos anteriores
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                const newCancelBtn = cancelBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                
+                // Configurar eventos
+                newConfirmBtn.addEventListener('click', () => {
+                    this.hide();
+                    if (callback) callback();
+                });
+                
+                newCancelBtn.addEventListener('click', () => {
+                    this.hide();
+                });
+                
+                // Cerrar con ESC
+                const escHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        this.hide();
+                        document.removeEventListener('keydown', escHandler);
+                    }
+                };
+                document.addEventListener('keydown', escHandler);
+                
+                // Cerrar al hacer clic en el fondo
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        this.hide();
+                    }
+                });
+            },
+            
+            hide: function() {
+                console.log('🔍 NativeConfirmModal.hide() INICIADO');
+                const modal = document.getElementById('nativeConfirmModal');
+                const debugIndicator = document.getElementById('modalDebugIndicator');
+                const statusText = document.getElementById('modalStatusText');
+                
+                if (modal) {
+                    modal.style.display = 'none';
+                    console.log('🔍 Modal ocultado');
+                }
+                
+                // Actualizar indicador de diagnóstico
+                if (debugIndicator && statusText) {
+                    statusText.textContent = 'Hidden';
+                    statusText.style.color = '#dc3545';
+                    setTimeout(() => {
+                        debugIndicator.style.display = 'none';
+                    }, 2000);
+                }
+            }
+        };
+
+        // Evento para el botón de prueba
+        document.addEventListener('DOMContentLoaded', function() {
+            const testBtn = document.getElementById('testNativeModalBtn');
+            const forceBtn = document.getElementById('forceShowModalBtn');
+            
+            if (testBtn) {
+                testBtn.addEventListener('click', function() {
+                    console.log('🧪 Probando modal nativo...');
+                    console.log('🧪 window.NativeConfirmModal disponible:', !!window.NativeConfirmModal);
+                    
+                    if (window.NativeConfirmModal) {
+                        window.NativeConfirmModal.show(
+                            '¿Está seguro de que desea eliminar este archivo de prueba?',
+                            function() {
+                                console.log('✅ Modal confirmado - funcionando correctamente!');
+                                alert('✅ ¡Modal nativo funcionando correctamente!');
+                            },
+                            ['archivo-prueba.pdf', 'documento-test.docx']
+                        );
+                    } else {
+                        console.error('❌ window.NativeConfirmModal no está disponible');
+                        alert('❌ Error: Modal nativo no disponible');
+                    }
+                });
+            }
+            
+            if (forceBtn) {
+                forceBtn.addEventListener('click', function() {
+                    console.log('🚀 FORZANDO visualización directa del modal...');
+                    
+                    const modal = document.getElementById('nativeConfirmModal');
+                    const debugIndicator = document.getElementById('modalDebugIndicator');
+                    const statusText = document.getElementById('modalStatusText');
+                    
+                    if (modal) {
+                        console.log('🚀 Modal encontrado, forzando display...');
+                        
+                        // Forzar estilos directamente
+                        modal.style.display = 'flex';
+                        modal.style.position = 'fixed';
+                        modal.style.top = '0';
+                        modal.style.left = '0';
+                        modal.style.width = '100%';
+                        modal.style.height = '100%';
+                        modal.style.zIndex = '999999';
+                        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+                        modal.style.justifyContent = 'center';
+                        modal.style.alignItems = 'center';
+                        
+                        // Configurar mensaje
+                        const messageEl = document.getElementById('nativeConfirmMessage');
+                        if (messageEl) {
+                            messageEl.textContent = '🚀 MODAL FORZADO - Si puedes ver esto, el modal funciona!';
+                        }
+                        
+                        // Actualizar indicador
+                        if (debugIndicator && statusText) {
+                            debugIndicator.style.display = 'block';
+                            statusText.textContent = 'FORCED';
+                            statusText.style.color = '#ffc107';
+                        }
+                        
+                        console.log('🚀 Modal forzado a mostrarse');
+                        
+                        // Configurar botón de cerrar
+                        const cancelBtn = document.getElementById('nativeCancelBtn');
+                        if (cancelBtn) {
+                            cancelBtn.onclick = function() {
+                                modal.style.display = 'none';
+                                if (debugIndicator) debugIndicator.style.display = 'none';
+                            };
+                        }
+                        
+                    } else {
+                        console.error('❌ Modal no encontrado en DOM');
+                        alert('❌ Error: Modal no encontrado');
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid');
+                
+                function getScrollPosition() {
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const scrollOptions = { top: 0, behavior: 'smooth' };
+                    window.scrollTo(scrollOptions);
+                    if (document.documentElement) document.documentElement.scrollTo(scrollOptions);
+                    if (document.body) document.body.scrollTo(scrollOptions);
+                    if (mainContent) mainContent.scrollTo(scrollOptions);
+                    if (containerFluid) containerFluid.scrollTo(scrollOptions);
+                }
+                
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (mainContent) mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (containerFluid) containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                setTimeout(toggleScrollButton, 500);
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+
+</body>
+</html>

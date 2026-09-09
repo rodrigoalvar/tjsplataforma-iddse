@@ -1,0 +1,81 @@
+/* Estilos para badges de permisos compactos */
+.permissions-container {
+    max-width: 200px;
+    max-height: 60px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.permissions-container::-webkit-scrollbar {
+    width: 4px;
+}
+
+.permissions-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 2px;
+}
+
+.permissions-container::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 2px;
+}
+
+.permissions-container::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+.permission-badge-compact {
+    font-size: 0.65em !important;
+    padding: 0.2em 0.4em !important;
+    margin: 0.1em !important;
+    border-radius: 0.25rem !important;
+    white-space: nowrap;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Color uniforme verde suave para todos los badges */
+.permission-badge-compact {
+    background-color: #d4edda !important;
+    color: #000 !important;
+    border: 1px solid #c3e6cb !important;
+}
+
+/* Mantener compatibilidad con clases Bootstrap pero forzar color verde */
+.permission-badge-compact.bg-primary,
+.permission-badge-compact.bg-secondary,
+.permission-badge-compact.bg-success,
+.permission-badge-compact.bg-info,
+.permission-badge-compact.bg-warning,
+.permission-badge-compact.bg-danger,
+.permission-badge-compact.bg-dark,
+.permission-badge-compact.bg-gradient {
+    background-color: #d4edda !important;
+    color: #000 !important;
+    border: 1px solid #c3e6cb !important;
+}
+
+/* Responsive design para móviles */
+@media (max-width: 768px) {
+    .permissions-container {
+        max-width: 150px;
+        max-height: 50px;
+    }
+    
+    .permission-badge-compact {
+        font-size: 0.6em !important;
+        padding: 0.15em 0.3em !important;
+    }
+}
+
+/* Estilos para tabla responsiva */
+.table-responsive .permissions-container {
+    min-width: 180px;
+}
+
+/* Tooltip para badges largos */
+.permission-badge-compact[title] {
+    cursor: help;
+}

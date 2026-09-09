@@ -1,0 +1,46 @@
+/* Study History Manager */
+.shm-page .page-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--bs-body-bg, #fff);
+    padding-bottom: 0.75rem;
+}
+
+.shm-hint-cell {
+    max-width: 220px;
+    word-break: break-word;
+}
+
+.shm-node-cell .shm-node-select {
+    min-width: 10rem;
+    max-width: 18rem;
+}
+
+#shmResultsTable thead th.sortable {
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#shmResultsTable thead th.sortable .shm-sort-icon {
+    font-size: 0.75em;
+    margin-left: 0.15rem;
+    vertical-align: middle;
+}
+
+#shmResultsTable tbody tr.shm-data-row {
+    cursor: pointer;
+}
+
+#shmResultsTable tbody tr.shm-row-selected {
+    background-color: #cfe2ff !important;
+    box-shadow: inset 3px 0 0 #0d6efd;
+}
+
+#shmResultsTable tbody tr.shm-row-selected > td {
+    background-color: transparent !important;
+}
+
+#shmResultsTable tbody tr.shm-row-selected:hover {
+    background-color: #b6d4fe !important;
+}

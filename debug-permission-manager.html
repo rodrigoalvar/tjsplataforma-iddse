@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Permission Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <script src="js/auth-middleware.js"></script>
+    <script src="assets/js/permission-manager.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h3 class="mb-0">
+                            <i class="fas fa-bug me-2"></i>
+                            Debug - Permission Manager
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Esta página está diseñada para debuggear problemas con el Permission Manager.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Información del Usuario</h5>
+                                <div id="userInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando información del usuario...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Permisos del Usuario</h5>
+                                <div id="permissionsInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando permisos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Pruebas de Debug</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-primary w-100" onclick="debugEstudiosPermission()">
+                                        <i class="fas fa-clipboard-list me-2"></i>
+                                        Debug Gestión Estudios
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-success w-100" onclick="debugAPIResponse()">
+                                        <i class="fas fa-code me-2"></i>
+                                        Debug API Response
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-info w-100" onclick="debugSessionValidation()">
+                                        <i class="fas fa-user-check me-2"></i>
+                                        Debug Sesión
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Logs de Debug</h5>
+                            <div id="debugLogs" class="alert alert-light" style="max-height: 400px; overflow-y: auto;">
+                                <p class="mb-0 text-muted">Los logs de debug aparecerán aquí...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Prueba Manual</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="permissionInput" class="form-label">Permiso a verificar:</label>
+                                        <input type="text" class="form-control" id="permissionInput" value="estudios" placeholder="ej: estudios">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="sectionInput" class="form-label">Sección:</label>
+                                        <input type="text" class="form-control" id="sectionInput" value="Gestión Estudios" placeholder="ej: Gestión Estudios">
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-warning" onclick="testManualPermission()">
+                                <i class="fas fa-play me-2"></i>
+                                Probar Permiso Manualmente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para agregar logs
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('debugLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const alertClass = type === 'error' ? 'alert-danger' : type === 'success' ? 'alert-success' : 'alert-info';
+            
+            logsDiv.innerHTML += `
+                <div class="alert ${alertClass} mb-2">
+                    <small class="text-muted">[${timestamp}]</small> ${message}
+                </div>
+            `;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Cargar información del usuario al iniciar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUserInfo();
+        });
+
+        /**
+         * Carga la información del usuario y permisos
+         */
+        async function loadUserInfo() {
+            try {
+                addLog('🔍 Iniciando carga de información del usuario...');
+                
+                // Verificar autenticación primero
+                const isAuthenticated = await requireAuth();
+                if (!isAuthenticated) {
+                    addLog('❌ No hay sesión activa', 'error');
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No hay sesión activa. <a href="login.html">Iniciar sesión</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                addLog('✅ Usuario autenticado correctamente', 'success');
+                
+                // Obtener información del usuario usando la API original
+                const response = await fetch('api/auth/validate-session-simple.php');
+                const result = await response.json();
+                
+                addLog(`📡 Respuesta de validate-session-simple.php: ${JSON.stringify(result)}`);
+                
+                if (result.success && result.user) {
+                    const user = result.user;
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${user.nombre} ${user.apellido}</h6>
+                                <p class="card-text">
+                                    <strong>ID:</strong> ${user.id}<br>
+                                    <strong>Nivel:</strong> ${user.nivel}<br>
+                                    <strong>Email:</strong> ${user.email || 'No disponible'}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('permissionsInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Permisos (${user.permisos.length})</h6>
+                                <div class="row">
+                                    ${user.permisos.map(permission => `
+                                        <div class="col-md-6 mb-1">
+                                            <span class="badge bg-info">${permission}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    addLog(`✅ Usuario cargado: ${user.nombre} ${user.apellido}`, 'success');
+                    addLog(`🔐 Permisos: [${user.permisos.join(', ')}]`);
+                    
+                    // Verificar específicamente el permiso 'estudios'
+                    const hasEstudios = user.permisos.includes('estudios') || user.permisos.includes('all');
+                    addLog(`📋 Tiene permiso 'estudios': ${hasEstudios ? 'SÍ' : 'NO'}`, hasEstudios ? 'success' : 'error');
+                    
+                } else {
+                    addLog('❌ Error cargando información del usuario', 'error');
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            Error cargando información del usuario
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+                console.error('Error cargando información:', error);
+            }
+        }
+
+        /**
+         * Debug específico para el permiso de Gestión Estudios
+         */
+        async function debugEstudiosPermission() {
+            try {
+                addLog('🔍 Iniciando debug de permiso Gestión Estudios...');
+                
+                // Probar con la API original
+                addLog('📡 Probando con validate-session-simple.php...');
+                const response1 = await fetch('api/auth/validate-session-simple.php');
+                const result1 = await response1.json();
+                
+                if (result1.success && result1.user) {
+                    const hasEstudios = result1.user.permisos.includes('estudios') || result1.user.permisos.includes('all');
+                    addLog(`✅ API original - Tiene permiso 'estudios': ${hasEstudios ? 'SÍ' : 'NO'}`, hasEstudios ? 'success' : 'error');
+                }
+                
+                // Probar con la nueva API
+                addLog('📡 Probando con permissions/check.php...');
+                const response2 = await fetch('api/permissions/check.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        permission: 'estudios',
+                        section: 'Gestión Estudios'
+                    })
+                });
+                
+                const result2 = await response2.json();
+                addLog(`📋 Respuesta de permissions/check.php: ${JSON.stringify(result2)}`);
+                
+                if (result2.success) {
+                    addLog(`✅ Nueva API - Tiene permiso 'estudios': ${result2.hasPermission ? 'SÍ' : 'NO'}`, result2.hasPermission ? 'success' : 'error');
+                } else {
+                    addLog(`❌ Nueva API - Error: ${result2.error}`, 'error');
+                }
+                
+                // Probar con PermissionManager
+                addLog('📡 Probando con PermissionManager...');
+                const result3 = await window.permissionManager.checkPermission('estudios', 'Gestión Estudios');
+                addLog(`📋 Respuesta de PermissionManager: ${JSON.stringify(result3)}`);
+                
+                if (result3.success) {
+                    addLog(`✅ PermissionManager - Tiene permiso 'estudios': ${result3.hasPermission ? 'SÍ' : 'NO'}`, result3.hasPermission ? 'success' : 'error');
+                } else {
+                    addLog(`❌ PermissionManager - Error: ${result3.error}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error en debug: ${error.message}`, 'error');
+                console.error('Error en debug:', error);
+            }
+        }
+
+        /**
+         * Debug de la respuesta de la API
+         */
+        async function debugAPIResponse() {
+            try {
+                addLog('🔍 Debug de respuesta de API...');
+                
+                const response = await fetch('api/permissions/check.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        permission: 'estudios',
+                        section: 'Gestión Estudios'
+                    })
+                });
+                
+                addLog(`📡 Status: ${response.status} ${response.statusText}`);
+                addLog(`📡 Headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const result = await response.json();
+                addLog(`📋 Response Body: ${JSON.stringify(result, null, 2)}`);
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Debug de validación de sesión
+         */
+        async function debugSessionValidation() {
+            try {
+                addLog('🔍 Debug de validación de sesión...');
+                
+                // Verificar cookies
+                addLog(`🍪 Cookies: ${document.cookie}`);
+                
+                // Verificar localStorage
+                const userData = localStorage.getItem('user');
+                addLog(`💾 localStorage user: ${userData}`);
+                
+                // Probar validate-session-simple.php
+                const response = await fetch('api/auth/validate-session-simple.php');
+                const result = await response.json();
+                
+                addLog(`📡 validate-session-simple.php response: ${JSON.stringify(result)}`);
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Prueba manual de permiso
+         */
+        async function testManualPermission() {
+            try {
+                const permission = document.getElementById('permissionInput').value;
+                const section = document.getElementById('sectionInput').value;
+                
+                addLog(`🔍 Probando permiso manual: ${permission} (${section})`);
+                
+                const result = await window.permissionManager.checkPermission(permission, section);
+                addLog(`📋 Resultado: ${JSON.stringify(result)}`);
+                
+                if (result.success && result.hasPermission) {
+                    addLog(`✅ Usuario tiene permiso '${permission}'`, 'success');
+                } else {
+                    addLog(`❌ Usuario NO tiene permiso '${permission}'`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

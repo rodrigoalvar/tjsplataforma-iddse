@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worklist - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+    <style>
+        /* Header compacto estilo dashboard (welcome-card en styles.css) + sticky */
+        .worklist-sticky-top-row {
+            position: sticky;
+            z-index: 100;
+            background: #fff;
+            padding-top: 0.35rem;
+            padding-bottom: 0.35rem;
+            margin-bottom: 0.75rem !important;
+            margin-left: 0;
+            margin-right: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        @media (max-width: 991.98px) {
+            .worklist-sticky-top-row {
+                top: 56px;
+            }
+        }
+
+        @media (min-width: 992px) {
+            .worklist-sticky-top-row {
+                top: 0;
+            }
+        }
+
+        .worklist-welcome-compact {
+            padding: 1rem 1.25rem !important;
+            margin-bottom: 0 !important;
+            border-radius: 12px;
+        }
+
+        .worklist-welcome-compact .worklist-welcome-title {
+            font-size: 1.35rem;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+            letter-spacing: 0.2px;
+        }
+
+        .worklist-welcome-compact .worklist-welcome-subtitle {
+            font-size: 0.9rem;
+            opacity: 0.92;
+        }
+
+        .worklist-summary.worklist-summary--compact {
+            font-size: 0.95rem;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            border-top: none !important;
+        }
+
+        .worklist-summary.worklist-summary--compact > div:first-of-type {
+            font-size: 0.95rem;
+        }
+
+        .worklist-summary.worklist-summary--compact > div:first-of-type strong {
+            font-size: 1.05rem;
+            font-weight: 700;
+        }
+
+        .worklist-summary.worklist-summary--compact .badge {
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 0.35rem 0.65rem;
+            border-radius: 0.45rem;
+            line-height: 1.3;
+        }
+
+        .worklist-summary.worklist-summary--compact .d-flex.gap-2 {
+            gap: 0.4rem !important;
+        }
+
+        .worklist-summary.worklist-summary--compact .d-flex.flex-wrap.align-items-center:not(.gap-2) {
+            gap: 0.35rem 0.45rem !important;
+            margin-top: 0.25rem;
+        }
+
+        .worklist-summary.worklist-summary--compact .me-2.opacity-90 {
+            font-size: 0.85rem;
+        }
+
+        .worklist-scroll-top-btn {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.25rem;
+            z-index: 1040;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(139, 13, 50, 0.35);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(8px);
+            transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+        }
+
+        .worklist-scroll-top-btn.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .worklist-scroll-top-btn:focus {
+            box-shadow: 0 4px 14px rgba(139, 13, 50, 0.45), 0 0 0 0.2rem rgba(139, 13, 50, 0.2);
+        }
+
+        .filters-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .actions-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action-worklist {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background-color: #ffc107; color: #000; }
+        .status-scheduled { background-color: #0dcaf0; color: #000; }
+        .status-in_progress { background-color: #0d6efd; color: #fff; }
+        .status-completed { background-color: #198754; color: #fff; }
+        .status-cancelled { background-color: #dc3545; color: #fff; }
+
+        .orthanc-sync-ok { background-color: #198754; color: #fff; }
+        .orthanc-sync-pending { background-color: #6c757d; color: #fff; }
+        .orthanc-sync-error { background-color: #dc3545; color: #fff; }
+
+        /* Indicador columna WL Server (sin texto) */
+        .wl-server-dot {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            vertical-align: middle;
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+        }
+
+        .wl-server-dot--ok {
+            background-color: #198754;
+        }
+
+        .wl-server-dot--pending {
+            background-color: #adb5bd;
+        }
+
+        .wl-server-dot--error {
+            background-color: #dc3545;
+        }
+
+        #worklistTable {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .dataTables_wrapper {
+            padding: 20px;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .file-upload-area.dragover {
+            background: #e7f3ff;
+            border-color: #0d6efd;
+        }
+
+        /* Filtros de modalidad (mismo lenguaje visual que pacs-manager.html) */
+        .modality-filters {
+            margin-bottom: 0.75rem !important;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
+        }
+
+        .modality-filters > div:first-child {
+            margin-bottom: 0.5rem;
+        }
+
+        .modality-filters .d-flex.flex-wrap {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-right: 0.5rem;
+        }
+
+        .modality-filters .d-flex.flex-wrap::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .modality-filters .d-flex.flex-wrap::-webkit-scrollbar-thumb {
+            background: #ced4da;
+            border-radius: 2px;
+        }
+
+        .modality-btn {
+            flex-shrink: 0;
+            padding: 0.5rem 0.9rem !important;
+            font-size: 0.85rem !important;
+            border-radius: 999px !important;
+            border: 1px solid #ced4da;
+            background: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+        }
+
+        .modality-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+        }
+
+        .modality-btn.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+
+        .modality-btn.active .modality-count-sub {
+            color: rgba(255, 255, 255, 0.85) !important;
+        }
+
+        .filter-quick-dates .btn-group .btn.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+
+        /* Buscador embebido en la barra de la tabla */
+        .worklist-table-search-wrap {
+            width: 100%;
+            max-width: 360px;
+        }
+
+        @media (max-width: 575.98px) {
+            .worklist-table-search-wrap {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+            
+            // Verificar permisos específicos para Worklist
+            const hasAccess = await requirePermissionSimple('worklist', 'Worklist', {
+                title: 'Acceso Denegado - Worklist',
+                message: 'No tienes permisos para acceder a <strong>Worklist</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            // Si no tiene permisos, no continuar con el resto del código
+            if (!hasAccess) {
+                return;
+            }
+            
+            // Configurar funcionalidad del sidebar
+            setupSidebarFunctionality();
+        });
+        
+        // Función para configurar la funcionalidad del sidebar
+        function setupSidebarFunctionality() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+            
+            // Actualizar nombre de usuario en sidebar
+            updateSidebarUserInfo();
+        }
+        
+        // Función para actualizar información del usuario en el sidebar y header
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (error) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="container-fluid px-3 py-4">
+        <span id="worklistTopAnchor" class="d-block"></span>
+        <div class="row worklist-sticky-top-row">
+            <div class="col-12">
+                <div class="welcome-card worklist-welcome-compact">
+                    <div class="row align-items-start g-3">
+                        <div class="col-lg-4 col-xl-3">
+                            <h2 class="welcome-title worklist-welcome-title mb-1">
+                                <i class="fas fa-list-alt me-2"></i>Worklist
+                            </h2>
+                            <p class="welcome-subtitle worklist-welcome-subtitle mb-0">Gestión de listas de trabajo DICOM</p>
+                        </div>
+                        <div class="col-lg-8 col-xl-9">
+                            <div id="worklistSummary" class="worklist-summary worklist-summary--compact border-0" aria-live="polite"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de acciones -->
+        <div class="actions-bar">
+            <button class="btn btn-primary btn-action-worklist" onclick="openNewModal()">
+                <i class="fas fa-plus"></i> Nuevo
+            </button>
+            <button class="btn btn-success btn-action-worklist" onclick="openUploadModal()">
+                <i class="fas fa-file-upload"></i> Upload TXT
+            </button>
+            <button class="btn btn-info btn-action-worklist" onclick="syncOrthanc()">
+                <i class="fas fa-sync"></i> Sync Orthanc
+            </button>
+            <button class="btn btn-outline-secondary btn-action-worklist" onclick="runReconcileOrthanc()" title="Comparar BD del portal con Orthanc">
+                <i class="fas fa-check-double"></i> Validar vs Orthanc
+            </button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Fecha desde</label>
+                    <input type="date" class="form-control" id="filterDateFrom" title="Aplicar con el botón «Aplicar rango»">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Fecha hasta</label>
+                    <input type="date" class="form-control" id="filterDateTo" title="Aplicar con el botón «Aplicar rango»">
+                </div>
+                <div class="col-12 col-md-2">
+                    <button type="button" class="btn btn-primary w-100" onclick="applyWorklistDateRange()" title="Aplicar el rango seleccionado">
+                        <i class="fas fa-filter"></i> Aplicar rango
+                    </button>
+                </div>
+                <div class="col-12 col-md-6 col-lg-auto filter-quick-dates">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted small text-nowrap mb-0">Atajos</span>
+                        <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Rango de fechas rápido">
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateToday" title="Turnos del día actual">Hoy</button>
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateYesterday" title="Turnos de ayer">Ayer</button>
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateLast7" title="Desde hace 7 días hasta hoy (inclusive)">Últimos 7 días</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label">Estado turno</label>
+                    <select class="form-select" id="filterStatus" onchange="applyWorklistLocalFilters()">
+                        <option value="">Todos</option>
+                        <option value="pending">Pendiente</option>
+                        <option value="scheduled">Programado</option>
+                        <option value="in_progress">En Progreso</option>
+                        <option value="completed">Completado</option>
+                        <option value="cancelled">Cancelado</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <label class="form-label">WL Server</label>
+                    <select class="form-select" id="filterOrthancSync" onchange="applyWorklistLocalFilters()">
+                        <option value="">Todos</option>
+                        <option value="ok">Cargado</option>
+                        <option value="pending">No cargado</option>
+                        <option value="error">Error</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-3 col-lg-2">
+                    <button type="button" class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                        <i class="fas fa-undo"></i> Restablecer
+                    </button>
+                </div>
+            </div>
+
+            <input type="hidden" id="filterModality" value="">
+            <div class="modality-filters mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="filter-label mb-0">Filtrar por Modalidad: <span id="worklistModalityCounter" class="badge bg-secondary ms-2" style="display:none"></span></h6>
+                </div>
+                <div class="d-flex flex-wrap gap-2" id="worklistModalityChips" role="group" aria-label="Filtros de modalidad">
+                    <button type="button" class="btn modality-btn active" data-modality="all">
+                        <span class="modality-label">Todas</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                    </button>
+                </div>
+            </div>
+
+            <p class="text-muted small mb-0 mt-2">El rango de fechas se carga con <strong>Aplicar rango</strong> (servidor) o los atajos. Modalidad, estado y WL Server filtran la tabla ya cargada en este navegador; los contadores del encabezado siguen esa vista. El rango y los filtros se guardan en localStorage.</p>
+        </div>
+
+        <!-- Tabla -->
+        <div class="card">
+            <div class="card-header bg-white border-bottom">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <h6 class="mb-0 text-muted">
+                        <i class="fas fa-list-ul me-1"></i>Resultados
+                    </h6>
+                    <div class="worklist-table-search-wrap">
+                        <label for="worklistTableSearch" class="visually-hidden">Buscar en la tabla</label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="search" class="form-control" id="worklistTableSearch" placeholder="Buscar: accession, paciente, ID, modalidad, fecha…" autocomplete="off" spellcheck="false">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <table id="worklistTable" class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Accession Number</th>
+                            <th>Paciente</th>
+                            <th>ID paciente</th>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th>Modalidad</th>
+                            <th>Estado turno</th>
+                            <th>Estudio PACS</th>
+                            <th>WL Server</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Los datos se cargarán dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para nuevo/editar -->
+    <div class="modal fade" id="worklistModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nuevo Worklist</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="worklistForm">
+                        <input type="hidden" id="editAccession" name="accession_number">
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Accession Number <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="accessionNumber" name="accession_number" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nombre del Paciente <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="patientName" name="patient_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">ID del Paciente</label>
+                                <input type="text" class="form-control" id="patientId" name="patient_id">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha de Nacimiento</label>
+                                <input type="date" class="form-control" id="patientBirthDate" name="patient_birth_date">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Sexo</label>
+                                <select class="form-select" id="patientSex" name="patient_sex">
+                                    <option value="">Seleccionar</option>
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Femenino</option>
+                                    <option value="O">Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Modalidad</label>
+                                <select class="form-select" id="modality" name="modality">
+                                    <option value="">Seleccionar</option>
+                                    <option value="MR">MR</option>
+                                    <option value="CT">CT</option>
+                                    <option value="US">US</option>
+                                    <option value="CR">CR</option>
+                                    <option value="DX">DX</option>
+                                    <option value="MG">MG</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Médico Referente</label>
+                                <input type="text" class="form-control" id="referringPhysician" name="referring_physician">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Equipo</label>
+                                <input type="text" class="form-control" id="equipmentName" name="equipment_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha Programada <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" id="scheduledDate" name="scheduled_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hora Programada <span class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="scheduledTime" name="scheduled_time" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Descripción del Procedimiento</label>
+                                <input type="text" class="form-control" id="procedureDescription" name="procedure_description">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Razón del Estudio</label>
+                                <input type="text" class="form-control" id="reasonForStudy" name="reason_for_study">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Estado del turno</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="pending">Pendiente</option>
+                                    <option value="scheduled">Programado</option>
+                                    <option value="in_progress">En Progreso</option>
+                                    <option value="completed">Completado</option>
+                                    <option value="cancelled">Cancelado</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveWorklist()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal informe reconciliación Orthanc -->
+    <div class="modal fade" id="reconcileModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-check-double me-2"></i>Validación BD ↔ Orthanc</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="reconcileSummary" class="mb-3"></div>
+                    <h6 class="text-danger" id="reconcileIssuesTitle" style="display:none;">Inconsistencias</h6>
+                    <div class="table-responsive" id="reconcileIssuesWrap" style="display:none;">
+                        <table class="table table-sm table-bordered">
+                            <thead><tr><th>Tipo</th><th>Accession</th><th>ID Orthanc</th><th>Detalle</th></tr></thead>
+                            <tbody id="reconcileIssuesBody"></tbody>
+                        </table>
+                    </div>
+                    <h6 class="text-success mt-3" id="reconcileAlignedTitle" style="display:none;">Coincidencias</h6>
+                    <p class="small text-muted" id="reconcileAlignedNote" style="display:none;">Muestra hasta 200 filas alineadas.</p>
+                    <div class="table-responsive" id="reconcileAlignedWrap" style="display:none;">
+                        <table class="table table-sm">
+                            <thead><tr><th>Accession</th><th>ID Orthanc</th></tr></thead>
+                            <tbody id="reconcileAlignedBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para upload TXT -->
+    <div class="modal fade" id="uploadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subir Archivo TXT</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('txtFileInput').click()">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                        <p class="mb-0">Haz clic o arrastra el archivo TXT aquí</p>
+                        <small class="text-muted">Formato: [Message] Type=Add [DicomData] ...</small>
+                    </div>
+                    <input type="file" id="txtFileInput" accept=".txt" style="display: none;" onchange="handleFileSelect(event)">
+                    <div id="fileInfo" class="mt-3" style="display: none;">
+                        <div class="alert alert-info">
+                            <i class="fas fa-file me-2"></i>
+                            <span id="fileName"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="uploadBtn" onclick="uploadTxtFile()" disabled>Subir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+            <!-- Alertas -->
+            <div id="alertContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+            </div>
+        </div>
+    </div>
+
+    <button type="button" id="worklistScrollTopBtn" class="btn btn-primary worklist-scroll-top-btn" title="Volver al inicio de la lista" aria-label="Volver al inicio de la lista">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="assets/js/worklist.js?v=202606251200"></script>
+</body>
+</html>

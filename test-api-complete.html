@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API Completo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        pre { background-color: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Test Completo de APIs</h1>
+    
+    <div id="test1" class="test-section">
+        <h2>Test 1: API get-simple-robust.php con informe_id=35</h2>
+        <div id="result1">Cargando...</div>
+    </div>
+    
+    <div id="test2" class="test-section">
+        <h2>Test 2: API get-simple-robust.php con study_instance_uid</h2>
+        <div id="result2">Cargando...</div>
+    </div>
+    
+    <div id="test3" class="test-section">
+        <h2>Test 3: API get.php original</h2>
+        <div id="result3">Cargando...</div>
+    </div>
+    
+    <script>
+        async function testAPI(url, resultId) {
+            try {
+                console.log('Testing:', url);
+                const response = await fetch(url);
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const text = await response.text();
+                console.log('Response text:', text);
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    data = { error: 'No es JSON válido', text: text };
+                }
+                
+                const resultDiv = document.getElementById(resultId);
+                resultDiv.parentElement.classList.add(response.ok ? 'success' : 'error');
+                resultDiv.innerHTML = 
+                    '<p><strong>Status:</strong> ' + response.status + '</p>' +
+                    '<p><strong>OK:</strong> ' + response.ok + '</p>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+            } catch (error) {
+                console.error('Error:', error);
+                const resultDiv = document.getElementById(resultId);
+                resultDiv.parentElement.classList.add('error');
+                resultDiv.innerHTML = 
+                    '<p><strong>Error:</strong></p>' +
+                    '<pre>' + error.message + '</pre>';
+            }
+        }
+        
+        // Ejecutar tests
+        testAPI('api/informes/get-simple-robust.php?informe_id=35', 'result1');
+        testAPI('api/informes/get-simple-robust.php?study_instance_uid=1.2.276.0.7230010.3.1.2.313262592.1.1760010066.406904', 'result2');
+        testAPI('api/informes/get.php?informe_id=35', 'result3');
+    </script>
+</body>
+</html>

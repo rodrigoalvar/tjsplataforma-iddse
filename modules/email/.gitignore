@@ -1,0 +1,28 @@
+# Dependencias
+/vendor/
+
+# Logs
+/logs/*.log
+/logs/*
+!/logs/.gitkeep
+
+# Archivos de configuración con credenciales (opcional)
+# Descomentar si no quieres subir config con credenciales
+# /config/email_config.php
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp
+*~
+
+# IDE
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+

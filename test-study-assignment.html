@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Asignación de Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="fas fa-test-tube"></i> Test Asignación de Estudios
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Problema Identificado:</h5>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Al intentar asignar estudios indica "no hay estudio seleccionado"
+                        </div>
+                        
+                        <h5>Funcionalidades a Verificar:</h5>
+                        <div class="list-group">
+                            <div class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Carga de estudios desde PACS
+                            </div>
+                            <div class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Renderizado de estudios con checkboxes
+                            </div>
+                            <div class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Selección múltiple de estudios
+                            </div>
+                            <div class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Modal de asignación con usuarios
+                            </div>
+                            <div class="list-group-item">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Columna "Asignado a" con información
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Pruebas del Sistema:</h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="testStudySelection()">
+                                <i class="fas fa-search me-2"></i>Probar Selección de Estudios
+                            </button>
+                            <button class="btn btn-info" onclick="testAssignmentModal()">
+                                <i class="fas fa-share-alt me-2"></i>Probar Modal de Asignación
+                            </button>
+                            <button class="btn btn-success" onclick="testAssignmentColumn()">
+                                <i class="fas fa-table me-2"></i>Probar Columna Asignado
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Estado del Sistema:</h6>
+                            <div id="systemStatus" class="bg-light p-3 rounded">
+                                <small class="text-muted">El estado del sistema aparecerá aquí...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Tabla de Prueba con Estudios:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAllTest" onchange="handleSelectAllTest()">
+                                    </th>
+                                    <th>Paciente</th>
+                                    <th>ID</th>
+                                    <th>Modalidad</th>
+                                    <th>Fecha</th>
+                                    <th>Asignado a</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="testStudiesTable">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div id="bulkActionsTest" class="d-none">
+                            <button class="btn btn-primary btn-sm me-2" id="assignSelectedTestBtn" disabled>
+                                <i class="fas fa-share-alt me-1"></i>
+                                Asignar Seleccionados (<span id="selectedCountTest">0</span>)
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearSelectionTest()">
+                                <i class="fas fa-times me-1"></i>
+                                Limpiar Selección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Asignación de Prueba -->
+    <div class="modal fade" id="testAssignModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-share-alt me-2"></i>Asignar Estudios
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>Estudios Seleccionados:</h6>
+                    <div id="selectedStudiesList" class="mb-3">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                    
+                    <h6>Seleccionar Usuario(s):</h6>
+                    <div id="testUsersContainer">
+                        <!-- Se llenará dinámicamente -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmTestAssignment()">Asignar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datos de prueba
+        const testStudies = [
+            {
+                id: 'STUDY_001',
+                patient_name: 'Juan Pérez',
+                patient_id: 'P001',
+                modality: 'CT',
+                date: '2024-01-15',
+                study_description: 'Tomografía de tórax'
+            },
+            {
+                id: 'STUDY_002',
+                patient_name: 'María García',
+                patient_id: 'P002',
+                modality: 'MR',
+                date: '2024-01-16',
+                study_description: 'Resonancia magnética'
+            },
+            {
+                id: 'STUDY_003',
+                patient_name: 'Carlos López',
+                patient_id: 'P003',
+                modality: 'US',
+                date: '2024-01-17',
+                study_description: 'Ecografía abdominal'
+            }
+        ];
+        
+        const testUsers = [
+            {
+                id: 1,
+                nombre: 'Dr. Ana',
+                apellido: 'Martínez',
+                email: 'ana.martinez@hospital.com',
+                matricula_profesional: 'MP001'
+            },
+            {
+                id: 2,
+                nombre: 'Dr. Luis',
+                apellido: 'Rodríguez',
+                email: 'luis.rodriguez@hospital.com',
+                matricula_profesional: 'MP002'
+            }
+        ];
+        
+        let selectedStudies = [];
+        let selectedUsers = [];
+        
+        function renderTestStudies() {
+            const tbody = document.getElementById('testStudiesTable');
+            tbody.innerHTML = testStudies.map(study => `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input study-checkbox-test" 
+                               data-study-id="${study.id}" 
+                               onchange="handleStudySelectionTest()">
+                    </td>
+                    <td>${study.patient_name}</td>
+                    <td>${study.patient_id}</td>
+                    <td><span class="badge bg-info">${study.modality}</span></td>
+                    <td>${study.date}</td>
+                    <td id="assignment-${study.id}">
+                        <span class="text-muted">Sin asignar</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="assignSingleStudy('${study.id}')">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function handleStudySelectionTest() {
+            const checkboxes = document.querySelectorAll('.study-checkbox-test');
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-test:checked');
+            const bulkActions = document.getElementById('bulkActionsTest');
+            const selectedCount = document.getElementById('selectedCountTest');
+            const assignBtn = document.getElementById('assignSelectedTestBtn');
+            
+            if (selectedCount) {
+                selectedCount.textContent = checkedBoxes.length;
+            }
+            
+            if (checkedBoxes.length > 0) {
+                bulkActions.classList.remove('d-none');
+            } else {
+                bulkActions.classList.add('d-none');
+            }
+            
+            if (assignBtn) {
+                assignBtn.disabled = checkedBoxes.length === 0;
+            }
+            
+            updateSystemStatus();
+        }
+        
+        function handleSelectAllTest() {
+            const selectAllCheckbox = document.getElementById('selectAllTest');
+            const checkboxes = document.querySelectorAll('.study-checkbox-test');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            handleStudySelectionTest();
+        }
+        
+        function clearSelectionTest() {
+            const checkboxes = document.querySelectorAll('.study-checkbox-test');
+            const selectAllCheckbox = document.getElementById('selectAllTest');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+            
+            handleStudySelectionTest();
+        }
+        
+        function testStudySelection() {
+            const status = document.getElementById('systemStatus');
+            const checkboxes = document.querySelectorAll('.study-checkbox-test');
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-test:checked');
+            
+            status.innerHTML = `
+                <strong>Estado de Selección:</strong><br>
+                • Total checkboxes: ${checkboxes.length}<br>
+                • Checkboxes marcados: ${checkedBoxes.length}<br>
+                • Acciones masivas visibles: ${document.getElementById('bulkActionsTest').classList.contains('d-none') ? 'No' : 'Sí'}<br>
+                • Botón asignar habilitado: ${document.getElementById('assignSelectedTestBtn').disabled ? 'No' : 'Sí'}
+            `;
+        }
+        
+        function testAssignmentModal() {
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-test:checked');
+            if (checkedBoxes.length === 0) {
+                alert('No hay estudios seleccionados');
+                return;
+            }
+            
+            selectedStudies = Array.from(checkedBoxes).map(cb => {
+                const studyId = cb.getAttribute('data-study-id');
+                return testStudies.find(s => s.id === studyId);
+            });
+            
+            // Mostrar estudios seleccionados
+            const selectedStudiesList = document.getElementById('selectedStudiesList');
+            selectedStudiesList.innerHTML = selectedStudies.map(study => `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <strong>${study.patient_name}</strong> (${study.patient_id}) - ${study.modality}
+                    </div>
+                </div>
+            `).join('');
+            
+            // Mostrar usuarios
+            const usersContainer = document.getElementById('testUsersContainer');
+            usersContainer.innerHTML = testUsers.map(user => `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" value="${user.id}" id="testUser${user.id}">
+                    <label class="form-check-label" for="testUser${user.id}">
+                        <strong>${user.nombre} ${user.apellido}</strong><br>
+                        <small class="text-muted">${user.email} - MP: ${user.matricula_profesional}</small>
+                    </label>
+                </div>
+            `).join('');
+            
+            const modal = new bootstrap.Modal(document.getElementById('testAssignModal'));
+            modal.show();
+        }
+        
+        function confirmTestAssignment() {
+            const checkedUsers = document.querySelectorAll('#testUsersContainer input[type="checkbox"]:checked');
+            if (checkedUsers.length === 0) {
+                alert('Selecciona al menos un usuario');
+                return;
+            }
+            
+            selectedUsers = Array.from(checkedUsers).map(cb => {
+                const userId = parseInt(cb.value);
+                return testUsers.find(u => u.id === userId);
+            });
+            
+            // Simular asignación
+            selectedStudies.forEach(study => {
+                const assignmentCell = document.getElementById(`assignment-${study.id}`);
+                if (selectedUsers.length === 1) {
+                    assignmentCell.innerHTML = `
+                        <div class="assignment-single">
+                            <i class="fas fa-user text-primary me-1"></i>
+                            <span class="fw-semibold">${selectedUsers[0].nombre} ${selectedUsers[0].apellido}</span>
+                            <small class="text-muted d-block">${selectedUsers[0].matricula_profesional}</small>
+                        </div>
+                    `;
+                } else {
+                    assignmentCell.innerHTML = `
+                        <div class="assignment-multiple">
+                            <i class="fas fa-users text-primary me-1"></i>
+                            <span class="fw-semibold">${selectedUsers.length} usuarios</span>
+                            <small class="text-muted d-block">Ver detalles</small>
+                        </div>
+                    `;
+                }
+            });
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('testAssignModal'));
+            modal.hide();
+            
+            updateSystemStatus();
+        }
+        
+        function assignSingleStudy(studyId) {
+            const study = testStudies.find(s => s.id === studyId);
+            if (!study) return;
+            
+            selectedStudies = [study];
+            
+            // Mostrar modal con un solo estudio
+            const selectedStudiesList = document.getElementById('selectedStudiesList');
+            selectedStudiesList.innerHTML = `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <strong>${study.patient_name}</strong> (${study.patient_id}) - ${study.modality}
+                    </div>
+                </div>
+            `;
+            
+            // Mostrar usuarios
+            const usersContainer = document.getElementById('testUsersContainer');
+            usersContainer.innerHTML = testUsers.map(user => `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" value="${user.id}" id="testUser${user.id}">
+                    <label class="form-check-label" for="testUser${user.id}">
+                        <strong>${user.nombre} ${user.apellido}</strong><br>
+                        <small class="text-muted">${user.email} - MP: ${user.matricula_profesional}</small>
+                    </label>
+                </div>
+            `).join('');
+            
+            const modal = new bootstrap.Modal(document.getElementById('testAssignModal'));
+            modal.show();
+        }
+        
+        function testAssignmentColumn() {
+            const status = document.getElementById('systemStatus');
+            const assignments = document.querySelectorAll('[id^="assignment-"]');
+            let assignedCount = 0;
+            
+            assignments.forEach(assignment => {
+                if (!assignment.textContent.includes('Sin asignar')) {
+                    assignedCount++;
+                }
+            });
+            
+            status.innerHTML = `
+                <strong>Estado de Asignaciones:</strong><br>
+                • Total estudios: ${testStudies.length}<br>
+                • Estudios asignados: ${assignedCount}<br>
+                • Estudios sin asignar: ${testStudies.length - assignedCount}<br>
+                • Columna "Asignado a" funcionando: ${assignedCount > 0 ? 'Sí' : 'No'}
+            `;
+        }
+        
+        function updateSystemStatus() {
+            const checkboxes = document.querySelectorAll('.study-checkbox-test');
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-test:checked');
+            const assignments = document.querySelectorAll('[id^="assignment-"]');
+            let assignedCount = 0;
+            
+            assignments.forEach(assignment => {
+                if (!assignment.textContent.includes('Sin asignar')) {
+                    assignedCount++;
+                }
+            });
+            
+            const status = document.getElementById('systemStatus');
+            status.innerHTML = `
+                <strong>Estado General:</strong><br>
+                • Estudios cargados: ${testStudies.length}<br>
+                • Estudios seleccionados: ${checkedBoxes.length}<br>
+                • Estudios asignados: ${assignedCount}<br>
+                • Sistema funcionando: ${checkedBoxes.length > 0 ? 'Sí' : 'Parcial'}
+            `;
+        }
+        
+        // Event listener para el botón de asignación masiva
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTestStudies();
+            updateSystemStatus();
+            
+            const assignBtn = document.getElementById('assignSelectedTestBtn');
+            if (assignBtn) {
+                assignBtn.addEventListener('click', testAssignmentModal);
+            }
+        });
+    </script>
+</body>
+</html>

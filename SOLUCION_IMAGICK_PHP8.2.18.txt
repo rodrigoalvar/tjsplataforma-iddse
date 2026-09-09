@@ -1,0 +1,145 @@
+═══════════════════════════════════════════════════════════════════════
+  SOLUCIÓN EXACTA PARA INSTALAR IMAGICK EN TU WAMP64 PHP 8.2.18
+═══════════════════════════════════════════════════════════════════════
+
+📋 TU CONFIGURACIÓN DETECTADA:
+   ✅ PHP: 8.2.18
+   ✅ Thread Safety: ZTS (Thread Safe)
+   ✅ Compilador: Visual C++ 2019 (VS16)
+   ✅ Arquitectura: x64 (64-bit)
+
+═══════════════════════════════════════════════════════════════════════
+  PASO 1: DESHABILITAR IMAGICK ACTUAL (si está mal instalado)
+═══════════════════════════════════════════════════════════════════════
+
+1. Abrir: C:\wamp64\bin\php\php8.2.18\php.ini
+
+2. Buscar línea:
+   extension=imagick
+
+3. Comentar o eliminar:
+   ;extension=imagick
+
+4. Guardar archivo
+
+═══════════════════════════════════════════════════════════════════════
+  PASO 2: DESCARGAR VERSIÓN CORRECTA
+═══════════════════════════════════════════════════════════════════════
+
+🔗 Enlace de descarga:
+   https://windows.php.net/downloads/pecl/releases/imagick/
+
+📦 Archivo a descargar (EXACTAMENTE):
+   php_imagick-3.7.0-8.2-ts-vs16-x64.zip
+
+   O buscar la versión más reciente compatible con:
+   - php_imagick
+   - 8.2
+   - ts (Thread Safe)
+   - vs16 (Visual Studio 2019)
+   - x64 (64-bit)
+
+Si no encuentras esa versión exacta, buscar:
+   - Cualquier versión php_imagick-X.X.X-8.2-ts-vs16-x64.zip
+   - O php_imagick-X.X.X-8.2-ts-vs17-x64.zip (VS 2022 también puede funcionar)
+
+═══════════════════════════════════════════════════════════════════════
+  PASO 3: INSTALAR
+═══════════════════════════════════════════════════════════════════════
+
+1. Extraer el ZIP descargado (ejemplo: extraer a C:\temp\imagick\)
+
+2. Copiar php_imagick.dll a:
+   C:\wamp64\bin\php\php8.2.18\ext\
+
+3. Copiar TODOS los demás archivos .dll a:
+   C:\wamp64\bin\php\php8.2.18\
+   
+   Archivos típicamente incluidos:
+   - CORE_RL_*.dll
+   - libMagickCore*.dll
+   - libMagickWand*.dll
+   - msvcp*.dll
+   - msvcr*.dll
+   - etc.
+   
+   ⚠️ IMPORTANTE: Copiar TODOS los DLL, no solo php_imagick.dll
+
+4. Editar: C:\wamp64\bin\php\php8.2.18\php.ini
+
+5. Buscar sección de extensiones y agregar:
+   extension=imagick
+
+6. Guardar archivo
+
+═══════════════════════════════════════════════════════════════════════
+  PASO 4: REINICIAR WAMP
+═══════════════════════════════════════════════════════════════════════
+
+1. Click derecho en ícono WAMP (systray)
+2. "Stop All Services"
+3. Esperar que se detengan
+4. "Start All Services"
+5. Esperar que se inicien
+
+O reiniciar Windows completamente si es necesario
+
+═══════════════════════════════════════════════════════════════════════
+  PASO 5: VERIFICAR
+═══════════════════════════════════════════════════════════════════════
+
+Abrir PowerShell:
+   cd C:\wamp64\bin\php\php8.2.18
+   php -m | findstr imagick
+
+Si aparece "imagick" → ✅ INSTALADO CORRECTAMENTE
+
+O crear archivo test-imagick.php en C:\wamp64\www\:
+   <?php
+   if (extension_loaded('imagick')) {
+       echo "✅ Imagick instalado correctamente\n";
+       $imagick = new Imagick();
+       echo "Versión: " . $imagick->getVersion()['versionString'] . "\n";
+   } else {
+       echo "❌ Imagick NO instalado\n";
+   }
+   ?>
+
+Abrir: http://localhost/test-imagick.php
+
+═══════════════════════════════════════════════════════════════════════
+  SI SIGUE DANDO ERROR
+═══════════════════════════════════════════════════════════════════════
+
+Opción A: Instalar ImageMagick Completo
+   1. Descargar: https://imagemagick.org/script/download.php#windows
+   2. Instalar ImageMagick completo
+   3. Marcar "Add to PATH"
+   4. Reiniciar WAMP
+   5. Repetir pasos 2-4 arriba
+
+Opción B: Usar PDF Temporalmente
+   1. Abrir: http://localhost/portal_estudios/components/configuracion-pacs.html
+   2. Seleccionar PDF
+   3. Guardar
+   4. Enviar informes funcionará sin Imagick
+
+Opción C: Verificar Visual C++ Redistributable
+   Descargar e instalar:
+   https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+═══════════════════════════════════════════════════════════════════════
+  LINKS ÚTILES
+═══════════════════════════════════════════════════════════════════════
+
+📥 Descargar Imagick:
+   https://windows.php.net/downloads/pecl/releases/imagick/
+
+📥 ImageMagick Completo:
+   https://imagemagick.org/script/download.php#windows
+
+🔧 Visual C++ Redistributable:
+   https://aka.ms/vs/17/release/vc_redist.x64.exe
+
+═══════════════════════════════════════════════════════════════════════
+

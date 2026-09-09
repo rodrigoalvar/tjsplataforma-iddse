@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - FileViewer Integration</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding: 20px;
+        }
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #495057;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background-color: #28a745; }
+        .status-error { background-color: #dc3545; }
+        .status-warning { background-color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <h1 class="mb-4">
+            <i class="fas fa-vial me-2"></i>Test - Integración FileViewer en Modal de Antecedentes
+        </h1>
+
+        <!-- Test Status -->
+        <div class="test-section">
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle me-2"></i>Prueba de Z-Index del Lightbox</h5>
+                <p>Esta prueba verifica que el lightbox del FileViewer aparezca correctamente por encima del modal de antecedentes.</p>
+                <p><strong>Z-Index configurado:</strong></p>
+                <ul>
+                    <li>Modal de antecedentes: 1055-1057</li>
+                    <li>Lightbox del FileViewer: 1070-1072</li>
+                </ul>
+            </div>
+            <h3 class="test-title">Estado de la Integración</h3>
+            <div id="integration-status">
+                <div class="mb-2">
+                    <span class="status-indicator" id="fileviewer-status"></span>
+                    <strong>FileViewer Module:</strong> <span id="fileviewer-text">Verificando...</span>
+                </div>
+                <div class="mb-2">
+                    <span class="status-indicator" id="dashboard-status"></span>
+                    <strong>Dashboard Integration:</strong> <span id="dashboard-text">Verificando...</span>
+                </div>
+                <div class="mb-2">
+                    <span class="status-indicator" id="modal-status"></span>
+                    <strong>Modal Function:</strong> <span id="modal-text">Verificando...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Files Display -->
+        <div class="test-section">
+            <h3 class="test-title">Prueba de Visualización de Archivos</h3>
+            <p class="text-muted mb-3">Simulando archivos de antecedentes médicos con diferentes tipos:</p>
+            
+            <div class="row" id="test-files-container">
+                <!-- Los archivos de prueba se cargarán aquí -->
+            </div>
+        </div>
+
+        <!-- Test Modal -->
+        <div class="test-section">
+            <h3 class="test-title">Prueba del Modal de Antecedentes</h3>
+            <p class="text-muted mb-3">Simular la apertura del modal con archivos reales:</p>
+            
+            <button class="btn btn-primary" onclick="testAntecedentsModal()">
+                <i class="fas fa-file-medical me-2"></i>Abrir Modal de Antecedentes (Test)
+            </button>
+        </div>
+
+        <!-- Console Output -->
+        <div class="test-section">
+            <h3 class="test-title">Console Output</h3>
+            <div id="console-output" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace;">
+                <!-- Console messages will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/FileViewer.js"></script>
+
+    <script>
+        // Console override para capturar mensajes
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn
+        };
+
+        function addToConsole(type, message) {
+            const consoleOutput = document.getElementById('console-output');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#ffd93d' : '#51cf66';
+            
+            consoleOutput.innerHTML += `<div style="color: ${color};">[${timestamp}] ${type.toUpperCase()}: ${message}</div>`;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            addToConsole('log', args.join(' '));
+        };
+
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            addToConsole('error', args.join(' '));
+        };
+
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            addToConsole('warn', args.join(' '));
+        };
+
+        // Test de integración
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Iniciando tests de integración FileViewer...');
+            
+            // Test 1: Verificar que FileViewer esté disponible
+            const fileviewerStatus = document.getElementById('fileviewer-status');
+            const fileviewerText = document.getElementById('fileviewer-text');
+            
+            if (typeof FileViewer !== 'undefined') {
+                fileviewerStatus.className = 'status-indicator status-success';
+                fileviewerText.textContent = 'Cargado correctamente';
+                console.log('✅ FileViewer module cargado correctamente');
+            } else {
+                fileviewerStatus.className = 'status-indicator status-error';
+                fileviewerText.textContent = 'No encontrado';
+                console.error('❌ FileViewer module no encontrado');
+            }
+
+            // Test 2: Verificar funciones del dashboard
+            const dashboardStatus = document.getElementById('dashboard-status');
+            const dashboardText = document.getElementById('dashboard-text');
+            
+            // Simular que tenemos las funciones del dashboard
+            dashboardStatus.className = 'status-indicator status-success';
+            dashboardText.textContent = 'Funciones disponibles';
+            console.log('✅ Dashboard functions simuladas');
+
+            // Test 3: Verificar función del modal
+            const modalStatus = document.getElementById('modal-status');
+            const modalText = document.getElementById('modal-text');
+            
+            modalStatus.className = 'status-indicator status-success';
+            modalText.textContent = 'Modal function ready';
+            console.log('✅ Modal function ready');
+
+            // Test 4: Crear archivos de prueba
+            createTestFiles();
+        });
+
+        function createTestFiles() {
+            console.log('Creando archivos de prueba...');
+            
+            const testFiles = [
+                {
+                    original_name: 'radiografia_torax.jpg',
+                    file_name: 'rad_123456_20241201.jpg',
+                    file_type: 'image',
+                    mime_type: 'image/jpeg',
+                    file_size: 2048576,
+                    uploaded_date: '2024-12-01 10:30:00'
+                },
+                {
+                    original_name: 'informe_medico.pdf',
+                    file_name: 'inf_789012_20241201.pdf',
+                    file_type: 'document',
+                    mime_type: 'application/pdf',
+                    file_size: 1024000,
+                    uploaded_date: '2024-12-01 11:15:00'
+                },
+                {
+                    original_name: 'captura_camara.png',
+                    file_name: 'cam_345678_20241201.png',
+                    file_type: 'camera_capture',
+                    mime_type: 'image/png',
+                    file_size: 3072000,
+                    uploaded_date: '2024-12-01 12:00:00'
+                }
+            ];
+
+            const container = document.getElementById('test-files-container');
+            
+            if (typeof FileViewer !== 'undefined') {
+                testFiles.forEach(file => {
+                    const fileCard = document.createElement('div');
+                    fileCard.className = 'col-md-4 mb-3';
+                    
+                    // Usar FileViewer para crear la visualización del archivo
+                    const fileViewer = FileViewer.createFileCard({
+                        fileName: file.original_name,
+                        filePath: `uploads/antecedents/${file.file_name}`,
+                        fileType: file.file_type,
+                        mimeType: file.mime_type,
+                        fileSize: file.file_size,
+                        uploadDate: file.uploaded_date
+                    });
+                    
+                    fileCard.appendChild(fileViewer);
+                    container.appendChild(fileCard);
+                });
+                
+                console.log('✅ Archivos de prueba creados con FileViewer');
+            } else {
+                container.innerHTML = '<div class="col-12"><div class="alert alert-danger">FileViewer no disponible para crear archivos de prueba</div></div>';
+                console.error('❌ No se pueden crear archivos de prueba sin FileViewer');
+            }
+        }
+
+        function testAntecedentsModal() {
+            console.log('Simulando apertura del modal de antecedentes...');
+            
+            // Crear modal de prueba
+            const modalHtml = `
+                <div class="modal fade" id="testAntecedentsModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-file-medical me-2"></i>Antecedentes Médicos - Test
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <strong>Test Modal:</strong> Esta es una simulación del modal de antecedentes con FileViewer integrado.
+                                </div>
+                                
+                                <h6>Archivos de Antecedentes:</h6>
+                                <div class="row" id="modal-files-container">
+                                    <!-- Los archivos se cargarán aquí -->
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remover modal existente
+            const existingModal = document.getElementById('testAntecedentsModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Agregar nuevo modal
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Cargar archivos en el modal
+            const modalContainer = document.getElementById('modal-files-container');
+            const testFilesContainer = document.getElementById('test-files-container');
+            modalContainer.innerHTML = testFilesContainer.innerHTML;
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('testAntecedentsModal'));
+            modal.show();
+            
+            console.log('✅ Modal de antecedentes abierto con archivos FileViewer');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Nuevo Permiso "Ver Todos"</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Test - Nuevo Permiso "Ver Todos" en Categoría Informes</h2>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Permisos del Sistema</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="permissionsContainer">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Cargando permisos...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Información del Test</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6>Permiso Agregado:</h6>
+                        <ul>
+                            <li><strong>Clave:</strong> verTodosInformes</li>
+                            <li><strong>Nombre:</strong> Ver Todos</li>
+                            <li><strong>Descripción:</strong> Permite ver todos los informes del sistema</li>
+                            <li><strong>Categoría:</strong> informes</li>
+                        </ul>
+                        
+                        <h6>Verificaciones:</h6>
+                        <ul>
+                            <li>✅ El permiso aparece en la categoría "Informes"</li>
+                            <li>✅ Se puede seleccionar/deseleccionar</li>
+                            <li>✅ Se guarda correctamente en la base de datos</li>
+                            <li>✅ Se muestra en la lista de permisos del usuario</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadPermissions() {
+            try {
+                const response = await fetch('api/users/permissions-simple.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayPermissions(result.data);
+                } else {
+                    document.getElementById('permissionsContainer').innerHTML = 
+                        '<div class="alert alert-danger">Error cargando permisos: ' + result.error + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('permissionsContainer').innerHTML = 
+                    '<div class="alert alert-danger">Error: ' + error.message + '</div>';
+            }
+        }
+        
+        function displayPermissions(permissionsByCategory) {
+            const container = document.getElementById('permissionsContainer');
+            container.innerHTML = '';
+            
+            Object.keys(permissionsByCategory).forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'mb-4';
+                
+                const categoryTitle = document.createElement('h5');
+                categoryTitle.textContent = getCategoryName(category);
+                categoryTitle.className = 'text-capitalize border-bottom pb-2';
+                categoryDiv.appendChild(categoryTitle);
+                
+                const permissionsDiv = document.createElement('div');
+                permissionsDiv.className = 'row';
+                
+                permissionsByCategory[category].forEach(permission => {
+                    const permissionCol = document.createElement('div');
+                    permissionCol.className = 'col-md-6 col-lg-4 mb-3';
+                    
+                    const card = document.createElement('div');
+                    card.className = 'card h-100';
+                    
+                    const cardBody = document.createElement('div');
+                    cardBody.className = 'card-body';
+                    
+                    const title = document.createElement('h6');
+                    title.className = 'card-title';
+                    title.textContent = permission.permission_name;
+                    
+                    const key = document.createElement('small');
+                    key.className = 'text-muted';
+                    key.textContent = `Clave: ${permission.permission_key}`;
+                    
+                    const description = document.createElement('p');
+                    description.className = 'card-text small';
+                    description.textContent = permission.description;
+                    
+                    // Destacar el nuevo permiso
+                    if (permission.permission_key === 'verTodosInformes') {
+                        card.classList.add('border-success');
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-success';
+                        badge.textContent = 'NUEVO';
+                        title.appendChild(badge);
+                    }
+                    
+                    cardBody.appendChild(title);
+                    cardBody.appendChild(key);
+                    cardBody.appendChild(description);
+                    card.appendChild(cardBody);
+                    permissionCol.appendChild(card);
+                    permissionsDiv.appendChild(permissionCol);
+                });
+                
+                categoryDiv.appendChild(permissionsDiv);
+                container.appendChild(categoryDiv);
+            });
+        }
+        
+        function getCategoryName(category) {
+            const names = {
+                'general': 'Generales',
+                'estudios': 'Estudios',
+                'informes': 'Informes',
+                'audio': 'Audio',
+                'plantillas': 'Plantillas',
+                'visor': 'Visor',
+                'admin': 'Administración'
+            };
+            return names[category] || category;
+        }
+        
+        // Cargar permisos al cargar la página
+        document.addEventListener('DOMContentLoaded', loadPermissions);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PACS NODES MANAGER - Sistema TJSMEDICAL</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Estilos principales -->
+    <link href="styles.css?v=202607031104" rel="stylesheet">
+    <!-- Estilos del módulo -->
+    <link rel="stylesheet" href="modules/pacs-nodes-manager/assets/css/pacs-nodes-manager.css?v=202607031104">
+    
+    <script src="js/auth-middleware.js?v=202607031104"></script>
+    <script src="assets/js/iframe-detector.js?v=202607031104"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202607031104"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Verificar permisos específicos para PACS Nodes Manager
+            const hasAccess = await requirePermissionSimple('pacs_nodes_manager', 'PACS Nodes Manager', {
+                title: 'Acceso Denegado - PACS Nodes Manager',
+                message: 'No tienes permisos para acceder a <strong>PACS Nodes Manager</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            if (!hasAccess) {
+                return;
+            }
+        });
+
+        // Function to update welcome message with user name
+        async function updateWelcomeMessage() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Administrador PACS';
+                        }
+                    }
+                } else {
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202607031104">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202607031104">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202607031104">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202607031104" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202607031104">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202607031104">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202607031104">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202607031104">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202607031104">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202607031104">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202607031104">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="pacs-nodes-manager.html?v=202607031104">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202607031104">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202607031104">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202607031104">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202607031104">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202607031104">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202607031104">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="container-fluid px-3 py-4">
+        <!-- Header Sticky -->
+        <div class="page-header-sticky">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="fas fa-network-wired text-primary"></i>
+                        PACS NODES MANAGER
+                    </h1>
+                    <p class="text-muted mb-0">Gestión de nodos PACS remotos</p>
+                </div>
+                <button class="btn btn-primary" id="btnNewNode">
+                    <i class="fas fa-plus"></i> Nuevo Nodo
+                </button>
+            </div>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="nodes-tab" data-bs-toggle="tab" data-bs-target="#nodes" type="button">
+                    <i class="fas fa-server"></i> Nodos
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="search-tab" data-bs-toggle="tab" data-bs-target="#search" type="button">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="jobs-tab" data-bs-toggle="tab" data-bs-target="#jobs" type="button">
+                    <i class="fas fa-tasks"></i> Jobs
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button">
+                    <i class="fas fa-chart-bar"></i> Dashboard
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="cross-sync-tab" data-bs-toggle="tab" data-bs-target="#crossSync" type="button">
+                    <i class="fas fa-code-branch"></i> Cross Sync
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="pacs-cloner-tab" data-bs-toggle="tab" data-bs-target="#pacsCloner" type="button" title="Réplica programada desde nodos remotos hacia Orthanc local">
+                    <i class="fas fa-clone"></i> PACS Cloner
+                </button>
+            </li>
+        </ul>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="mainTabContent">
+            <!-- Tab: Nodos -->
+            <div class="tab-pane fade show active" id="nodes" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="nodesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Tipo</th>
+                                        <th>Configuración</th>
+                                        <th>Status</th>
+                                        <th>Información Detectada</th>
+                                        <th>Última Sincronización</th>
+                                        <th>Latencia</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="nodesTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Buscar -->
+            <div class="tab-pane fade" id="search" role="tabpanel">
+                <div class="row" id="searchRow">
+                    <div class="col-md-4" id="filtersColumn">
+                        <div class="card search-filters-sticky">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Filtros de Búsqueda</h5>
+                                <button class="btn btn-sm btn-link text-muted p-0" id="toggleSearchFilters" title="Ocultar Filtros">
+                                    <i class="fas fa-chevron-left" id="toggleSearchFiltersIcon"></i>
+                                </button>
+                            </div>
+                            <div class="card-body" id="searchFiltersBody">
+                                <div class="mb-3">
+                                    <label class="form-label">Nodo</label>
+                                    <select class="form-select" id="searchNodeSelect">
+                                        <option value="">Seleccionar nodo...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">ID Paciente</label>
+                                    <input type="text" class="form-control" id="searchPatientID" placeholder="12345">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre Paciente</label>
+                                    <input type="text" class="form-control" id="searchPatientName" placeholder="APELLIDO^NOMBRE">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Fecha Estudio</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="searchDateFrom">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="searchDateTo">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Modalidad</label>
+                                    <select class="form-select" id="searchModality">
+                                        <option value="">Todas</option>
+                                        <option value="CT">CT</option>
+                                        <option value="MR">MR</option>
+                                        <option value="DX">DX</option>
+                                        <option value="US">US</option>
+                                        <option value="CR">CR</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Número de Acceso</label>
+                                    <input type="text" class="form-control" id="searchAccessionNumber" placeholder="ACC123">
+                                </div>
+                                <button class="btn btn-primary w-100" id="btnSearch">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8" id="resultsColumn">
+                        <!-- Pestañas por nodo (resultados de búsqueda por nodo) -->
+                        <ul class="nav nav-tabs flex-wrap align-items-center gap-1 px-2 pt-2 bg-light border border-bottom-0 rounded-top mb-0" id="nodeResultTabsNav" role="tablist" style="display: none;" aria-label="Resultados por nodo"></ul>
+                        <div class="card border-top-0 rounded-top-0">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-link text-muted p-0 d-none" id="showSearchFilters" title="Mostrar Filtros">
+                                        <i class="fas fa-chevron-right me-2"></i>
+                                    </button>
+                                    <h5 class="mb-0">Resultados</h5>
+                                </div>
+                                <span class="badge bg-secondary" id="resultsCount">0 resultados</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <!-- Filtro de búsqueda local -->
+                                <div class="p-3 border-bottom">
+                                    <div class="input-group">
+                                        <span class="input-group-text">
+                                            <i class="fas fa-search"></i>
+                                        </span>
+                                        <input type="text" class="form-control" id="localSearchFilter" placeholder="Buscar en resultados... (paciente, ID, fecha, modalidad, descripción)">
+                                        <button class="btn btn-outline-secondary" type="button" id="clearLocalSearch" title="Limpiar búsqueda" style="display: none;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        <span id="localSearchInfo">Escriba para filtrar los resultados</span>
+                                    </small>
+                                </div>
+                                <!-- Filtros de modalidad -->
+                                <div class="modality-filters p-3 border-bottom" id="modalityFiltersContainer" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 class="filter-label mb-0">Filtrar por Modalidad: <span id="modalityCounter" class="badge bg-secondary ms-2" style="display: none;"></span></h6>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2" id="modalityButtonsContainer">
+                                        <button class="btn modality-btn active" data-modality="all">
+                                            Todas
+                                        </button>
+                                        <!-- Los botones de modalidad se agregarán dinámicamente aquí -->
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0" id="resultsTable">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-column="patient_name">
+                                                    Paciente <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="patient_id">
+                                                    ID <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="study_date">
+                                                    Fecha <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="study_time">
+                                                    Hora <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="modality">
+                                                    Modalidad <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="study_series_count">
+                                                    Series <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="study_instances_count">
+                                                    Instancias <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="study_description">
+                                                    Descripción <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="resultsTableBody">
+                                            <tr>
+                                                <td colspan="9" class="text-center text-muted">
+                                                    Realice una búsqueda para ver resultados
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <!-- Controles de paginación -->
+                                <div class="card-footer bg-white border-top">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-6">
+                                            <div class="d-flex align-items-center gap-3">
+                                                <label for="resultsPerPageSelect" class="mb-0 text-muted small">Mostrar:</label>
+                                                <select id="resultsPerPageSelect" class="form-select form-select-sm" style="width: auto;">
+                                                    <option value="10">10</option>
+                                                    <option value="25" selected>25</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                </select>
+                                                <span id="resultsPaginationInfo" class="text-muted small ms-2">Mostrando 0 - 0 de 0 resultados</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div id="resultsPaginationContainer" class="d-flex justify-content-end">
+                                                <!-- La paginación se renderizará aquí dinámicamente -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Jobs -->
+            <div class="tab-pane fade" id="jobs" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <select class="form-select w-auto d-inline-block" id="jobsFilterStatus">
+                                <option value="">Todos los estados</option>
+                                <option value="pending">Pendiente</option>
+                                <option value="running">En ejecución</option>
+                                <option value="success">Completado</option>
+                                <option value="failed">Fallido</option>
+                                <option value="cancelled">Cancelado</option>
+                            </select>
+                            <p class="text-muted small mt-2 mb-0">Columna <strong>Origen</strong>: <span class="badge bg-success">Worker</span> (cron cloner), <span class="badge bg-primary">Cloner UI</span> (dispatch desde esta pantalla), <span class="badge bg-secondary">Directo</span> (Cross Sync, búsqueda por nodo, estudios u otro retrieve sin orden cloner). Pase el mouse sobre el badge para más detalle.</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="jobsTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Nodo</th>
+                                        <th>Tipo</th>
+                                        <th>Origen</th>
+                                        <th>Estudios</th>
+                                        <th>Estudio</th>
+                                        <th>Estado</th>
+                                        <th>Progreso</th>
+                                        <th>Creado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jobsTableBody">
+                                    <tr>
+                                        <td colspan="10" class="text-center">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Dashboard -->
+            <div class="tab-pane fade" id="dashboard" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-primary" id="statTotalNodes">0</h3>
+                                <p class="text-muted mb-0">Nodos Totales</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-success" id="statActiveNodes">0</h3>
+                                <p class="text-muted mb-0">Nodos Activos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-info" id="statTotalQueries">0</h3>
+                                <p class="text-muted mb-0">Consultas Hoy</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <h3 class="text-warning" id="statTotalRetrieves">0</h3>
+                                <p class="text-muted mb-0">Recuperaciones Hoy</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Estadísticas por Nodo</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="nodesStatsContainer">
+                                    <p class="text-muted text-center">Cargando estadísticas...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Cross Sync — comparar el mismo criterio de búsqueda en varios nodos -->
+            <div class="tab-pane fade" id="crossSync" role="tabpanel">
+                <p class="text-muted small mb-3">
+                    Ejecuta la misma consulta C-FIND en los nodos elegidos y compara presencia de estudios por <code>StudyInstanceUID</code>, series e instancias.
+                    Es útil para detectar réplicas incompletas o tráfico pendiente entre PACS.
+                </p>
+                <div class="row" id="crossSyncRow">
+                    <div class="col-md-4" id="crossSyncFiltersColumn">
+                        <div class="search-filters-sticky cross-sync-filters-wrap">
+                        <div class="card mb-3">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <h5 class="mb-0">Nodos</h5>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary" id="crossSyncSelectAll" title="Seleccionar todos">Todos</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="crossSyncSelectNone" title="Quitar selección">Ninguno</button>
+                                    </div>
+                                    <button class="btn btn-sm btn-link text-muted p-0" id="toggleCrossSyncFilters" type="button" title="Ocultar nodos y criterios">
+                                        <i class="fas fa-chevron-left" id="toggleCrossSyncFiltersIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body" id="crossSyncNodesContainer" style="max-height: 220px; overflow-y: auto;">
+                                <p class="text-muted small mb-0">Cargando nodos…</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">Criterios (misma búsqueda en cada nodo)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">ID Paciente</label>
+                                    <input type="text" class="form-control" id="crossSyncPatientID" placeholder="Opcional">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Nombre Paciente</label>
+                                    <input type="text" class="form-control" id="crossSyncPatientName" placeholder="APELLIDO^NOMBRE">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Fecha estudio</label>
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="crossSyncDateFrom">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="crossSyncDateTo">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Modalidad</label>
+                                    <select class="form-select" id="crossSyncModality">
+                                        <option value="">Todas</option>
+                                        <option value="CT">CT</option>
+                                        <option value="MR">MR</option>
+                                        <option value="DX">DX</option>
+                                        <option value="US">US</option>
+                                        <option value="CR">CR</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Número de acceso</label>
+                                    <input type="text" class="form-control" id="crossSyncAccessionNumber" placeholder="Opcional">
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="crossSyncFilterDiffOnly">
+                                    <label class="form-check-label" for="crossSyncFilterDiffOnly">Mostrar solo filas con diferencias o ausencias</label>
+                                </div>
+                                <button type="button" class="btn btn-primary w-100" id="btnCrossSyncRun">
+                                    <i class="fas fa-exchange-alt"></i> Comparar nodos
+                                </button>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div class="col-md-8" id="crossSyncResultsColumn">
+                        <div id="crossSyncAlerts" class="mb-2"></div>
+                        <div id="crossSyncWatchBanner" class="alert alert-info border border-info mb-2 d-none cross-sync-watch-banner" role="status">
+                            <div class="d-flex flex-wrap align-items-start justify-content-between gap-2">
+                                <div class="flex-grow-1 small">
+                                    <i class="fas fa-stopwatch me-2"></i>
+                                    <strong>Medición de replicación en curso</strong>
+                                    — C-FIND por <code id="crossSyncWatchUidDisplay" class="user-select-all"></code>
+                                    cada
+                                    <select id="crossSyncWatchInterval" class="form-select form-select-sm d-inline-block w-auto mx-1" title="Intervalo entre consultas">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="15">15</option>
+                                        <option value="30">30</option>
+                                    </select>
+                                    s por nodo.
+                                    <span class="d-block mt-1 text-danger"><i class="fas fa-exclamation-triangle me-1"></i>Si abandona esta página o recarga, el seguimiento se <strong>detendrá</strong>.</span>
+                                    <span class="text-muted d-block mt-1" id="crossSyncWatchMeta"></span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" id="btnCrossSyncWatchStop" title="Detener medición">
+                                    <i class="fas fa-stop"></i> Detener
+                                </button>
+                            </div>
+                        </div>
+                        <div id="crossSyncWatchCard" class="card mb-2 d-none">
+                            <div class="card-header py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                <span class="small mb-0"><strong>Lectura puntual por nodo</strong> (solo este UID)</span>
+                                <span class="small text-muted" id="crossSyncWatchLastAt">—</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Nodo</th>
+                                                <th class="text-end">Series</th>
+                                                <th class="text-end">Inst.</th>
+                                                <th class="text-end">Δ inst. vs máx.</th>
+                                                <th>Nota</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="crossSyncWatchResultsBody">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-2" id="crossSyncInsightsShowWrap">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="crossSyncInsightsShowBtn">
+                                <i class="fas fa-eye me-1"></i> Mostrar insights
+                            </button>
+                        </div>
+                        <div class="card mb-2 d-none" id="crossSyncInsightsCard">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span class="small mb-0"><strong>Insights de replicación (últimos 7 días)</strong></span>
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Filtro de insights">
+                                        <button type="button" class="btn btn-outline-secondary active" id="crossSyncInsightsDays1">Hoy</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="crossSyncInsightsDays7">7 días</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="crossSyncInsightsDays30">30 días</button>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="crossSyncInsightsRefreshBtn" title="Actualizar insights">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="crossSyncInsightsHideBtn" title="Ocultar insights">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-end align-items-center mb-2">
+                                    <label for="crossSyncInsightsLimit" class="small text-muted me-2 mb-0">Mostrar</label>
+                                    <select id="crossSyncInsightsLimit" class="form-select form-select-sm w-auto">
+                                        <option value="5" selected>5</option>
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                    </select>
+                                    <span class="small text-muted ms-2">sesiones</span>
+                                </div>
+                                <div class="small text-muted mb-2 text-end" id="crossSyncInsightsLoadedAt">Actualizado: —</div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="small text-muted mb-1">Sesiones recientes</div>
+                                        <div id="crossSyncRecentSessions"></div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="small text-muted mb-1">Ranking latencia por nodo</div>
+                                        <div id="crossSyncLatencyRanking"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-link text-muted p-0 d-none" type="button" id="showCrossSyncFilters" title="Mostrar nodos y criterios">
+                                        <i class="fas fa-chevron-right me-1"></i>
+                                    </button>
+                                    <h5 class="mb-0">Resultado de la comparación</h5>
+                                </div>
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="badge bg-secondary cross-sync-status-chip active" id="crossSyncResultCount" data-status="all" role="button" tabindex="0" aria-pressed="true" title="Mostrar todos">0 estudios</span>
+                                    <span class="badge bg-warning text-dark border cross-sync-status-chip" id="crossSyncStatAbsent" data-status="absent" role="button" tabindex="0" aria-pressed="false" title="Filtrar ausentes (al menos un nodo sin el estudio o error en la búsqueda)">Ausentes: 0</span>
+                                    <span class="badge bg-info text-dark border cross-sync-status-chip" id="crossSyncStatIncomplete" data-status="incomplete" role="button" tabindex="0" aria-pressed="false" title="Filtrar incompletos (en todos los nodos, pero con menos series o instancias que el máximo)">Incompletos: 0</span>
+                                    <span class="badge bg-success border cross-sync-status-chip" id="crossSyncStatAligned" data-status="aligned" role="button" tabindex="0" aria-pressed="false" title="Filtrar alineados (mismo alcance en todos los nodos)">Alineados: 0</span>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="p-3 border-bottom">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="crossSyncLocalSearchFilter" placeholder="Buscar en esta lista… (paciente, ID, fecha, UID, resumen, modalidad)" autocomplete="off">
+                                        <button class="btn btn-outline-secondary" type="button" id="clearCrossSyncLocalSearch" title="Limpiar" style="display: none;">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <div class="modality-filters cross-sync-modality-filters py-2 px-2 mt-2 d-none" id="crossSyncModalityFiltersWrap">
+                                        <div class="filter-label small mb-1">Modalidad en esta lista</div>
+                                        <div class="d-flex flex-wrap gap-1 align-items-center" id="crossSyncModalityButtonsContainer"></div>
+                                    </div>
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                                        <small class="text-muted" id="crossSyncSelectionInfo">0 seleccionados</small>
+                                        <div class="d-flex flex-wrap align-items-center gap-2">
+                                            <div class="form-check form-check-inline mb-0 me-0">
+                                                <input class="form-check-input" type="checkbox" id="crossSyncTreatExtrasAligned" checked>
+                                                <label class="form-check-label small" for="crossSyncTreatExtrasAligned">Extras como alineado</label>
+                                            </div>
+                                            <select class="form-select form-select-sm" id="crossSyncBatchMode" title="Modo de origen para recuperación en lote" style="width: auto;">
+                                                <option value="auto" selected>Origen: auto balanceado</option>
+                                                <option value="fixed">Origen: nodo fijo</option>
+                                            </select>
+                                            <select class="form-select form-select-sm d-none" id="crossSyncBatchFixedNode" title="Nodo fijo de origen" style="width: auto;"></select>
+                                            <select class="form-select form-select-sm" id="crossSyncBatchConcurrency" title="Concurrencia del lote" style="width: auto;">
+                                                <option value="1">1 en paralelo</option>
+                                                <option value="2" selected>2 en paralelo</option>
+                                                <option value="3">3 en paralelo</option>
+                                                <option value="4">4 en paralelo</option>
+                                            </select>
+                                            <select class="form-select form-select-sm" id="crossSyncBatchMaxPerNode" title="Máximo simultáneo por nodo origen" style="width: auto;">
+                                                <option value="1" selected>Máx/nodo: 1</option>
+                                                <option value="2">Máx/nodo: 2</option>
+                                            </select>
+                                            <div class="btn-group btn-group-sm" role="group" aria-label="Acciones lote Cross Sync">
+                                                <button type="button" class="btn btn-outline-secondary" id="crossSyncSelectVisible">
+                                                    Seleccionar visibles
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" id="crossSyncClearSelection">
+                                                    Limpiar
+                                                </button>
+                                                <button type="button" class="btn btn-primary" id="btnCrossSyncRetrieveSelected" disabled>
+                                                    <i class="fas fa-download me-1"></i> Recuperar seleccionados
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mt-1"><span id="crossSyncLocalSearchInfo">Escriba para filtrar las filas mostradas</span> · Con job activo, el <strong>origen</strong> del job se indica una vez junto al paciente (<span class="badge bg-success">Worker</span>, <span class="badge bg-primary">Cloner UI</span>, <span class="badge bg-secondary">Directo</span>, etc.), igual que en la pestaña Jobs.</small>
+                                </div>
+                                <div class="table-responsive cross-sync-table-wrap">
+                                    <table class="table table-sm table-hover mb-0 cross-sync-table" id="crossSyncResultsTable">
+                                        <thead id="crossSyncResultsHead">
+                                            <tr><th class="text-muted">Ejecute una comparación con al menos dos nodos</th></tr>
+                                        </thead>
+                                        <tbody id="crossSyncResultsBody">
+                                            <tr><td class="text-center text-muted py-4">Sin datos</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: PACS Cloner — réplica programada -->
+            <div class="tab-pane fade" id="pacsCloner" role="tabpanel" aria-labelledby="pacs-cloner-tab">
+                <div class="card border-primary border-opacity-25 shadow-sm mb-3">
+                    <div class="card-body">
+                        <h2 class="h5 mb-2 d-flex align-items-center flex-wrap gap-2">
+                            <span><i class="fas fa-clone text-primary me-2"></i> PACS Cloner</span>
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 pacs-cloner-help-btn" data-pacs-cloner-help="intro_pacs_cloner" title="Ayuda general" aria-label="Ayuda general PACS Cloner"><i class="fas fa-question-circle"></i></button>
+                        </h2>
+                        <p class="text-muted small mb-2">
+                            Réplica controlada hacia Orthanc local (C-MOVE vía el mismo flujo que <strong>Jobs</strong>).
+                            Las <strong>políticas</strong> guardan criterios para el daemon futuro; hoy puede <strong>encolar recuperaciones</strong> y ver el historial de órdenes.
+                        </p>
+                        <div class="alert alert-secondary py-2 small mb-3" role="status">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Migraciones: <code class="small">migration_pacs_cloner.sql</code>, <code class="small">migration_pacs_cloner_alignment_strategy.sql</code>, <code class="small">migration_pacs_cloner_discovery_sort.sql</code> y opcional <code class="small">migration_pacs_cloner_worker.sql</code>.
+                            El <strong>daemon</strong> es el script CLI <code class="small">modules/pacs-nodes-manager/bin/cloner-worker.php</code> (cron/systemd); las políticas deben tener <strong>modo automatic</strong> y <strong>activa</strong>.
+                            El motor alternativo <code class="small">cloner-worker-v2.php</code> es independiente y viene <strong>desactivado</strong> en base de datos hasta que lo habilite abajo.
+                        </div>
+                        <div class="border rounded p-2 small mb-3 bg-light" id="pacsClonerWorkerFlagsBox">
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <span class="fw-semibold"><i class="fas fa-power-off me-1"></i> Workers CLI (cron)</span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="sector_workers_cli" title="Ayuda" aria-label="Ayuda workers CLI"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <p class="text-muted mb-2">Por defecto solo el <strong>v1</strong> corre si el cron llama a <code class="small">cloner-worker.php</code>. El <strong>v2</strong> requiere otra entrada en cron y el flag activo; no sustituye al v1 salvo que usted desactive el v1 o cambie el cron.</p>
+                            <div class="form-check mb-1 d-flex align-items-center flex-wrap gap-1">
+                                <input class="form-check-input" type="checkbox" id="pacsClonerWorkerV1Enabled">
+                                <label class="form-check-label" for="pacsClonerWorkerV1Enabled">Worker v1 (<code class="small">cloner-worker.php</code>) habilitado</label>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="worker_v1" title="Ayuda" aria-label="Ayuda worker v1"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <div class="form-check mb-2 d-flex align-items-center flex-wrap gap-1">
+                                <input class="form-check-input" type="checkbox" id="pacsClonerWorkerV2Enabled">
+                                <label class="form-check-label" for="pacsClonerWorkerV2Enabled">Worker v2 (<code class="small">cloner-worker-v2.php</code>) habilitado</label>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="worker_v2" title="Ayuda" aria-label="Ayuda worker v2"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <span class="fw-semibold"><i class="fas fa-sliders-h me-1"></i> Parámetros del worker v1 (BD)</span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="sector_wr_runtime" title="Ayuda parámetros en base" aria-label="Ayuda parámetros worker"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <p class="text-muted mb-2" id="pacsClonerWorkerConsoleHint">Cargando…</p>
+                            <details class="small border rounded px-2 py-1 mb-2 bg-white" id="pacsClonerValoresOrientativos">
+                                <summary class="fw-semibold text-primary" style="cursor:pointer">Valores orientativos y análisis de carga</summary>
+                                <div class="mt-2 pb-1">
+                                    <p class="mb-2">Objetivo: evitar demasiados C-MOVE en paralelo (Orthanc, red o PACS remoto saturados → timeouts y jobs <span class="badge bg-danger">Fallido</span>).</p>
+                                    <div class="table-responsive mb-2">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead class="table-light"><tr><th>Escenario</th><th>Concurrencia política</th><th>Máx. estudios / corrida</th><th>Notas</th></tr></thead>
+                                            <tbody>
+                                                <tr><td>Orthanc modesto, WAN inestable, cron cada 5–10 min</td><td><strong>1</strong></td><td>10–25</td><td>Menos jobs “En ejecución” a la vez; priorice estabilidad.</td></tr>
+                                                <tr><td>Orthanc medio, LAN o enlace estable, cron cada ~5 min</td><td><strong>2</strong></td><td>25–50</td><td>Equilibrio habitual.</td></tr>
+                                                <tr><td>Orthanc fuerte, pocos nodos <code>automatic</code>, red holgada</td><td><strong>2–4</strong></td><td>50–100</td><td>Solo si no sube CPU Orthanc ni aumentan fallos DIMSE.</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <ul class="mb-2 ps-3">
+                                        <li><strong>Máx. / política</strong> y <strong>Máx. C-MOVE / corrida / política</strong> limitan cuánto trabajo encola o arranca cada pasada del worker.</li>
+                                        <li><strong>Cross Sync</strong> en lote crea varios jobs <span class="badge bg-secondary">Directo</span> a la vez: suman carga al mismo tiempo que el worker (<span class="badge bg-success">Worker</span>).</li>
+                                        <li>Si ve muchos <strong>Directo</strong> simultáneos, reduzca selección en lote o espacie recuperaciones.</li>
+                                    </ul>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm pacs-cloner-help-btn" data-pacs-cloner-help="wr_valores_orientativos"><i class="fas fa-book-open me-1"></i>Ayuda ampliada (modal)</button>
+                                </div>
+                            </details>
+                            <div class="row g-2 mb-2">
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeMaxPerRun"><span>Máx. estudios / corrida (total)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_max_per_run" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeMaxPerRun" min="1" max="500" value="25">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeMaxPerPolicy"><span>Máx. / política</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_max_per_policy" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeMaxPerPolicy" min="1" max="500" value="25">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeDispatchPoll"><span>Poll cupo (s)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_poll_sec" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeDispatchPoll" min="1" max="120" value="5">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeDispatchMaxSec"><span>Espera máx. cupo (s)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_dispatch_max_sec" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeDispatchMaxSec" min="0" max="86400" value="900" title="0 = solo primera ronda de dispatch">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeDispatchMaxStarts"><span>Máx. C-MOVE / corrida / política</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_max_starts" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeDispatchMaxStarts" min="1" max="2000" value="200">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeReconcileLimit"><span>Reconciliar jobs (máx.)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_reconcile_limit" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeReconcileLimit" min="1" max="500" value="200">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeStalePendingMin"><span>Timeout pending (min)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_stale_jobs" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeStalePendingMin" min="15" max="1440" value="90" title="Jobs en pending más viejos se marcan Fallido al inicio del worker (libera bloqueo)">
+                                </div>
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeStaleRunningH"><span>Timeout running (h)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_stale_jobs" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="number" class="form-control form-control-sm" id="pacsClonerRuntimeStaleRunningH" min="1" max="72" value="6" title="Jobs en running sin cierre, más viejos, se marcan Fallido al inicio del worker">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerRuntimeModalityGlobal"><span>Prioridad modalidad global (opc., CSV)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_modality_global" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                <input type="text" class="form-control form-control-sm" id="pacsClonerRuntimeModalityGlobal" maxlength="256" placeholder="CR,DX,CT,MR si la política no define la suya">
+                            </div>
+                            <div class="form-check mb-2 d-flex align-items-center flex-wrap gap-1">
+                                <input class="form-check-input" type="checkbox" id="pacsClonerRuntimeReconcileEnabled" checked>
+                                <label class="form-check-label" for="pacsClonerRuntimeReconcileEnabled">Reconciliar jobs con Orthanc al inicio de cada corrida</label>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_reconcile_enabled" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <div class="alert alert-info py-2 px-3 mb-2 small" id="pacsClonerWorkerDiagHint" style="display:none">
+                                <i class="fas fa-info-circle me-1"></i> <span id="pacsClonerWorkerDiagText"></span>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="btnPacsClonerWorkerFlagsSave">
+                                    <i class="fas fa-save me-1"></i> Guardar workers y parámetros
+                                </button>
+                                <button type="button" class="btn btn-warning btn-sm" id="btnPacsClonerUnlockStaleJobs" title="Cierra jobs stuck ahora sin esperar el cron — libera estudios bloqueados">
+                                    <i class="fas fa-unlock-alt me-1"></i> Liberar bloqueos ahora
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_save_refresh" title="Ayuda sobre guardar y refrescar" aria-label="Ayuda guardar y refrescar"><i class="fas fa-question-circle"></i></button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="btnPacsClonerWorkerConsoleRefresh" title="Recargar estado desde el servidor">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex align-items-center flex-wrap gap-1 mb-1">
+                                <span class="fw-semibold"><i class="fas fa-heartbeat me-1"></i> Actividad reciente (worker v1)</span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="wr_activity" title="Ayuda actividad" aria-label="Ayuda actividad worker"><i class="fas fa-question-circle"></i></button>
+                            </div>
+                            <p class="text-muted mb-1 small" id="pacsClonerWorkerQueueSummary">—</p>
+                            <div class="table-responsive mb-2" style="max-height: 220px; overflow-y: auto;">
+                                <table class="table table-sm table-bordered mb-0 bg-white">
+                                    <thead class="table-light"><tr>
+                                        <th>Inicio</th><th>Fin</th><th>Políticas</th><th>Descubiertos</th><th>Encolados</th><th>Notas</th>
+                                    </tr></thead>
+                                    <tbody id="pacsClonerWorkerRunsTableBody"><tr><td colspan="6" class="text-muted">—</td></tr></tbody>
+                                </table>
+                            </div>
+                            <div class="small text-muted mb-1">Órdenes con origen <code>worker</code> (últimas 20)</div>
+                            <div class="table-responsive" style="max-height: 180px; overflow-y: auto;">
+                                <table class="table table-sm table-bordered mb-0 bg-white">
+                                    <thead class="table-light"><tr>
+                                        <th>ID</th><th>Nodo</th><th>Estado</th><th>Etiqueta</th><th>Creado</th>
+                                    </tr></thead>
+                                    <tbody id="pacsClonerWorkerRecentOrdersBody"><tr><td colspan="5" class="text-muted">—</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="pacsClonerGotoCrossSync" title="Comparar nodos y recuperar en lote manualmente">
+                                <i class="fas fa-code-branch me-1"></i> Ir a Cross Sync
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="pacsClonerGotoJobs" title="Ver jobs C-MOVE y progreso Orthanc">
+                                <i class="fas fa-tasks me-1"></i> Ir a Jobs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center py-2">
+                                <span class="d-inline-flex align-items-center flex-wrap gap-1">
+                                    <span class="fw-semibold small" id="pacsClonerPolicyFormTitle">Nueva política</span>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="sector_policy_form" title="Ayuda formulario de política" aria-label="Ayuda política"><i class="fas fa-question-circle"></i></button>
+                                </span>
+                                <span class="badge bg-secondary">paused / worker</span>
+                            </div>
+                            <div class="card-body">
+                                <form id="pacsClonerPolicyForm" class="small">
+                                    <input type="hidden" id="pacsClonerPolicyId" value="">
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyName"><span>Nombre</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_name" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <input type="text" class="form-control form-control-sm" id="pacsClonerPolicyName" required maxlength="128" placeholder="Ej. Clonar CT desde PACS principal">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyNode"><span>Nodo origen</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_node" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <select class="form-select form-select-sm" id="pacsClonerPolicyNode" required></select>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyDateFrom"><span>Fecha desde (opc.)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_dates" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                            <input type="date" class="form-control form-control-sm" id="pacsClonerPolicyDateFrom" title="Si indica desde/hasta, el worker usa este rango en lugar de la ventana en horas">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0" for="pacsClonerPolicyDateTo">Fecha hasta (opc.)</label>
+                                            <input type="date" class="form-control form-control-sm" id="pacsClonerPolicyDateTo">
+                                        </div>
+                                    </div>
+                                    <div class="row g-2 mb-2">
+                                        <div class="col-6">
+                                            <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyScanHours"><span>Ventana (h)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_scan_h" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                            <input type="number" class="form-control form-control-sm" id="pacsClonerPolicyScanHours" value="24" min="1" max="8760">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyMaxConc"><span>Concurrencia máx.</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_max_conc" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                            <input type="number" class="form-control form-control-sm" id="pacsClonerPolicyMaxConc" value="2" min="1" max="16">
+                                        </div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyMode"><span>Modo</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_mode" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <select class="form-select form-select-sm" id="pacsClonerPolicyMode">
+                                            <option value="paused" selected>paused (solo manual / UI)</option>
+                                            <option value="assisted" disabled>assisted (próximamente)</option>
+                                            <option value="automatic">automatic (worker + cron)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyModality"><span>Filtro modalidad (opc.)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_mod_filter" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <input type="text" class="form-control form-control-sm" id="pacsClonerPolicyModality" maxlength="32" placeholder="CT, MR o vacío">
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyModalityPriority"><span>Prioridad modalidad (opc.)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_mod_priority" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <input type="text" class="form-control form-control-sm" id="pacsClonerPolicyModalityPriority" maxlength="128" placeholder="CR,DX,CT,MR,US">
+                                        <div class="form-text">Orden de encolado (izq→der). Si está vacío, usa prioridad global del worker (si existe).</div>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyDiscoverySort"><span>Orden al descubrir estudios (worker)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_discovery_sort" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <select class="form-select form-select-sm" id="pacsClonerPolicyDiscoverySort" title="Tras el C-FIND Study, define qué fila se evalúa primero para encolar">
+                                            <option value="modality">Por modalidad (lista de prioridad; si no hay lista, orden natural)</option>
+                                            <option value="oldest_study">Estudio más antiguo primero (StudyDate/Time asc.)</option>
+                                            <option value="newest_study">Estudio más reciente primero</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyAlignment"><span>Alineación / reanudación C-MOVE</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_alignment" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <select class="form-select form-select-sm" id="pacsClonerPolicyAlignment" title="Requiere nodo DIMSE; sin estudio en local se usa nivel estudio">
+                                            <option value="study">Estudio (default)</option>
+                                            <option value="series">Serie (C-FIND + MOVE series incompletas)</option>
+                                            <option value="instance">Instancia (diff SOP; fallback a estudio si es muy grande)</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerPolicyNotes"><span>Notas</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_notes" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                        <textarea class="form-control form-control-sm" id="pacsClonerPolicyNotes" rows="2" placeholder="Opcional"></textarea>
+                                    </div>
+                                    <div class="form-check mb-3 d-flex align-items-center flex-wrap gap-1">
+                                        <input class="form-check-input" type="checkbox" id="pacsClonerPolicyEnabled">
+                                        <label class="form-check-label" for="pacsClonerPolicyEnabled">Habilitada (worker solo si también modo automatic)</label>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="policy_enabled" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button>
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button type="submit" class="btn btn-primary btn-sm" id="btnPacsClonerPolicySave">
+                                            <i class="fas fa-save me-1"></i> <span id="pacsClonerPolicySubmitLabel">Guardar política</span>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm d-none" id="btnPacsClonerPolicyCancelEdit">
+                                            Cancelar edición
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                                <span class="d-inline-flex align-items-center flex-wrap gap-1 fw-semibold small">Encolar recuperación (orden + job)<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="sector_dispatch" title="Ayuda encolado manual" aria-label="Ayuda dispatch"><i class="fas fa-question-circle"></i></button></span>
+                            </div>
+                            <div class="card-body small">
+                                <div class="mb-2">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerDispatchNode"><span>Nodo origen</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="dispatch_node" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <select class="form-select form-select-sm" id="pacsClonerDispatchNode"></select>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerDispatchUids"><span><code>StudyInstanceUID</code> (uno por línea o separados por coma)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="dispatch_uids" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <textarea class="form-control form-control-sm font-monospace" id="pacsClonerDispatchUids" rows="5" placeholder="1.2.840.…"></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerDispatchLabel"><span>Etiqueta (opc.)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="dispatch_label" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <input type="text" class="form-control form-control-sm" id="pacsClonerDispatchLabel" maxlength="255" placeholder="Referencia interna">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label mb-0 d-flex align-items-center flex-wrap gap-1" for="pacsClonerDispatchAlignment"><span>Alineación C-MOVE (si no usa política)</span><button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="dispatch_alignment" title="Ayuda" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></label>
+                                    <select class="form-select form-select-sm" id="pacsClonerDispatchAlignment">
+                                        <option value="study">Estudio</option>
+                                        <option value="series">Serie</option>
+                                        <option value="instance">Instancia</option>
+                                    </select>
+                                </div>
+                                <div class="d-flex align-items-center flex-wrap gap-2">
+                                    <button type="button" class="btn btn-success btn-sm" id="btnPacsClonerDispatch">
+                                        <i class="fas fa-play me-1"></i> Iniciar clonado
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="dispatch_go" title="Ayuda botón iniciar" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <span class="d-inline-flex align-items-center flex-wrap gap-1 fw-semibold small">Políticas guardadas<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="tbl_policies" title="Ayuda tabla políticas" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPacsClonerRefreshPolicies" title="Actualizar">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Nodo</th>
+                                        <th>Modo</th>
+                                        <th>Ventana h</th>
+                                        <th>Activa</th>
+                                        <th>Descubr.</th>
+                                        <th>Alineación</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pacsClonerPoliciesTableBody">
+                                    <tr><td colspan="8" class="text-muted text-center py-3">Cargue la pestaña para ver políticas</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center py-2">
+                        <span class="d-inline-flex align-items-center flex-wrap gap-1 fw-semibold small">Órdenes recientes<button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 pacs-cloner-help-btn" data-pacs-cloner-help="tbl_orders" title="Ayuda tabla órdenes" aria-label="Ayuda"><i class="fas fa-question-circle"></i></button></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnPacsClonerRefreshOrders" title="Actualizar">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover mb-0 small">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Origen</th>
+                                        <th>Nodo</th>
+                                        <th>Estado</th>
+                                        <th>Job</th>
+                                        <th>Estudios</th>
+                                        <th>Etiqueta</th>
+                                        <th>Creado</th>
+                                        <th class="text-end">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pacsClonerOrdersTableBody">
+                                    <tr><td colspan="9" class="text-muted text-center py-3">—</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="pacsClonerHelpModal" tabindex="-1" aria-labelledby="pacsClonerHelpModalTitle" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header py-2">
+                                <h5 class="modal-title h6 mb-0" id="pacsClonerHelpModalTitle">Ayuda</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body small text-body" id="pacsClonerHelpModalBody"></div>
+                            <div class="modal-footer py-2">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Crear/Editar Nodo -->
+    <div class="modal fade" id="nodeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="nodeModalTitle">Nuevo Nodo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="nodeForm">
+                        <input type="hidden" id="nodeId" name="id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Nodo *</label>
+                            <input type="text" class="form-control" id="nodeName" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tipo de Nodo *</label>
+                            <select class="form-select" id="nodeType" name="node_type" required>
+                                <option value="dimse">DIMSE (Legacy)</option>
+                                <option value="dicomweb">DICOMweb (Moderno)</option>
+                                <option value="local">Local (Orthanc)</option>
+                                <option value="hybrid">Hybrid (Ambos)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3 d-none" id="findQueryModeWrap">
+                            <label class="form-label" for="nodeFindQueryMode">Búsqueda (C-FIND / QIDO)</label>
+                            <select class="form-select" id="nodeFindQueryMode" name="find_query_mode">
+                                <option value="">Automático (si hay URL DICOMweb → QIDO; si no → DIMSE)</option>
+                                <option value="dicomweb">DICOMweb (QIDO-RS)</option>
+                                <option value="dimse">DIMSE (C-FIND vía Orthanc)</option>
+                            </select>
+                            <small class="text-muted">Solo aplica a nodos <strong>híbridos</strong>: qué protocolo usar para comparaciones y medidor. Los tipos DIMSE y DICOMweb puros siguen su configuración.</small>
+                        </div>
+                        
+                        <!-- Configuración DIMSE -->
+                        <div id="dimseConfig">
+                            <h6 class="mt-3 mb-2">Configuración DIMSE</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">AET *</label>
+                                    <input type="text" class="form-control" id="nodeAet" name="aet" maxlength="16" placeholder="NODO_PACS">
+                                    <small class="text-muted">Máximo 16 caracteres</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">
+                                        Local AET (Calling AET)
+                                        <i class="fas fa-info-circle text-muted" data-bs-toggle="tooltip" 
+                                           title="AET alternativo que Orthanc usará como Calling AET para este peer. Permite diferenciar operaciones del PACS Nodes Manager en los logs del PACS remoto. Ejemplo: IDNEOPACS_QR"></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="nodeLocalAet" name="local_aet" maxlength="16" placeholder="IDNEOPACS_QR">
+                                    <small class="text-muted">Opcional. Máximo 16 caracteres</small>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Host/IP *</label>
+                                    <input type="text" class="form-control" id="nodeHost" name="host" placeholder="192.168.1.100">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label">Puerto *</label>
+                                    <input type="number" class="form-control" id="nodePort" name="port" min="1" max="65535" value="104">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Usuario</label>
+                                    <input type="text" class="form-control" id="nodeUsername" name="username">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Contraseña</label>
+                                    <input type="password" class="form-control" id="nodePassword" name="password">
+                                </div>
+                            </div>
+                            
+                            <!-- Flags de operaciones permitidas -->
+                            <h6 class="mt-3 mb-2">Operaciones Permitidas</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeAllowFind" name="allow_find" checked>
+                                        <label class="form-check-label" for="nodeAllowFind">
+                                            Allow Find (C-FIND)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeAllowMove" name="allow_move" checked>
+                                        <label class="form-check-label" for="nodeAllowMove">
+                                            Allow Move (C-MOVE)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeAllowGet" name="allow_get" checked>
+                                        <label class="form-check-label" for="nodeAllowGet">
+                                            Allow Get (C-GET)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeAllowStore" name="allow_store">
+                                        <label class="form-check-label" for="nodeAllowStore">
+                                            Allow Store (C-STORE)
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeAllowTranscoding" name="allow_transcoding">
+                                        <label class="form-check-label" for="nodeAllowTranscoding">
+                                            Allow Transcoding
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="nodeUseDicomTls" name="use_dicom_tls">
+                                        <label class="form-check-label" for="nodeUseDicomTls">
+                                            Usar DICOM TLS
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Configuración avanzada -->
+                            <h6 class="mt-3 mb-2">Configuración Avanzada</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Fabricante</label>
+                                    <select class="form-select" id="nodeManufacturer" name="manufacturer">
+                                        <option value="Generic" selected>Generic</option>
+                                        <option value="GE">GE Healthcare</option>
+                                        <option value="Siemens">Siemens</option>
+                                        <option value="Philips">Philips</option>
+                                        <option value="Canon">Canon</option>
+                                        <option value="Fuji">Fuji</option>
+                                        <option value="Agfa">Agfa</option>
+                                        <option value="Carestream">Carestream</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Timeout (segundos)</label>
+                                    <input type="number" class="form-control" id="nodeTimeout" name="timeout" min="5" max="300" value="30">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Configuración DICOMweb -->
+                        <div id="dicomwebConfig">
+                            <h6 class="mt-3 mb-2">Configuración DICOMweb</h6>
+                            <div class="mb-3">
+                                <label class="form-label">URL Base *</label>
+                                <input type="url" class="form-control" id="nodeDicomwebUrl" name="dicomweb_url" placeholder="https://pacs.example.com/dicomweb">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Tipo de Autenticación</label>
+                                <select class="form-select" id="nodeDicomwebAuthType" name="dicomweb_auth_type">
+                                    <option value="none">Ninguna</option>
+                                    <option value="basic">Basic Auth</option>
+                                    <option value="bearer">Bearer Token</option>
+                                </select>
+                            </div>
+                            <div class="row" id="dicomwebAuthFields">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Usuario</label>
+                                    <input type="text" class="form-control" id="nodeDicomwebUsername" name="dicomweb_username">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Contraseña</label>
+                                    <input type="password" class="form-control" id="nodeDicomwebPassword" name="dicomweb_password">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="nodeDescription" name="description" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="nodeIsActive" name="is_active" checked>
+                                <label class="form-check-label" for="nodeIsActive">
+                                    Nodo activo
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveNode">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Script del sidebar -->
+    <script src="assets/js/sidebar-gui-manager.js?v=202607031104"></script>
+    <!-- Script del módulo -->
+    <script src="modules/pacs-nodes-manager/assets/js/pacs-cloner-help-es.js?v=202607031104"></script>
+    <script src="modules/pacs-nodes-manager/assets/js/pacs-nodes-manager.js?v=202607031104"></script>
+    <script>
+        // Actualizar mensaje de bienvenida
+        updateWelcomeMessage();
+        
+        // Configurar funcionalidad del sidebar
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+            
+            // Función para cerrar sidebar en móvil
+            function closeMobileSidebar() {
+                if (sidebar) {
+                    sidebar.classList.remove('show');
+                }
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.remove('show');
+                }
+            }
+            
+            // Función para abrir sidebar en móvil
+            function openMobileSidebar() {
+                if (sidebar) {
+                    sidebar.classList.add('show');
+                }
+                if (sidebarOverlay) {
+                    sidebarOverlay.classList.add('show');
+                }
+            }
+            
+            // Mobile sidebar toggle - alternar mostrar/ocultar
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+            
+            // Mobile sidebar toggle - cerrar desde botón dentro del sidebar
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+            
+            // Desktop sidebar toggle - colapsar
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    if (sidebarLayout) {
+                        sidebarLayout.classList.add('sidebar-hidden');
+                        // Cambiar el ícono del botón
+                        sidebarToggleDesktop.innerHTML = '<i class="fas fa-angle-double-right"></i>';
+                        // El CSS se encarga de mostrar el botón sidebarToggleShow automáticamente
+                    }
+                });
+            }
+            
+            // Desktop sidebar toggle - mostrar
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    if (sidebarLayout) {
+                        sidebarLayout.classList.remove('sidebar-hidden');
+                        // Cambiar el ícono del botón
+                        if (sidebarToggleDesktop) {
+                            sidebarToggleDesktop.innerHTML = '<i class="fas fa-angle-double-left"></i>';
+                        }
+                        // El CSS se encarga de ocultar el botón sidebarToggleShow automáticamente
+                    }
+                });
+            }
+            
+            // Cerrar sidebar al hacer clic en overlay
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+            
+            // Cerrar sidebar al hacer clic en enlaces de navegación (móvil)
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            });
+            
+            // Toggle para colapsar/mostrar filtros de búsqueda
+            const toggleSearchFilters = document.getElementById('toggleSearchFilters');
+            const showSearchFilters = document.getElementById('showSearchFilters');
+            const searchRow = document.getElementById('searchRow');
+            
+            // Ocultar filtros (colapsar columna)
+            if (toggleSearchFilters && searchRow) {
+                toggleSearchFilters.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchRow.classList.add('filters-collapsed');
+                    // Guardar estado persistente
+                    if (typeof PacsNodesManager !== 'undefined' && PacsNodesManager.savePersistentState) {
+                        PacsNodesManager.savePersistentState();
+                    } else if (window.PacsNodesManager && window.PacsNodesManager.savePersistentState) {
+                        window.PacsNodesManager.savePersistentState();
+                    }
+                });
+            }
+            
+            // Mostrar filtros (expandir columna)
+            if (showSearchFilters && searchRow) {
+                showSearchFilters.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    searchRow.classList.remove('filters-collapsed');
+                    // Guardar estado persistente
+                    if (typeof PacsNodesManager !== 'undefined' && PacsNodesManager.savePersistentState) {
+                        PacsNodesManager.savePersistentState();
+                    } else if (window.PacsNodesManager && window.PacsNodesManager.savePersistentState) {
+                        window.PacsNodesManager.savePersistentState();
+                    }
+                });
+            }
+        });
+    </script>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid');
+                
+                function getScrollPosition() {
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const scrollOptions = { top: 0, behavior: 'smooth' };
+                    window.scrollTo(scrollOptions);
+                    if (document.documentElement) document.documentElement.scrollTo(scrollOptions);
+                    if (document.body) document.body.scrollTo(scrollOptions);
+                    if (mainContent) mainContent.scrollTo(scrollOptions);
+                    if (containerFluid) containerFluid.scrollTo(scrollOptions);
+                }
+                
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (mainContent) mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (containerFluid) containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                setTimeout(toggleScrollButton, 500);
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+</body>
+</html>

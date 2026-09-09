@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Sistema de Asignaciones</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .btn.success {
+            background: #28a745;
+        }
+        .btn.danger {
+            background: #dc3545;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .study-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            background: #f9f9f9;
+        }
+        .study-card h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .study-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .info-item {
+            background: white;
+            padding: 8px;
+            border-radius: 3px;
+            border-left: 3px solid #007bff;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+        .info-value {
+            color: #333;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Sistema de Asignaciones Completo</h1>
+        <p>Esta página permite probar el sistema completo de asignaciones con datos reales.</p>
+
+        <!-- Test 1: Crear asignación con datos completos -->
+        <div class="test-section">
+            <h3>1. Crear Asignación con Datos Completos</h3>
+            <p>Simula la asignación de un estudio con todos los datos completos.</p>
+            <button class="btn" onclick="testCreateAssignment()">Crear Asignación de Prueba</button>
+            <div id="createResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 2: Obtener estudios asignados -->
+        <div class="test-section">
+            <h3>2. Obtener Estudios Asignados</h3>
+            <p>Verifica que los estudios asignados se obtengan con datos completos.</p>
+            <button class="btn" onclick="testGetAssignedStudies()">Obtener Estudios Asignados</button>
+            <div id="getResult" class="result" style="display: none;"></div>
+            <div id="studiesDisplay"></div>
+        </div>
+
+        <!-- Test 3: Verificar permisos -->
+        <div class="test-section">
+            <h3>3. Verificar Sistema de Permisos</h3>
+            <p>Prueba el comportamiento con diferentes tipos de usuarios.</p>
+            <button class="btn" onclick="testWithPacsPermission()">Usuario con PACS QUERY</button>
+            <button class="btn" onclick="testWithoutPacsPermission()">Usuario sin PACS QUERY</button>
+            <div id="permissionResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Test 4: Verificar estructura de tabla -->
+        <div class="test-section">
+            <h3>4. Verificar Estructura de Tabla</h3>
+            <p>Confirma que la tabla study_assignments tiene todos los campos necesarios.</p>
+            <button class="btn" onclick="testTableStructure()">Verificar Estructura</button>
+            <div id="structureResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Función para mostrar resultados
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${isError ? 'error' : 'success'}`;
+            element.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+
+        // Test 1: Crear asignación con datos completos
+        async function testCreateAssignment() {
+            try {
+                const testData = {
+                    study_ids: ['TEST_STUDY_001'],
+                    user_ids: [1],
+                    assigned_by: 1,
+                    studies_data: {
+                        'TEST_STUDY_001': {
+                            patient_name: 'Paciente Test',
+                            patient_id: 'PAT001',
+                            study_date: '20250124',
+                            study_time: '143000',
+                            modality: 'CT',
+                            study_description: 'TC de Tórax con contraste',
+                            accession_number: 'ACC001',
+                            referring_physician: 'Dr. Test',
+                            study_instance_uid: '1.2.3.4.5.6.7.8.9.10',
+                            series_count: 5,
+                            instances_count: 250,
+                            viewer_url: 'https://demoportal.tanjousoft.com.ar/visorweb/studies/TEST_STUDY_001/viewer',
+                            orthanc_study_id: 'TEST_STUDY_001',
+                            patient_birth_date: '19850315',
+                            patient_sex: 'F'
+                        }
+                    }
+                };
+
+                const response = await fetch('/api/assign_multiple_studies.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+
+                const result = await response.json();
+                showResult('createResult', result, !result.success);
+            } catch (error) {
+                showResult('createResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Test 2: Obtener estudios asignados
+        async function testGetAssignedStudies() {
+            try {
+                const response = await fetch('/api/get_user_assigned_studies_fixed.php?session_token=test_token');
+                const result = await response.json();
+                
+                showResult('getResult', result, !result.success);
+                
+                // Mostrar estudios de forma visual
+                if (result.success && result.data.studies) {
+                    displayStudies(result.data.studies);
+                }
+            } catch (error) {
+                showResult('getResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Función para mostrar estudios de forma visual
+        function displayStudies(studies) {
+            const container = document.getElementById('studiesDisplay');
+            container.innerHTML = '';
+            
+            studies.forEach(study => {
+                const card = document.createElement('div');
+                card.className = 'study-card';
+                
+                card.innerHTML = `
+                    <h4>${study.patient_name} - ${study.study_description}</h4>
+                    <div class="study-info">
+                        <div class="info-item">
+                            <div class="info-label">ID Paciente</div>
+                            <div class="info-value">${study.patient_id}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Fecha</div>
+                            <div class="info-value">${study.date}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Modalidad</div>
+                            <div class="info-value">${study.modality}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Médico</div>
+                            <div class="info-value">${study.referring_physician}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Series</div>
+                            <div class="info-value">${study.series_count}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Instancias</div>
+                            <div class="info-value">${study.instances_count}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Asignado por</div>
+                            <div class="info-value">${study.assigned_by}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Antecedentes</div>
+                            <div class="info-value">${study.antecedents.has_notes ? 'Sí' : 'No'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+
+        // Test 3: Probar con permisos PACS
+        async function testWithPacsPermission() {
+            try {
+                const response = await fetch('/api/get_user_assigned_studies_fixed.php?session_token=test_token&test_pacs_permission=true');
+                const result = await response.json();
+                showResult('permissionResult', `Con PACS QUERY: ${JSON.stringify(result, null, 2)}`, !result.success);
+            } catch (error) {
+                showResult('permissionResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        async function testWithoutPacsPermission() {
+            try {
+                const response = await fetch('/api/get_user_assigned_studies_fixed.php?session_token=test_token&test_pacs_permission=false');
+                const result = await response.json();
+                showResult('permissionResult', `Sin PACS QUERY: ${JSON.stringify(result, null, 2)}`, !result.success);
+            } catch (error) {
+                showResult('permissionResult', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Test 4: Verificar estructura de tabla
+        async function testTableStructure() {
+            try {
+                const response = await fetch('/api/check_table_structure.php');
+                const result = await response.json();
+                showResult('structureResult', result, !result.success);
+            } catch (error) {
+                showResult('structureResult', `Error: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>

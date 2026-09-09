@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug - Permisos Informes Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <script src="js/auth-middleware.js"></script>
+    <script src="assets/js/simple-permission-manager.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark">
+                        <h3 class="mb-0">
+                            <i class="fas fa-bug me-2"></i>
+                            Debug - Permisos Informes Manager
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Esta página está diseñada para debuggear problemas con los permisos de Gestión Informes.
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Información del Usuario</h5>
+                                <div id="userInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando información del usuario...</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Permisos del Usuario</h5>
+                                <div id="permissionsInfo" class="mb-3">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                        <p class="mt-2">Cargando permisos...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Pruebas de Debug</h5>
+                            <div class="row">
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-primary w-100" onclick="debugInformesPermission()">
+                                        <i class="fas fa-file-alt me-2"></i>
+                                        Debug Permiso Informes
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-success w-100" onclick="debugAPIResponse()">
+                                        <i class="fas fa-code me-2"></i>
+                                        Debug API Response
+                                    </button>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <button class="btn btn-info w-100" onclick="debugRequirePermission()">
+                                        <i class="fas fa-shield-alt me-2"></i>
+                                        Debug requirePermissionSimple
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Prueba de Acceso Real</h5>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <button class="btn btn-warning w-100" onclick="testRealAccess()">
+                                        <i class="fas fa-external-link-alt me-2"></i>
+                                        Probar Acceso Real
+                                    </button>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <button class="btn btn-danger w-100" onclick="forceBlockAccess()">
+                                        <i class="fas fa-ban me-2"></i>
+                                        Forzar Bloqueo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <h5>Logs de Debug</h5>
+                            <div id="debugLogs" class="alert alert-light" style="max-height: 400px; overflow-y: auto;">
+                                <p class="mb-0 text-muted">Los logs de debug aparecerán aquí...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para agregar logs
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('debugLogs');
+            const timestamp = new Date().toLocaleTimeString();
+            const alertClass = type === 'error' ? 'alert-danger' : type === 'success' ? 'alert-success' : 'alert-info';
+            
+            logsDiv.innerHTML += `
+                <div class="alert ${alertClass} mb-2">
+                    <small class="text-muted">[${timestamp}]</small> ${message}
+                </div>
+            `;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Cargar información del usuario al iniciar
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadUserInfo();
+        });
+
+        /**
+         * Carga la información del usuario y permisos
+         */
+        async function loadUserInfo() {
+            try {
+                addLog('🔍 Iniciando carga de información del usuario...');
+                
+                // Verificar autenticación primero
+                const isAuthenticated = await requireAuth();
+                if (!isAuthenticated) {
+                    addLog('❌ No hay sesión activa', 'error');
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No hay sesión activa. <a href="login.html">Iniciar sesión</a>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                addLog('✅ Usuario autenticado correctamente', 'success');
+                
+                // Obtener información del usuario usando la API original
+                const response = await fetch('api/auth/validate-session-simple.php');
+                const result = await response.json();
+                
+                addLog(`📡 Respuesta de validate-session-simple.php: ${JSON.stringify(result)}`);
+                
+                if (result.success && result.user) {
+                    const user = result.user;
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${user.nombre} ${user.apellido}</h6>
+                                <p class="card-text">
+                                    <strong>ID:</strong> ${user.id}<br>
+                                    <strong>Nivel:</strong> ${user.nivel}<br>
+                                    <strong>Email:</strong> ${user.email || 'No disponible'}
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    document.getElementById('permissionsInfo').innerHTML = `
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">Permisos (${user.permisos.length})</h6>
+                                <div class="row">
+                                    ${user.permisos.map(permission => `
+                                        <div class="col-md-6 mb-1">
+                                            <span class="badge ${permission === 'informes' ? 'bg-success' : 'bg-info'}">${permission}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="mt-2">
+                                    <strong>Permiso Informes:</strong> 
+                                    <span class="badge ${user.permisos.includes('informes') || user.permisos.includes('all') ? 'bg-success' : 'bg-danger'}">
+                                        ${user.permisos.includes('informes') || user.permisos.includes('all') ? 'SÍ' : 'NO'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    addLog(`✅ Usuario cargado: ${user.nombre} ${user.apellido}`, 'success');
+                    addLog(`🔐 Permisos: [${user.permisos.join(', ')}]`);
+                    
+                    // Verificar específicamente el permiso 'informes'
+                    const hasInformes = user.permisos.includes('informes') || user.permisos.includes('all');
+                    addLog(`📋 Tiene permiso 'informes': ${hasInformes ? 'SÍ' : 'NO'}`, hasInformes ? 'success' : 'error');
+                    
+                } else {
+                    addLog('❌ Error cargando información del usuario', 'error');
+                    document.getElementById('userInfo').innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-times-circle me-2"></i>
+                            Error cargando información del usuario
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+                console.error('Error cargando información:', error);
+            }
+        }
+
+        /**
+         * Debug específico para el permiso de Gestión Informes
+         */
+        async function debugInformesPermission() {
+            try {
+                addLog('🔍 Iniciando debug de permiso Gestión Informes...');
+                
+                // Probar con la API original
+                addLog('📡 Probando con validate-session-simple.php...');
+                const response1 = await fetch('api/auth/validate-session-simple.php');
+                const result1 = await response1.json();
+                
+                if (result1.success && result1.user) {
+                    const hasGestionInformes = result1.user.permisos.includes('gestionInformes') || result1.user.permisos.includes('all');
+                    addLog(`✅ API original - Tiene permiso 'gestionInformes': ${hasGestionInformes ? 'SÍ' : 'NO'}`, hasGestionInformes ? 'success' : 'error');
+                }
+                
+                // Probar con Simple Permission Manager
+                addLog('📡 Probando con Simple Permission Manager...');
+                const result2 = await window.simplePermissionManager.checkPermission('gestionInformes', 'Gestión Informes');
+                addLog(`📋 Respuesta de Simple Permission Manager: ${JSON.stringify(result2)}`);
+                
+                if (result2.success) {
+                    addLog(`✅ Simple Permission Manager - Tiene permiso 'gestionInformes': ${result2.hasPermission ? 'SÍ' : 'NO'}`, result2.hasPermission ? 'success' : 'error');
+                } else {
+                    addLog(`❌ Simple Permission Manager - Error: ${result2.error}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`❌ Error en debug: ${error.message}`, 'error');
+                console.error('Error en debug:', error);
+            }
+        }
+
+        /**
+         * Debug de la respuesta de la API
+         */
+        async function debugAPIResponse() {
+            try {
+                addLog('🔍 Debug de respuesta de API...');
+                
+                const response = await fetch('api/auth/validate-session-simple.php');
+                addLog(`📡 Status: ${response.status} ${response.statusText}`);
+                addLog(`📡 Headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                const result = await response.json();
+                addLog(`📋 Response Body: ${JSON.stringify(result, null, 2)}`);
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Debug de requirePermissionSimple
+         */
+        async function debugRequirePermission() {
+            try {
+                addLog('🔍 Debug de requirePermissionSimple...');
+                
+                const hasAccess = await requirePermissionSimple('gestionInformes', 'Gestión Informes', {
+                    title: 'Acceso Denegado - Gestión Informes',
+                    message: 'No tienes permisos para acceder a <strong>Gestión Informes</strong>.',
+                    redirectUrl: 'dashboard-unified.html',
+                    showLogoutButton: true
+                });
+                
+                addLog(`📋 Resultado de requirePermissionSimple: ${hasAccess ? 'PERMITIDO' : 'DENEGADO'}`, hasAccess ? 'success' : 'error');
+                
+            } catch (error) {
+                addLog(`❌ Error: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Prueba de acceso real
+         */
+        function testRealAccess() {
+            addLog('🔍 Probando acceso real a informes-manager...');
+            addLog('📋 Para probar el acceso real:');
+            addLog('1. Abre components/informes-manager.html');
+            addLog('2. Si tienes permisos → Acceso normal');
+            addLog('3. Si no tienes permisos → Modal de acceso denegado');
+            addLog('4. Verifica que el código se detenga después del modal');
+        }
+
+        /**
+         * Forzar bloqueo de acceso
+         */
+        function forceBlockAccess() {
+            addLog('🔍 Forzando bloqueo de acceso...');
+            addLog('📋 Esto simula lo que debería pasar si no tienes permisos:');
+            addLog('1. Modal de acceso denegado');
+            addLog('2. Código se detiene (return)');
+            addLog('3. Página queda bloqueada');
+            
+            // Simular el comportamiento esperado
+            setTimeout(() => {
+                addLog('✅ Comportamiento esperado: Código detenido después del modal', 'success');
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

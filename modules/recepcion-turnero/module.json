@@ -1,0 +1,54 @@
+{
+  "id": "recepcion-turnero",
+  "name": "Recepción y Turnero",
+  "version": "1.0.0",
+  "description": "Ingreso de pacientes, turnero provisorio/presencial, catálogos de cobertura e integración opcional con worklist DICOM.",
+  "requires_core": ">=2025.06",
+  "install_url": "/modules/recepcion-turnero/install.php",
+  "permissions_url": "/modules/recepcion-turnero/install-permissions.php",
+  "uninstall_url": "/modules/recepcion-turnero/uninstall.php",
+  "sidebar": [
+    {
+      "permission": "gui_turnero",
+      "url": "modules/recepcion-turnero/turnero.html",
+      "icon": "fa-calendar-check",
+      "label": "Turnero"
+    },
+    {
+      "permission": "gui_ingreso_pacientes",
+      "url": "modules/recepcion-turnero/ingreso-pacientes.html",
+      "icon": "fa-user-injured",
+      "label": "Ingreso de Pacientes"
+    },
+    {
+      "permission": "gui_abm_catalogos",
+      "url": "modules/recepcion-turnero/catalogos.html",
+      "icon": "fa-book-medical",
+      "label": "ABM Catálogos"
+    }
+  ],
+  "tables": [
+    "nomencladores",
+    "nomenclador_practicas",
+    "nomenclador_import_logs",
+    "obras_sociales",
+    "ref_physicians",
+    "equipos_imagen",
+    "equipo_horarios",
+    "equipo_excepciones",
+    "equipo_secuencias",
+    "rt_pacientes",
+    "rt_paciente_obras_sociales",
+    "rt_turnos",
+    "rt_turno_practicas",
+    "rt_module_meta"
+  ],
+  "alters_core_tables": [],
+  "links_core_tables": [
+    "pacientes (FK rt_pacientes.pacientes_id)",
+    "worklist (FK rt_turnos.worklist_id)"
+  ],
+  "integrates_with": ["worklist", "pacientes"],
+  "status": "scaffold",
+  "phase": 0
+}

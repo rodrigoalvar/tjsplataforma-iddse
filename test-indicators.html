@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Indicadores Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Test Indicadores Dashboard</h1>
+        
+        <div class="row mb-3">
+            <div class="col">
+                <button class="btn btn-primary" onclick="createTestReport()">Crear Informe de Prueba</button>
+                <button class="btn btn-info" onclick="checkState()">Verificar Estado</button>
+                <button class="btn btn-success" onclick="testIndicators()">Test Indicadores</button>
+                <button class="btn btn-warning" onclick="clearAll()">Limpiar Todo</button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Estado Global</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="globalState">Cargando...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Test de Botón</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="testButton">
+                            <button class="btn btn-sm btn-action btn-report" id="reportBtn" title="Generar Informe">
+                                <i class="fas fa-file-medical"></i>
+                                <span class="ms-1">Informe</span>
+                            </button>
+                        </div>
+                        <div class="mt-2">
+                            <small>Este botón debería cambiar a "Continuar" cuando hay un informe en progreso</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Logs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="logs" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/global-state-manager.js"></script>
+    <script>
+        let logContainer;
+        
+        function log(message) {
+            console.log(message);
+            if (logContainer) {
+                logContainer.innerHTML += new Date().toLocaleTimeString() + ': ' + message + '<br>';
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        }
+        
+        function createTestReport() {
+            log('Creando informe de prueba...');
+            
+            if (window.globalStateManager) {
+                // Crear un informe activo
+                window.globalStateManager.setActiveReport('STUDY123', {
+                    patientId: 'TEST001',
+                    patientName: 'Paciente Prueba',
+                    modality: 'CT',
+                    studyDescription: 'Estudio de Prueba',
+                    studyInstanceUID: '1.2.3.4.5',
+                    startedAt: Date.now()
+                });
+                
+                // También crear contenido persistido simulado
+                const persistenceKey = `editor_persistence_STUDY123_TEST001`;
+                const persistenceData = {
+                    tinymce: {
+                        content: '<p>Este es un informe de prueba con contenido significativo que debería ser detectado por el sistema de persistencia. Contiene más de 200 caracteres para asegurar que se detecte como contenido real y no como template vacío. Aquí hay más contenido para hacer el texto más largo y asegurar que pase todas las validaciones del sistema.</p>'
+                    },
+                    hasUnsavedChanges: true,
+                    timestamp: Date.now()
+                };
+                
+                localStorage.setItem(persistenceKey, JSON.stringify(persistenceData));
+                
+                log('✅ Informe de prueba creado con studyId: STUDY123');
+                checkState();
+                testIndicators();
+            } else {
+                log('❌ Global State Manager no disponible');
+            }
+        }
+        
+        function checkState() {
+            if (window.globalStateManager) {
+                const activeReports = window.globalStateManager.getAllActiveReports();
+                const isActive = window.globalStateManager.isReportActive('STUDY123');
+                const currentContext = window.globalStateManager.getCurrentContext();
+                const stats = window.globalStateManager.getStats();
+                
+                document.getElementById('globalState').innerHTML = `
+                    <h6>Informes Activos:</h6>
+                    <pre style="font-size: 10px;">${JSON.stringify(activeReports, null, 2)}</pre>
+                    <h6>¿STUDY123 activo?</h6>
+                    <span class="badge ${isActive ? 'bg-success' : 'bg-danger'}">${isActive ? 'SÍ' : 'NO'}</span>
+                    <h6>Contexto Actual:</h6>
+                    <pre style="font-size: 10px;">${JSON.stringify(currentContext, null, 2)}</pre>
+                    <h6>Estadísticas:</h6>
+                    <pre style="font-size: 10px;">${JSON.stringify(stats, null, 2)}</pre>
+                `;
+                
+                log('Estado verificado - STUDY123 activo: ' + isActive);
+            } else {
+                document.getElementById('globalState').innerHTML = '<p class="text-danger">Global State Manager no disponible</p>';
+            }
+        }
+        
+        function testIndicators() {
+            log('Probando indicadores...');
+            
+            // Simular la función checkInProgressReport
+            function checkInProgressReport(studyId) {
+                log('Verificando informe en progreso para studyId: ' + studyId);
+                
+                if (window.globalStateManager) {
+                    log('Global state manager disponible');
+                    const isActive = window.globalStateManager.isReportActive(studyId);
+                    log('¿Informe activo en estado global? ' + isActive);
+                    if (isActive) {
+                        log('Informe encontrado como activo en estado global');
+                        return true;
+                    }
+                    
+                    const activeReport = window.globalStateManager.getActiveReport(studyId);
+                    log('Informe activo obtenido: ' + JSON.stringify(activeReport));
+                    if (activeReport && activeReport.patientId) {
+                        const hasContent = window.globalStateManager.hasPersistedContent(studyId, activeReport.patientId);
+                        log('¿Tiene contenido persistido? ' + hasContent);
+                        if (hasContent) {
+                            window.globalStateManager.setActiveReport(studyId, activeReport);
+                            log('Informe marcado como activo por contenido persistido');
+                            return true;
+                        }
+                    }
+                } else {
+                    log('Global state manager NO disponible');
+                }
+                
+                return false;
+            }
+            
+            // Test del botón
+            const hasInProgressReport = checkInProgressReport('STUDY123');
+            const reportBtn = document.getElementById('reportBtn');
+            
+            if (hasInProgressReport) {
+                reportBtn.className = 'btn btn-sm btn-action btn-warning';
+                reportBtn.title = 'Continuar Informe en Progreso';
+                reportBtn.innerHTML = '<i class="fas fa-edit"></i><span class="ms-1">Continuar</span>';
+                log('✅ Botón actualizado a "Continuar"');
+            } else {
+                reportBtn.className = 'btn btn-sm btn-action btn-report';
+                reportBtn.title = 'Generar Informe';
+                reportBtn.innerHTML = '<i class="fas fa-file-medical"></i><span class="ms-1">Informe</span>';
+                log('ℹ️ Botón mantiene estado "Informe"');
+            }
+        }
+        
+        function clearAll() {
+            if (window.globalStateManager) {
+                // Limpiar estado global
+                sessionStorage.clear();
+                
+                // Limpiar localStorage de persistencia
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('editor_persistence_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                log('🧹 Todo limpiado');
+                checkState();
+                testIndicators();
+            }
+        }
+        
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            logContainer = document.getElementById('logs');
+            
+            setTimeout(() => {
+                if (window.globalStateManager) {
+                    log('✅ Global State Manager cargado correctamente');
+                    checkState();
+                } else {
+                    log('❌ Global State Manager NO cargado');
+                }
+            }, 500);
+        });
+    </script>
+    
+    <style>
+        .btn-report {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        
+        .btn-report:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+    </style>
+</body>
+</html>

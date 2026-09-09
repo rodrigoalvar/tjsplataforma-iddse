@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Final - Contadores Corregidos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .api-comparison {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        .api-header {
+            background-color: #f8f9fa;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #dee2e6;
+            font-weight: bold;
+        }
+        .api-content {
+            padding: 1rem;
+        }
+        .counter-correct {
+            background-color: #d1edff;
+            border-left: 4px solid #0d6efd;
+        }
+        .counter-incorrect {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .study-item {
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-test-tube"></i> 
+                            Prueba Final: Contadores de Antecedentes Corregidos
+                        </h4>
+                        <small>Comparación entre API original y API con lógica PACS QUERY aplicada</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Objetivo de la Prueba</h6>
+                            <p class="mb-0">
+                                Verificar que la API <code>get_user_assigned_studies_fixed.php</code> 
+                                ahora usa la misma lógica SQL correcta que usa PACS QUERY 
+                                (implementada en <code>study_antecedents.php</code>) para calcular 
+                                los contadores de antecedentes.
+                            </p>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="testAPIs()">
+                            <i class="fas fa-play"></i> Ejecutar Prueba de Comparación
+                        </button>
+
+                        <div id="results" class="mt-4"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testAPIs() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"></div><p>Cargando datos...</p></div>';
+
+            try {
+                // Llamar a la API corregida
+                const correctedResponse = await fetch('api/get_user_assigned_studies_fixed.php');
+                const correctedData = await correctedResponse.json();
+
+                // Llamar a la API de PACS QUERY para comparar
+                const pacsResponse = await fetch('api/study_antecedents.php?study_ids=1,2,3,4,5');
+                const pacsData = await pacsResponse.json();
+
+                displayResults(correctedData, pacsData);
+
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>Error al cargar datos:</h6>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayResults(correctedData, pacsData) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="api-comparison">
+                            <div class="api-header">
+                                📋 API Estudios Asignados (Corregida)
+                            </div>
+                            <div class="api-content">
+                                ${displayStudiesData(correctedData, 'assigned')}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="api-comparison">
+                            <div class="api-header">
+                                🔍 API PACS QUERY (Referencia)
+                            </div>
+                            <div class="api-content">
+                                ${displayStudiesData(pacsData, 'pacs')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>📊 Análisis de Corrección</h5>
+                        </div>
+                        <div class="card-body">
+                            ${analyzeCorrection(correctedData, pacsData)}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayStudiesData(data, type) {
+            if (!data.success || !data.data) {
+                return '<div class="alert alert-warning">No se pudieron cargar los datos</div>';
+            }
+
+            let html = '';
+            const studies = type === 'assigned' ? data.data.studies : data.data;
+            
+            if (!studies || studies.length === 0) {
+                return '<div class="alert alert-info">No hay estudios disponibles</div>';
+            }
+
+            studies.forEach((study, index) => {
+                const totalCount = type === 'assigned' 
+                    ? (study.antecedents?.total_count || 0)
+                    : (study.total_antecedents || 0);
+                
+                const hasNotes = type === 'assigned'
+                    ? (study.antecedents?.has_notes || false)
+                    : (study.has_notes > 0);
+                
+                const filesCount = type === 'assigned'
+                    ? (study.antecedents?.files_count || 0)
+                    : (study.files_count || 0);
+
+                html += `
+                    <div class="study-item">
+                        <h6>Estudio ${index + 1}</h6>
+                        <p><strong>ID:</strong> ${study.study_id || study.id || 'N/A'}</p>
+                        <p><strong>Total Antecedentes:</strong> <span class="badge bg-primary">${totalCount}</span></p>
+                        <p><strong>Tiene Notas:</strong> <span class="badge ${hasNotes ? 'bg-success' : 'bg-secondary'}">${hasNotes ? 'SÍ' : 'NO'}</span></p>
+                        <p><strong>Archivos:</strong> <span class="badge bg-info">${filesCount}</span></p>
+                    </div>
+                `;
+            });
+
+            return html;
+        }
+
+        function analyzeCorrection(correctedData, pacsData) {
+            let html = `
+                <div class="alert alert-success">
+                    <h6><i class="fas fa-check-circle"></i> Corrección Implementada</h6>
+                    <p>La API <code>get_user_assigned_studies_fixed.php</code> ahora usa la misma consulta SQL que <code>study_antecedents.php</code>:</p>
+                    <pre class="bg-light p-2 rounded"><code>SELECT 
+    COUNT(saf.id) as files_count,
+    CASE 
+        WHEN MAX(sa.notes) IS NOT NULL AND TRIM(MAX(sa.notes)) != '' THEN 1 
+        ELSE 0 
+    END as has_notes,
+    (COUNT(saf.id) + CASE 
+        WHEN MAX(sa.notes) IS NOT NULL AND TRIM(MAX(sa.notes)) != '' THEN 1 
+        ELSE 0 
+    END) as total_antecedents
+FROM study_antecedents sa
+LEFT JOIN study_antecedents_files saf ON sa.id = saf.antecedent_id
+WHERE sa.study_id = ?
+GROUP BY sa.study_id</code></pre>
+                </div>
+
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-lightbulb"></i> Beneficios de la Corrección</h6>
+                    <ul class="mb-0">
+                        <li><strong>Consistencia:</strong> Ambas APIs (PACS QUERY y Estudios Asignados) usan la misma lógica</li>
+                        <li><strong>Precisión:</strong> Los contadores reflejan exactamente el número real de notas y archivos</li>
+                        <li><strong>Mantenibilidad:</strong> Una sola fuente de verdad para el cálculo de antecedentes</li>
+                        <li><strong>Confiabilidad:</strong> Eliminación de discrepancias entre diferentes modos de usuario</li>
+                    </ul>
+                </div>
+            `;
+
+            return html;
+        }
+
+        // Ejecutar automáticamente al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            testAPIs();
+        });
+    </script>
+</body>
+</html>

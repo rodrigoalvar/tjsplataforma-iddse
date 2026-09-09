@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inspector de Z-Index de Modales</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .inspector-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .modal-info {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+            border-radius: 4px;
+        }
+        .z-index-value {
+            font-weight: bold;
+            color: #dc3545;
+            font-size: 1.2em;
+        }
+        .btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0056b3;
+        }
+        .high-zindex {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .low-zindex {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="inspector-panel">
+        <h1>🔍 Inspector de Z-Index de Modales</h1>
+        <p>Esta herramienta inspecciona todos los modales y elementos con z-index en la página.</p>
+        
+        <button class="btn" onclick="inspectZIndexes()">🔍 Inspeccionar Z-Index</button>
+        <button class="btn" onclick="openEstudiosPage()">📄 Abrir Página de Estudios</button>
+        <button class="btn" onclick="fixZIndexes()">🔧 Aplicar Z-Index Alto</button>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function inspectZIndexes() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h3>📊 Resultados de Inspección:</h3>';
+            
+            // Buscar todos los elementos con z-index
+            const allElements = document.querySelectorAll('*');
+            const elementsWithZIndex = [];
+            
+            allElements.forEach(element => {
+                const computedStyle = window.getComputedStyle(element);
+                const zIndex = computedStyle.zIndex;
+                
+                if (zIndex !== 'auto' && zIndex !== '0') {
+                    elementsWithZIndex.push({
+                        element: element,
+                        zIndex: parseInt(zIndex),
+                        tagName: element.tagName,
+                        id: element.id,
+                        className: element.className
+                    });
+                }
+            });
+            
+            // Ordenar por z-index descendente
+            elementsWithZIndex.sort((a, b) => b.zIndex - a.zIndex);
+            
+            if (elementsWithZIndex.length === 0) {
+                results.innerHTML += '<p>❌ No se encontraron elementos con z-index definido.</p>';
+                return;
+            }
+            
+            elementsWithZIndex.forEach(item => {
+                const isHighZIndex = item.zIndex >= 2000;
+                const className = isHighZIndex ? 'high-zindex' : 'low-zindex';
+                
+                results.innerHTML += `
+                    <div class="modal-info ${className}">
+                        <strong>${item.tagName}</strong>
+                        ${item.id ? `#${item.id}` : ''}
+                        ${item.className ? `.${item.className.split(' ').join('.')}` : ''}
+                        <br>
+                        <span class="z-index-value">Z-Index: ${item.zIndex}</span>
+                    </div>
+                `;
+            });
+            
+            // Buscar específicamente modales de Bootstrap
+            const bootstrapModals = document.querySelectorAll('.modal');
+            if (bootstrapModals.length > 0) {
+                results.innerHTML += '<h4>🎭 Modales de Bootstrap encontrados:</h4>';
+                bootstrapModals.forEach(modal => {
+                    const computedStyle = window.getComputedStyle(modal);
+                    const zIndex = computedStyle.zIndex;
+                    results.innerHTML += `
+                        <div class="modal-info">
+                            <strong>Modal:</strong> #${modal.id || 'sin-id'}
+                            <br>
+                            <span class="z-index-value">Z-Index: ${zIndex}</span>
+                        </div>
+                    `;
+                });
+            }
+        }
+        
+        function openEstudiosPage() {
+            window.open('estudios-manager.html', '_blank');
+        }
+        
+        function fixZIndexes() {
+            // Aplicar z-index muy alto a modales de confirmación
+            const confirmationModal = document.getElementById('confirmationModal');
+            if (confirmationModal) {
+                confirmationModal.style.zIndex = '10000';
+                console.log('✅ Z-index del modal de confirmación establecido a 10000');
+            }
+            
+            // Buscar y aplicar z-index alto a backdrops
+            const backdrops = document.querySelectorAll('.modal-backdrop');
+            backdrops.forEach((backdrop, index) => {
+                backdrop.style.zIndex = '9999';
+                console.log(`✅ Z-index del backdrop ${index + 1} establecido a 9999`);
+            });
+            
+            alert('✅ Z-Index aplicado. Revisa la consola para más detalles.');
+            inspectZIndexes(); // Re-inspeccionar después del cambio
+        }
+        
+        // Inspeccionar automáticamente al cargar
+        window.addEventListener('load', () => {
+            setTimeout(inspectZIndexes, 1000);
+        });
+    </script>
+</body>
+</html>

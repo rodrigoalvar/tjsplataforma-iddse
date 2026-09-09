@@ -1,0 +1,8 @@
+/* Recepción y Turnero — estilos con namespace .rt-module */
+.rt-module .welcome-card {
+    border-left: 4px solid #8B0D32;
+}
+
+.rt-module code {
+    color: #8B0D32;
+}

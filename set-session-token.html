@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configurar Token de Sesión</title>
+</head>
+<body>
+    <h2>Configurando Token de Sesión...</h2>
+    <p id="status">Configurando...</p>
+    
+    <script>
+        // Configurar token válido
+        const validToken = 'test_session_801dc80898606a858fdcc554124e7f21';
+        
+        // Establecer en localStorage
+        localStorage.setItem('sessionToken', validToken);
+        
+        // Establecer cookie
+        document.cookie = 'session_token=' + validToken + '; path=/; max-age=86400';
+        
+        document.getElementById('status').innerHTML = 
+            'Token configurado correctamente.<br>' +
+            'Token: ' + validToken + '<br><br>' +
+            '<a href="components/editor.html?studyInstanceUID=test123&patientID=12345&patientName=Juan%20Perez" target="_blank">Abrir Editor con Token</a>';
+        
+        console.log('Token de sesión configurado:', validToken);
+    </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+{
+  "id": "qa-publicacion",
+  "name": "QA / Control de Calidad",
+  "version": "1.0.0",
+  "description": "Control de calidad para autorizar o bloquear la visualización de estudios (imágenes) e informes en el portal del paciente.",
+  "requires_core": ">=2025.06",
+  "install_url": "/modules/qa-publicacion/install.php",
+  "permissions_url": "/modules/qa-publicacion/install-permissions.php",
+  "uninstall_url": "/modules/qa-publicacion/uninstall.php",
+  "sidebar": [
+    {
+      "permission": "gui_qa_publicacion",
+      "url": "modules/qa-publicacion/qa-manager.html",
+      "icon": "fa-shield-alt",
+      "label": "QA Control de Calidad"
+    }
+  ],
+  "tables": [
+    "qa_config",
+    "qa_study_status",
+    "qa_informe_status",
+    "qa_action_log"
+  ],
+  "alters_core_tables": [],
+  "links_core_tables": [
+    "informes (FK lógica qa_informe_status.informe_id)"
+  ],
+  "integrates_with": ["paciente.html", "portal-estudios", "informes-manager", "estudios-manager"],
+  "notes": "Modo configurable: lista_negra, lista_blanca, hibrido. Acción rápida en estudios-manager e informes-manager.",
+  "status": "stable",
+  "phase": 1
+}

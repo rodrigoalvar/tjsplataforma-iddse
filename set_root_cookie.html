@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Establecer Sesión Root</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: #28a745;
+            background: #d4edda;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .info {
+            color: #0c5460;
+            background: #d1ecf1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .token-display {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Establecer Sesión Root</h1>
+        
+        <div class="info">
+            <strong>Propósito:</strong> Esta página establece la cookie de sesión para el usuario root, 
+            permitiendo acceder a todos los informes sin restricciones de permisos.
+        </div>
+
+        <div id="status"></div>
+
+        <h3>Token de Sesión Root:</h3>
+        <div class="token-display" id="tokenDisplay">Cargando...</div>
+
+        <button onclick="setCookie()">Establecer Cookie de Sesión</button>
+        <button onclick="testAccess()">Probar Acceso a Informe</button>
+        <button onclick="goToReports()">Ir a Gestión de Informes</button>
+
+        <div id="testResult"></div>
+    </div>
+
+    <script>
+        const rootToken = '1170c282c52e4691d6d2924f9ea731b1702bbe8403e476736b492789a8326eda';
+        
+        document.getElementById('tokenDisplay').textContent = rootToken;
+
+        function setCookie() {
+            // Establecer cookie de sesión
+            document.cookie = `session_token=${rootToken}; path=/; max-age=${24 * 60 * 60}; SameSite=Lax`;
+            
+            // También establecer en localStorage como respaldo
+            localStorage.setItem('session_token', rootToken);
+            
+            document.getElementById('status').innerHTML = `
+                <div class="success">
+                    ✅ Cookie de sesión establecida correctamente<br>
+                    <strong>Token:</strong> ${rootToken.substring(0, 20)}...<br>
+                    <strong>Válida por:</strong> 24 horas
+                </div>
+            `;
+        }
+
+        async function testAccess() {
+            try {
+                const response = await fetch('/api/informes/get.php?informe_id=35', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${rootToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    document.getElementById('testResult').innerHTML = `
+                        <div class="success">
+                            ✅ <strong>Acceso exitoso al informe 35</strong><br>
+                            Título: ${data.data.titulo}<br>
+                            Usuario: ${data.data.usuario_nombre}<br>
+                            Estado: ${data.data.estado}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('testResult').innerHTML = `
+                        <div style="color: #dc3545; background: #f8d7da; padding: 15px; border-radius: 5px;">
+                            ❌ <strong>Error al acceder al informe:</strong><br>
+                            ${data.message || 'Error desconocido'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('testResult').innerHTML = `
+                    <div style="color: #dc3545; background: #f8d7da; padding: 15px; border-radius: 5px;">
+                        ❌ <strong>Error de conexión:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function goToReports() {
+            window.location.href = '/components/informes-manager.html';
+        }
+
+        // Establecer cookie automáticamente al cargar la página
+        window.onload = function() {
+            setCookie();
+        };
+    </script>
+</body>
+</html>

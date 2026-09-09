@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Frontend Issue - Antecedents Badges</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { margin: 5px 0; padding: 5px; border-left: 3px solid #ccc; }
+        .log.info { border-color: #007bff; background: #e7f3ff; }
+        .log.warn { border-color: #ffc107; background: #fff3cd; }
+        .log.error { border-color: #dc3545; background: #f8d7da; }
+        .log.debug { border-color: #6f42c1; background: #f3e5f5; }
+        pre { margin: 0; }
+        #logs { max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+        .study-row { border: 1px solid #ddd; margin: 10px 0; padding: 10px; }
+        .badge { background: #ffc107; color: #000; padding: 5px 10px; border-radius: 5px; display: inline-block; }
+        .text-muted { color: #6c757d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Debug Frontend Issue - Antecedents Badges</h1>
+    
+    <div>
+        <button onclick="testFrontendLogic()">Probar Lógica Frontend</button>
+        <button onclick="clearLogs()">Limpiar Logs</button>
+    </div>
+    
+    <div id="logs"></div>
+    <div id="results"></div>
+
+    <script>
+        const logsDiv = document.getElementById('logs');
+        const resultsDiv = document.getElementById('results');
+        
+        function addLog(message, type = 'info') {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<pre>${new Date().toLocaleTimeString()} [${type.toUpperCase()}] ${message}</pre>`;
+            logsDiv.appendChild(logDiv);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function clearLogs() {
+            logsDiv.innerHTML = '';
+            resultsDiv.innerHTML = '';
+        }
+        
+        // Simular la función createStudyRow del dashboard
+        function createStudyRow(study) {
+            addLog(`🔍 Procesando estudio ${study.id}`, 'debug');
+            
+            const antecedentsCount = study.antecedents ? study.antecedents.total_count : 0;
+            const hasAntecedents = study.antecedents && (
+                study.antecedents.has_notes || 
+                study.antecedents.has_files || 
+                study.antecedents.has_images || 
+                study.antecedents.has_camera_captures ||
+                antecedentsCount > 0
+            );
+            
+            addLog(`  - antecedentsCount: ${antecedentsCount}`, 'info');
+            addLog(`  - hasAntecedents: ${hasAntecedents}`, 'info');
+            addLog(`  - study.antecedents: ${JSON.stringify(study.antecedents)}`, 'debug');
+            
+            const antecedentsColumn = hasAntecedents ? 
+                `<span class="badge">📄 ${antecedentsCount}</span>` : 
+                '<span class="text-muted">-</span>';
+            
+            return {
+                studyId: study.id,
+                patientName: study.patient_name,
+                antecedentsCount,
+                hasAntecedents,
+                antecedentsColumn,
+                rawAntecedents: study.antecedents
+            };
+        }
+        
+        async function testFrontendLogic() {
+            clearLogs();
+            addLog('🚀 Iniciando test de lógica frontend...', 'info');
+            
+            try {
+                // Simular cookie de sesión
+                document.cookie = 'session_token=test_token_tucuman; path=/';
+                addLog('🍪 Cookie establecida', 'info');
+                
+                // Llamar a la API
+                addLog('📡 Llamando a la API...', 'info');
+                const response = await fetch('api/get_user_assigned_studies_fixed.php');
+                const result = await response.json();
+                
+                addLog(`📋 Respuesta API: ${response.status}`, 'info');
+                
+                if (result.success && result.data && result.data.studies) {
+                    const studies = result.data.studies;
+                    addLog(`✅ ${studies.length} estudios recibidos`, 'info');
+                    
+                    // Crear tabla de resultados
+                    let tableHTML = `
+                        <h3>Resultados del Procesamiento</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Estudio ID</th>
+                                    <th>Paciente</th>
+                                    <th>Antecedents Count</th>
+                                    <th>Has Antecedents</th>
+                                    <th>Badge Mostrado</th>
+                                    <th>Datos Raw</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    // Procesar cada estudio
+                    studies.forEach((study, index) => {
+                        addLog(`\n--- Estudio ${index + 1} ---`, 'info');
+                        const processedStudy = createStudyRow(study);
+                        
+                        tableHTML += `
+                            <tr>
+                                <td>${processedStudy.studyId}</td>
+                                <td>${processedStudy.patientName}</td>
+                                <td>${processedStudy.antecedentsCount}</td>
+                                <td>${processedStudy.hasAntecedents ? '✅ SÍ' : '❌ NO'}</td>
+                                <td>${processedStudy.antecedentsColumn}</td>
+                                <td><pre style="font-size: 10px;">${JSON.stringify(processedStudy.rawAntecedents, null, 2)}</pre></td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tableHTML += '</tbody></table>';
+                    resultsDiv.innerHTML = tableHTML;
+                    
+                    // Resumen
+                    const studiesWithBadges = studies.filter(study => {
+                        const antecedentsCount = study.antecedents ? study.antecedents.total_count : 0;
+                        const hasAntecedents = study.antecedents && (
+                            study.antecedents.has_notes || 
+                            study.antecedents.has_files || 
+                            study.antecedents.has_images || 
+                            study.antecedents.has_camera_captures ||
+                            antecedentsCount > 0
+                        );
+                        return hasAntecedents;
+                    });
+                    
+                    addLog(`\n📊 RESUMEN:`, 'info');
+                    addLog(`  - Total estudios: ${studies.length}`, 'info');
+                    addLog(`  - Estudios con badges: ${studiesWithBadges.length}`, 'info');
+                    addLog(`  - Estudios sin badges: ${studies.length - studiesWithBadges.length}`, 'info');
+                    
+                } else {
+                    addLog(`❌ Error en API: ${result.error || 'Respuesta inválida'}`, 'error');
+                    addLog(`📋 Respuesta completa: ${JSON.stringify(result, null, 2)}`, 'debug');
+                }
+                
+            } catch (error) {
+                addLog(`💥 Error: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

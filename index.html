@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Imágenes - TJS Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="js/auth-middleware.js"></script>
+    <style>
+        .auth-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .welcome-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            text-align: center;
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            max-width: 120px;
+            max-height: 120px;
+            margin: 0 auto 30px auto;
+            display: block;
+            object-fit: contain;
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+        
+        .btn-custom {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            margin: 10px;
+            min-width: 200px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+        }
+        
+        .btn-primary-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-outline-custom {
+            border: 2px solid #667eea;
+            color: #667eea;
+            background: transparent;
+        }
+        
+        .btn-outline-custom:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e3e5;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="auth-container">
+    <script>
+        // Verificar estado de autenticación al cargar
+        document.addEventListener('DOMContentLoaded', async function() {
+            const loadingDiv = document.getElementById('loading');
+            const contentDiv = document.getElementById('content');
+            
+            // Cargar configuración de la aplicación (título y logo)
+            try {
+                const configResponse = await fetch('api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success) {
+                    // Actualizar título
+                    const tituloElement = document.querySelector('#content h1');
+                    if (tituloElement && configData.titulo) {
+                        tituloElement.textContent = configData.titulo;
+                    }
+                    
+                    // Actualizar logo
+                    const logoElement = document.querySelector('#content img.logo');
+                    if (logoElement) {
+                        if (configData.logo) {
+                            logoElement.src = configData.logo;
+                            logoElement.style.display = 'block';
+                            logoElement.style.margin = '0 auto 30px auto';
+                        } else {
+                            // Si no hay logo configurado, ocultar el elemento completamente
+                            logoElement.style.display = 'none';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error cargando configuración de la app:', error);
+                // Continuar con valores por defecto
+            }
+            
+            // Primero verificar si necesita setup inicial
+            try {
+                const setupResponse = await fetch('api/auth/check-setup.php');
+                const setupResult = await setupResponse.json();
+                
+                if (setupResult.success && setupResult.needs_setup) {
+                    // Redirigir a la página de setup inicial
+                    window.location.href = 'setup-initial.html';
+                    return;
+                }
+            } catch (error) {
+                console.error('Error verificando setup:', error);
+                // Continuar con la verificación normal si hay error
+            }
+            
+            try {
+                const response = await fetch('api/auth/validate-session.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Usuario autenticado, redirigir al dashboard
+                    window.location.href = 'dashboard-unified.html';
+                    return;
+                }
+            } catch (error) {
+                // No hay sesión activa, continuar mostrando opciones
+                console.log('No hay sesión activa');
+            }
+            
+            // Mostrar contenido después de verificar sesión
+            loadingDiv.style.display = 'none';
+            contentDiv.style.display = 'block';
+        });
+    </script>
+    <!-- Loading State -->
+    <div id="loading" class="welcome-card">
+        <div class="loading"></div>
+        <p style="margin-top: 20px; color: #666;">Verificando sesión...</p>
+    </div>
+    
+    <!-- Main Content -->
+    <div id="content" class="welcome-card" style="display: none;">
+        <img src="logo.svg" alt="TJS Medical" class="logo">
+        <h1>GESTION DE ESTUDIOS</h1>
+        <p class="subtitle">Portal de Estudios Médicos</p>
+        
+        <div>
+            <a href="login.html" class="btn btn-primary-custom btn-custom">Iniciar Sesión</a>
+            <a href="register.html" class="btn btn-outline-custom btn-custom" style="display: none;">Registrarse</a>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 30px; border-top: 1px solid #e1e5e9; display: none;">
+            <p style="color: #666; margin-bottom: 15px;">¿Eres administrador?</p>
+            <a href="install.php" style="color: #667eea; text-decoration: none; font-size: 0.9rem;">Configurar Sistema</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Informe - Seleccionar Formato</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        .formato-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .formato-card {
+            border: 3px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            background: white;
+        }
+
+        .formato-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+        }
+
+        .formato-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .formato-card.selected::before {
+            content: "✓";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .formato-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        .formato-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 22px;
+        }
+
+        .formato-card .description {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .caracteristicas {
+            text-align: left;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .caracteristicas li {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .caracteristicas li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4caf50;
+            font-weight: bold;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .badge.recommended {
+            background: #4caf50;
+        }
+
+        .badge.universal {
+            background: #ff9800;
+        }
+
+        .btn-enviar {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-enviar:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-enviar:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+            display: block;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+            display: block;
+        }
+
+        .result h3 {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .result-details {
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            .formato-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 Enviar Informe a PACS</h1>
+        <p class="subtitle">Selecciona el formato de envío</p>
+
+        <div class="formato-selector">
+            <!-- Opción PDF -->
+            <div class="formato-card selected" data-format="pdf" onclick="seleccionarFormato('pdf')">
+                <div class="formato-icon">📄</div>
+                <h2>PDF</h2>
+                <p class="description">Documento PDF con texto seleccionable</p>
+                <span class="badge recommended">Recomendado</span>
+                
+                <ul class="caracteristicas">
+                    <li>Texto seleccionable</li>
+                    <li>Fácil de imprimir</li>
+                    <li>Archivo ligero (1-2 MB)</li>
+                    <li>Formato profesional</li>
+                </ul>
+            </div>
+
+            <!-- Opción PNG -->
+            <div class="formato-card" data-format="jpg" onclick="seleccionarFormato('jpg')">
+                <div class="formato-icon">🖼️</div>
+                <h2>PNG / Imagen</h2>
+                <p class="description">Imagen de alta calidad para máxima compatibilidad</p>
+                <span class="badge universal">Universal</span>
+                
+                <ul class="caracteristicas">
+                    <li>Compatible con todos los visores</li>
+                    <li>Visualización inmediata</li>
+                    <li>No requiere plugins</li>
+                    <li>Integración nativa PACS</li>
+                </ul>
+            </div>
+        </div>
+
+        <button class="btn-enviar" onclick="enviarAPACS()">
+            📤 Enviar a PACS
+        </button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Procesando y enviando a PACS...</p>
+        </div>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURACIÓN - CAMBIAR ESTOS VALORES
+        // ============================================
+        const INFORME_ID = 123;  // 👈 Cambiar por ID del informe real
+        const API_URL = '/api/informes/send-to-pacs.php';
+        
+        // Obtener token de sesión
+        // Cambiar según tu sistema de autenticación
+        function obtenerToken() {
+            return sessionStorage.getItem('session_token') || 
+                   localStorage.getItem('session_token') ||
+                   'YOUR_SESSION_TOKEN'; // Fallback para pruebas
+        }
+
+        // ============================================
+        // LÓGICA DE LA APLICACIÓN
+        // ============================================
+        
+        let formatoSeleccionado = 'pdf';
+
+        function seleccionarFormato(formato) {
+            formatoSeleccionado = formato;
+            
+            // Actualizar UI
+            document.querySelectorAll('.formato-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.querySelector(`[data-format="${formato}"]`).classList.add('selected');
+            
+            console.log('✅ Formato seleccionado:', formato.toUpperCase());
+        }
+
+        async function enviarAPACS() {
+            const btn = document.querySelector('.btn-enviar');
+            const loading = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            
+            // Mostrar loading
+            btn.disabled = true;
+            loading.classList.add('active');
+            resultDiv.style.display = 'none';
+            resultDiv.className = 'result';
+            
+            console.log('🚀 Iniciando envío...');
+            console.log('📋 Informe ID:', INFORME_ID);
+            console.log('📄 Formato:', formatoSeleccionado);
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + obtenerToken()
+                    },
+                    body: JSON.stringify({
+                        informe_id: INFORME_ID,
+                        format: formatoSeleccionado
+                    })
+                });
+
+                const data = await response.json();
+                console.log('📥 Respuesta recibida:', data);
+
+                if (data.success) {
+                    // Éxito
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ ${data.message}</h3>
+                        <div class="result-details">
+                            <strong>Formato enviado:</strong> ${data.format.toUpperCase()}<br>
+                            <strong>Instance ID:</strong> ${data.data.instance_id}<br>
+                            <strong>Study ID:</strong> ${data.data.study_id}<br>
+                            <strong>Series ID:</strong> ${data.data.series_id || 'N/A'}<br>
+                            <strong>Tamaño:</strong> ${data.data.file_size_mb} MB<br>
+                            ${data.is_update ? '<br>⚠️ <strong>Nota:</strong> Este informe reemplazó una versión anterior' : ''}
+                        </div>
+                    `;
+                    
+                    console.log('✅ Envío exitoso');
+                    
+                } else {
+                    // Error
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <h3>❌ Error al enviar informe</h3>
+                        <div class="result-details">
+                            <strong>Mensaje:</strong> ${data.message}<br>
+                            ${data.error_code ? `<strong>Código:</strong> ${data.error_code}<br>` : ''}
+                            ${data.error_details ? `<strong>Detalles:</strong> ${data.error_details.substring(0, 200)}...` : ''}
+                        </div>
+                    `;
+                    
+                    console.error('❌ Error:', data);
+                }
+
+            } catch (error) {
+                // Error de red o excepción
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `
+                    <h3>❌ Error de conexión</h3>
+                    <div class="result-details">
+                        <strong>Mensaje:</strong> ${error.message}<br>
+                        <strong>Sugerencia:</strong> Verifica que el servidor esté activo y que la URL del API sea correcta.
+                    </div>
+                `;
+                
+                console.error('❌ Error de conexión:', error);
+                
+            } finally {
+                // Ocultar loading
+                loading.classList.remove('active');
+                btn.disabled = false;
+            }
+        }
+
+        // Log inicial
+        console.log('🎯 Selector de formato cargado');
+        console.log('📋 Informe ID configurado:', INFORME_ID);
+        console.log('🌐 API URL:', API_URL);
+    </script>
+</body>
+</html>
+

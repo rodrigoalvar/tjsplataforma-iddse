@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico PACS Query Issue</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-danger text-white">
+                        <h4 class="mb-0"><i class="bi bi-bug"></i> Diagnóstico: Usuarios sin PACS QUERY no ven estudios</h4>
+                        <small>Investigando por qué los usuarios sin permiso PACS QUERY no ven resultados en la lista de informes</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Problema Identificado -->
+                        <div class="alert alert-danger">
+                            <h5><i class="bi bi-exclamation-triangle"></i> Problema Reportado</h5>
+                            <p><strong>Síntoma:</strong> En dashboard-unified, la búsqueda de estudios para usuarios con PACS QUERY desactivado no muestra resultados en la lista de informes.</p>
+                        </div>
+
+                        <!-- Análisis del Sistema -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5>🔍 Análisis del Sistema</h5>
+                                <div class="border p-3 rounded bg-light">
+                                    <div id="systemAnalysis">Analizando...</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>👤 Estado del Usuario Actual</h5>
+                                <div class="border p-3 rounded bg-light">
+                                    <div id="userStatus">Verificando...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pruebas Específicas -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5>🧪 Pruebas de Diagnóstico</h5>
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <button class="btn btn-primary mb-2" onclick="testUserPermissions()">
+                                        <i class="bi bi-person-check"></i> 1. Verificar Permisos del Usuario
+                                    </button>
+                                    <button class="btn btn-info mb-2" onclick="testAssignedStudiesAPI()">
+                                        <i class="bi bi-database"></i> 2. Probar API de Estudios Asignados
+                                    </button>
+                                    <button class="btn btn-warning mb-2" onclick="testDashboardLogic()">
+                                        <i class="bi bi-gear"></i> 3. Verificar Lógica del Dashboard
+                                    </button>
+                                    <button class="btn btn-success mb-2" onclick="simulateUserWithoutPacs()">
+                                        <i class="bi bi-person-x"></i> 4. Simular Usuario sin PACS QUERY
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resultados -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5>📋 Resultados del Diagnóstico</h5>
+                                <div class="border p-3 rounded" style="height: 500px; overflow-y: auto;">
+                                    <div id="diagnosticResults"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        let currentUserData = null;
+
+        // Función para agregar resultado al diagnóstico
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('diagnosticResults');
+            const timestamp = new Date().toLocaleTimeString();
+            const alertClass = type === 'success' ? 'alert-success' : 
+                              type === 'error' ? 'alert-danger' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            resultsDiv.innerHTML += `
+                <div class="alert ${alertClass} alert-sm mb-2">
+                    <small><strong>[${timestamp}]</strong> ${message}</small>
+                </div>
+            `;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        // 1. Verificar permisos del usuario
+        async function testUserPermissions() {
+            addResult('🔍 Verificando permisos del usuario actual...', 'info');
+            
+            try {
+                const response = await fetch('api/auth/validate-session-simple.php');
+                const result = await response.json();
+                
+                if (result.success && result.user) {
+                    currentUserData = result.user;
+                    const permissions = result.user.permisos || [];
+                    const hasPacsQuery = permissions.includes('pacs_query') || permissions.includes('all');
+                    const isAssignedMode = !hasPacsQuery;
+                    
+                    addResult(`👤 Usuario: ${result.user.nombre} ${result.user.apellido}`, 'info');
+                    addResult(`🏷️ Nivel: ${result.user.nivel}`, 'info');
+                    addResult(`🔐 Permisos: ${permissions.join(', ')}`, 'info');
+                    addResult(`🔍 PACS Query: ${hasPacsQuery ? 'SÍ' : 'NO'}`, hasPacsQuery ? 'success' : 'warning');
+                    addResult(`📋 Modo: ${isAssignedMode ? 'Estudios Asignados' : 'PACS Query'}`, isAssignedMode ? 'warning' : 'success');
+                    
+                    if (isAssignedMode) {
+                        addResult('⚠️ Usuario en modo "Estudios Asignados" - debe ver estudios asignados específicamente', 'warning');
+                    } else {
+                        addResult('✅ Usuario puede consultar PACS directamente', 'success');
+                    }
+                    
+                    updateUserStatus(result.user, hasPacsQuery, isAssignedMode);
+                } else {
+                    addResult('❌ Error obteniendo información del usuario', 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Error en la consulta: ${error.message}`, 'error');
+            }
+        }
+
+        // 2. Probar API de estudios asignados
+        async function testAssignedStudiesAPI() {
+            addResult('🔍 Probando API de estudios asignados...', 'info');
+            
+            try {
+                const response = await fetch('api/get_user_assigned_studies_fixed.php');
+                const result = await response.json();
+                
+                addResult(`📡 Respuesta de la API: ${response.status} ${response.statusText}`, 'info');
+                
+                if (result.success) {
+                    const studies = result.data?.studies || [];
+                    addResult(`✅ API respondió correctamente`, 'success');
+                    addResult(`📚 Estudios encontrados: ${studies.length}`, studies.length > 0 ? 'success' : 'warning');
+                    
+                    if (studies.length === 0) {
+                        addResult('⚠️ PROBLEMA IDENTIFICADO: La API no devuelve estudios asignados', 'warning');
+                        addResult('💡 Posibles causas:', 'info');
+                        addResult('   • No hay estudios asignados al usuario actual', 'info');
+                        addResult('   • Error en la consulta SQL de la API', 'info');
+                        addResult('   • Problema con la tabla study_assignments', 'info');
+                    } else {
+                        addResult('📋 Primeros estudios:', 'info');
+                        studies.slice(0, 3).forEach((study, index) => {
+                            addResult(`   ${index + 1}. ${study.patient_name} - ${study.modality} (${study.study_date})`, 'info');
+                        });
+                    }
+                } else {
+                    addResult(`❌ Error en la API: ${result.error || 'Error desconocido'}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ Error llamando a la API: ${error.message}`, 'error');
+            }
+        }
+
+        // 3. Verificar lógica del dashboard
+        async function testDashboardLogic() {
+            addResult('🔍 Verificando lógica del dashboard...', 'info');
+            
+            if (!currentUserData) {
+                addResult('⚠️ Primero ejecuta "Verificar Permisos del Usuario"', 'warning');
+                return;
+            }
+            
+            const permissions = currentUserData.permisos || [];
+            const hasPacsQuery = permissions.includes('pacs_query') || permissions.includes('all');
+            const isAssignedMode = !hasPacsQuery;
+            
+            addResult('🔧 Simulando lógica de dashboard-with-permissions.js:', 'info');
+            addResult(`   • userPermissions = ${JSON.stringify(permissions)}`, 'info');
+            addResult(`   • hasPacsQueryPermission = ${hasPacsQuery}`, 'info');
+            addResult(`   • isAssignedStudiesMode = ${isAssignedMode}`, 'info');
+            
+            if (isAssignedMode) {
+                addResult('📋 El dashboard debería:', 'info');
+                addResult('   • Llamar a loadAssignedStudies()', 'info');
+                addResult('   • Usar API get_user_assigned_studies_fixed.php', 'info');
+                addResult('   • Mostrar solo estudios asignados al usuario', 'info');
+                addResult('   • NO mostrar controles de búsqueda PACS', 'info');
+            } else {
+                addResult('🔍 El dashboard debería:', 'info');
+                addResult('   • Llamar a loadPacsStudies()', 'info');
+                addResult('   • Usar API get_all_studies.php', 'info');
+                addResult('   • Mostrar controles de búsqueda PACS', 'info');
+            }
+        }
+
+        // 4. Simular usuario sin PACS QUERY
+        async function simulateUserWithoutPacs() {
+            addResult('🎭 Simulando usuario sin PACS QUERY...', 'info');
+            
+            // Simular usuario tipo 'user' según validate-session-simple.php
+            const simulatedUser = {
+                id: 999,
+                nombre: 'Usuario',
+                apellido: 'Médico',
+                nivel: 'user',
+                permisos: ['dashboard', 'informes', 'grabacion'] // Sin 'pacs_query'
+            };
+            
+            const hasPacsQuery = simulatedUser.permisos.includes('pacs_query') || simulatedUser.permisos.includes('all');
+            const isAssignedMode = !hasPacsQuery;
+            
+            addResult(`👤 Usuario simulado: ${simulatedUser.nombre} ${simulatedUser.apellido}`, 'info');
+            addResult(`🏷️ Nivel: ${simulatedUser.nivel}`, 'info');
+            addResult(`🔐 Permisos: ${simulatedUser.permisos.join(', ')}`, 'info');
+            addResult(`🔍 PACS Query: ${hasPacsQuery ? 'SÍ' : 'NO'}`, 'warning');
+            addResult(`📋 Modo: ${isAssignedMode ? 'Estudios Asignados' : 'PACS Query'}`, 'warning');
+            
+            addResult('🔧 Comportamiento esperado:', 'info');
+            addResult('   • Dashboard detecta falta de permiso pacs_query', 'info');
+            addResult('   • Activa modo "Estudios Asignados"', 'info');
+            addResult('   • Llama a get_user_assigned_studies_fixed.php', 'info');
+            addResult('   • Muestra estudios asignados específicamente al usuario', 'info');
+            
+            addResult('⚠️ Si no ve estudios, el problema está en:', 'warning');
+            addResult('   • La API no encuentra estudios asignados', 'warning');
+            addResult('   • La tabla study_assignments está vacía', 'warning');
+            addResult('   • El usuario no tiene estudios asignados', 'warning');
+        }
+
+        // Actualizar estado del usuario en la UI
+        function updateUserStatus(user, hasPacsQuery, isAssignedMode) {
+            const userStatusDiv = document.getElementById('userStatus');
+            userStatusDiv.innerHTML = `
+                <strong>Usuario:</strong> ${user.nombre} ${user.apellido}<br>
+                <strong>Nivel:</strong> ${user.nivel}<br>
+                <strong>PACS Query:</strong> <span class="badge ${hasPacsQuery ? 'bg-success' : 'bg-danger'}">${hasPacsQuery ? 'SÍ' : 'NO'}</span><br>
+                <strong>Modo:</strong> <span class="badge ${isAssignedMode ? 'bg-warning' : 'bg-primary'}">${isAssignedMode ? 'Estudios Asignados' : 'PACS Query'}</span>
+            `;
+        }
+
+        // Análisis inicial del sistema
+        function analyzeSystem() {
+            const systemAnalysisDiv = document.getElementById('systemAnalysis');
+            systemAnalysisDiv.innerHTML = `
+                <strong>Configuración Detectada:</strong><br>
+                • validate-session-simple.php define permisos<br>
+                • Usuarios 'user' NO tienen 'pacs_query'<br>
+                • dashboard-with-permissions.js maneja dos modos<br>
+                • get_user_assigned_studies_fixed.php para estudios asignados<br>
+                <br>
+                <strong>Flujo Esperado:</strong><br>
+                1. Usuario sin pacs_query → Modo Asignados<br>
+                2. Dashboard llama API de estudios asignados<br>
+                3. API consulta tabla study_assignments<br>
+                4. Muestra estudios asignados al usuario
+            `;
+        }
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            addResult('🚀 Diagnóstico iniciado para problema de PACS Query', 'success');
+            addResult('🔍 Problema: Usuarios sin PACS QUERY no ven estudios en dashboard-unified', 'warning');
+            analyzeSystem();
+            
+            // Auto-ejecutar verificación de permisos
+            setTimeout(() => {
+                testUserPermissions();
+            }, 1000);
+        });
+    </script>
+</body>
+</html>

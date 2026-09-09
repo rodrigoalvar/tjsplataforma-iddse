@@ -1,0 +1,3224 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Informes - Portal Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="../styles.css?v=202606251200" rel="stylesheet">
+    <link href="../assets/css/reports.css?v=202606251200" rel="stylesheet">
+    <script src="../js/auth-middleware.js?v=202606251200"></script>
+    <script src="../assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="../assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <!-- Sidebar Layout -->
+    <div class="layout-container" id="sidebarLayout">
+        <!-- Top Bar -->
+        <div class="top-bar d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link text-white p-0" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <div class="d-flex align-items-center">
+                        <span class="navbar-logo me-2">TJS</span>
+                        <span class="navbar-text">Portal Estudios</span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-white p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="../profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="../logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Dr. Usuario</div>
+                    <div class="user-role">Médico Radiólogo</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="../dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="../configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+        
+        <!-- Sidebar Overlay (Mobile) -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="container-fluid py-4">
+                <!-- Welcome Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="welcome-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h2 class="welcome-title" id="welcomeTitle">Gestión de Informes</h2>
+                                    <p class="welcome-subtitle" id="welcomeSubtitle">Buscar, editar y gestionar informes médicos</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="welcome-stats d-flex justify-content-end align-items-center gap-4">
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="informesHoy">0</div>
+                                            <div class="stat-label">INFORMES HOY</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="totalInformes">0</div>
+                                            <div class="stat-label">TOTAL INFORMES</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number text-danger" id="estudiosIncompletos">0</div>
+                                            <div class="stat-label">INCOMPLETOS</div>
+                                        </div>
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number text-warning" id="informesRecibidosPendientesCount">0</div>
+                                            <div class="stat-label">REC. API</div>
+                                        </div>
+                                        <div class="stat-item text-center d-none" id="slaVencidosStat" title="Estudios sin informe publicado (SLA vencido)" style="cursor:pointer;">
+                                            <div class="stat-number text-danger" id="slaVencidosCount">0</div>
+                                            <div class="stat-label">SLA VENCIDOS</div>
+                                        </div>
+                                        <div class="stat-item text-center d-none" id="slaPorVencerStat" title="Estudios próximos a vencer SLA" style="cursor:pointer;">
+                                            <div class="stat-number text-warning" id="slaPorVencerCount">0</div>
+                                            <div class="stat-label">SLA POR VENCER</div>
+                                        </div>
+                                        <div class="welcome-logo-container">
+                                            <img id="welcomeLogo" src="../logo.svg" alt="Logo" class="welcome-logo" style="display: none;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" id="btnNuevoInforme">
+                                <i class="fas fa-plus me-2"></i>
+                                Nuevo Informe
+                            </button>
+                            <button class="btn btn-outline-warning position-relative" id="btnInformesRecibidos" type="button" style="display: none;" title="Informes PDF recibidos por API">
+                                <i class="fas fa-inbox me-2"></i>
+                                Informes Recibidos
+                                <span class="badge rounded-pill bg-danger ms-1 d-none" id="irBtnBadge" aria-hidden="true">0</span>
+                            </button>
+                            <button class="btn btn-outline-primary" type="button" id="btnAdjuntarGeneral" style="display: none;" title="Adjuntar audio o PDF a un informe o estudio" onclick="InformesManager.showAdjuntarGeneralModal()">
+                                <i class="fas fa-paperclip me-2"></i>
+                                Adjuntar audio/informe
+                            </button>
+                            <button class="btn btn-outline-info position-relative" type="button" id="btnInformesCarpeta" style="display: none;" title="Cola de archivos PDF/TXT desde carpetas (SMB)">
+                                <i class="fas fa-folder-open me-2"></i>
+                                Informes carpeta
+                                <span class="badge rounded-pill bg-danger ms-1 d-none" id="icBtnBadge" aria-hidden="true">0</span>
+                            </button>
+                            <button class="btn btn-outline-secondary" id="btnMiFirma" type="button" title="Gestionar rúbrica y sello">
+                                <i class="fas fa-signature me-2"></i>
+                                Mi firma
+                            </button>
+                            <button class="btn btn-outline-primary" id="btnTemplateManager">
+                                <i class="fas fa-file-code me-2"></i>
+                                Gestor de Plantillas
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal SLA estudios recibidos -->
+                <div class="modal fade" id="slaEstudiosModal" tabindex="-1" aria-labelledby="slaEstudiosModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="slaEstudiosModalLabel">
+                                    <i class="fas fa-clock me-2"></i>SLA — estudios sin informe publicado
+                                    <span class="badge bg-danger ms-2" id="slaModalVencidosBadge">0</span>
+                                    <span class="badge bg-warning text-dark ms-1" id="slaModalPorVencerBadge">0</span>
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted small mb-3">
+                                    El reloj inicia al ingresar el estudio al PACS local. <strong>Cumplido</strong> = informe publicado en PACS.
+                                    Feature controlada en Configuración → Estudios Recibidos.
+                                </p>
+                                <div class="row g-2 align-items-end mb-3">
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-0" for="slaModalFechaInicio">Desde</label>
+                                        <input type="date" class="form-control form-control-sm" id="slaModalFechaInicio">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-0" for="slaModalFechaFin">Hasta</label>
+                                        <input type="date" class="form-control form-control-sm" id="slaModalFechaFin">
+                                    </div>
+                                    <div class="col-auto">
+                                        <label class="form-label small mb-0" for="slaModalBucket">Cola</label>
+                                        <select class="form-select form-select-sm" id="slaModalBucket">
+                                            <option value="all">Vencidos + por vencer</option>
+                                            <option value="vencido">Solo vencidos</option>
+                                            <option value="por_vencer">Solo por vencer</option>
+                                            <option value="sin_informe">Sin informe</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <button type="button" class="btn btn-sm btn-primary" id="slaModalFilterBtn"><i class="fas fa-filter me-1"></i>Filtrar</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="slaModalRefreshBtn">Actualizar</button>
+                                    </div>
+                                </div>
+                                <div id="slaModalLoading" class="text-center py-4 d-none">
+                                    <div class="spinner-border text-warning" role="status"></div>
+                                </div>
+                                <div id="slaModalEmpty" class="alert alert-light border d-none">No hay estudios en esta cola (o SLA está apagado).</div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Llegada</th>
+                                                <th>Paciente</th>
+                                                <th>Mod.</th>
+                                                <th>Estado informe</th>
+                                                <th>SLA</th>
+                                                <th>Restante</th>
+                                                <th class="text-end">Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="slaModalTbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de Informes Recibidos -->
+                <div class="modal fade" id="informesRecibidosModal" tabindex="-1" aria-labelledby="informesRecibidosModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning-subtle">
+                                <div class="d-flex flex-column flex-sm-row flex-wrap align-items-sm-center gap-2 flex-grow-1 me-2">
+                                    <h5 class="modal-title mb-0" id="informesRecibidosModalLabel">
+                                        <i class="fas fa-inbox me-2"></i>Informes Recibidos por API
+                                    </h5>
+                                    <span class="badge bg-dark text-wrap text-start" id="irModalPendientesBadge" title="Informes en estado recibido (pendientes de vincular)">
+                                        0 pendientes
+                                    </span>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-3">
+                                        <select class="form-select" id="irEstadoFilter">
+                                            <option value="">Todos los estados</option>
+                                            <option value="recibido" selected>Recibido (pendiente)</option>
+                                            <option value="vinculado">Vinculado</option>
+                                            <option value="error">Error</option>
+                                            <option value="descartado">Descartado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control" id="irSearchFilter" placeholder="Buscar paciente / ACCNO">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <button type="button" class="btn btn-outline-primary w-100" id="irRefreshBtn">
+                                            <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-9">
+                                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                                            <span class="badge bg-secondary" id="irSelectedCountBadge">0 seleccionados</span>
+                                            <button type="button" class="btn btn-sm btn-outline-success" id="irBulkLinkBtn" title="Vincular informe seleccionado (solo 1)">
+                                                <i class="fas fa-link me-1"></i>Vincular selección
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" id="irBulkDiscardBtn" title="Descartar todos los seleccionados válidos">
+                                                <i class="fas fa-trash-alt me-1"></i>Descartar selección
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning" id="irBulkUnlinkBtn" title="Desvincular todos los seleccionados válidos">
+                                                <i class="fas fa-unlink me-1"></i>Desvincular selección
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="irBulkClearBtn">
+                                                <i class="fas fa-eraser me-1"></i>Limpiar selección
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="irSelectPendingsBtn" title="Seleccionar solo informes en estado recibido (pendiente)">
+                                                <i class="fas fa-filter me-1"></i>Seleccionar pendientes
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-warning" id="irSelectLinkedBtn" title="Seleccionar solo informes vinculados">
+                                                <i class="fas fa-link me-1"></i>Seleccionar vinculados
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-outline-dark" id="irSelectPacsBlockedBtn" title="Seleccionar vinculados bloqueados por PACS">
+                                                <i class="fas fa-lock me-1"></i>Seleccionar bloqueados PACS
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-primary" id="irReprocesarBtn" title="Re-intentar vinculación automática de todos los pendientes">
+                                                <i class="fas fa-redo me-1"></i>Reprocesar pendientes
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle" id="irTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 34px;">
+                                                    <input type="checkbox" class="form-check-input" id="irSelectAllChk" title="Seleccionar todos los visibles">
+                                                </th>
+                                                <th>ID</th>
+                                                <th>ACCNO</th>
+                                                <th>Paciente</th>
+                                                <th>ID Paciente</th>
+                                                <th>Estado</th>
+                                                <th>Estudio vinculado</th>
+                                                <th>Auto PACS</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="irTableBody">
+                                            <tr><td colspan="9" class="text-center text-muted">Sin datos</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de selección de estudio para vinculación -->
+                <div class="modal fade" id="irVincularModal" tabindex="-1" aria-labelledby="irVincularModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title mb-0" id="irVincularModalLabel">
+                                    <i class="fas fa-link me-2"></i>Vincular informe recibido con estudio
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-light border mb-3" id="irVincularResumen">
+                                    Seleccione un informe recibido para iniciar.
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-8">
+                                        <input type="text" class="form-control" id="irCandidateSearch" placeholder="Buscar estudio por paciente, StudyUID, ACCNO, descripción...">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" class="form-control" id="irCandidateLimit" min="5" max="100" value="20" title="Cantidad máxima de candidatos">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-outline-primary w-100" id="irCandidateSearchBtn">
+                                            <i class="fas fa-search me-1"></i>Buscar
+                                        </button>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="button" class="btn btn-outline-dark w-100" id="irCandidatePacsSearchBtn" title="Búsqueda directa en PACS con el texto indicado">
+                                            <i class="fas fa-database me-1"></i>PACS
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info py-2 px-3 mb-3 d-none" id="irCandidateTopHint" role="status"></div>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle" id="irCandidatesTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Score</th>
+                                                <th>Motivos</th>
+                                                <th>ID Estudio</th>
+                                                <th>StudyUID</th>
+                                                <th>Paciente</th>
+                                                <th>ID Paciente</th>
+                                                <th title="Por defecto se usa StudyDate (0008,0020) desde Orthanc; si no hay respuesta PACS, la fecha guardada en estudios.">Fecha estudio</th>
+                                                <th>Mod.</th>
+                                                <th>ACCNO</th>
+                                                <th>Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="irCandidatesBody">
+                                            <tr><td colspan="10" class="text-center text-muted">Sin candidatos cargados</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Visor de archivos de informe recibido (PDF/TXT) -->
+                <div class="modal fade" id="irFileViewerModal" tabindex="-1" aria-labelledby="irFileViewerModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title mb-0" id="irFileViewerModalLabel">
+                                    <i class="fas fa-file-lines me-2"></i><span id="irFileViewerTitle">Visor de archivo recibido</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-0" style="height: 68vh;">
+                                <iframe id="irFileViewerPdfFrame" class="w-100 border-0 d-none" style="height: 100%; display: block;" title="Visor PDF"></iframe>
+                                <pre id="irFileViewerTxtContent" class="m-0 p-3 d-none" style="white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace; font-size: 0.9rem; height: 100%; overflow: auto;"></pre>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal para descartar informe recibido -->
+                <div class="modal fade" id="irDiscardModal" tabindex="-1" aria-labelledby="irDiscardModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title mb-0" id="irDiscardModalLabel">
+                                    <i class="fas fa-trash-alt me-2"></i>Descartar informe recibido
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-2">Informe <strong id="irDiscardTargetLabel">#-</strong></p>
+                                <label for="irDiscardReason" class="form-label">Motivo de descarte (obligatorio)</label>
+                                <textarea class="form-control" id="irDiscardReason" rows="3" maxlength="600" placeholder="Indique por qué se descarta este informe..."></textarea>
+                                <div class="form-text">Este motivo quedará registrado para auditoría.</div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-danger" id="irDiscardConfirmBtn">Confirmar descarte</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal confirmar desvincular informe recibido -->
+                <div class="modal fade" id="irUnlinkModal" tabindex="-1" aria-labelledby="irUnlinkModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-dark">
+                                <h5 class="modal-title mb-0" id="irUnlinkModalLabel">
+                                    <i class="fas fa-unlink me-2"></i>Desvincular informe recibido
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-2">¿Desvincular el informe <strong id="irUnlinkTargetLabel">#-</strong> del estudio asociado?</p>
+                                <p class="mb-2 text-muted small">El registro volverá a pendiente y, si aplica, el informe externo en el manager puede quedar en borrador sin PDF.</p>
+                                <p class="mb-0 text-muted small">Si el informe vinculado está enviado a PACS, primero debe <strong>quitarlo de PACS</strong> desde el gestor de informes; hasta entonces no podrá desvincular. La copia en Orthanc no se borra sola al desvincular.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-warning" id="irUnlinkConfirmBtn">Desvincular</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal confirmación reprocesar pendientes -->
+                <div class="modal fade" id="irReprocesarConfirmModal" tabindex="-1" aria-labelledby="irReprocesarConfirmModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title mb-0" id="irReprocesarConfirmModalLabel">
+                                    <i class="fas fa-redo me-2"></i>Reprocesar pendientes
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="mb-1">Se intentará la vinculación automática de <strong id="irReprocesarCountLabel">0</strong> informe(s) en estado <em>recibido</em>.</p>
+                                <p class="mb-0 text-muted small">Solo se vincularán los que superen el umbral de score configurado. Los que no alcancen el umbral quedarán pendientes.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="irReprocesarConfirmBtn">
+                                    <i class="fas fa-redo me-1"></i>Reprocesar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Filters (compacto + colapsable) -->
+                <div class="row mb-2">
+                    <div class="col">
+                        <div class="card border shadow-sm informes-filters-card">
+                            <div class="card-header py-2 px-3 d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                <h6 class="mb-0 text-body d-flex align-items-center">
+                                    <i class="fas fa-filter me-2 text-primary"></i>
+                                    <span>Filtros de búsqueda</span>
+                                </h6>
+                                <button type="button" class="btn btn-sm btn-outline-secondary informes-filters-collapse-btn d-flex align-items-center gap-1" data-bs-toggle="collapse" data-bs-target="#informesSearchFiltersCollapse" aria-expanded="true" aria-controls="informesSearchFiltersCollapse" title="Mostrar u ocultar filtros">
+                                    <i class="fas fa-chevron-up informes-filters-chevron"></i>
+                                    <span class="d-none d-sm-inline small informes-filters-toggle-label">Ocultar</span>
+                                </button>
+                            </div>
+                            <div class="collapse show" id="informesSearchFiltersCollapse">
+                                <div class="card-body py-2 px-3 informes-filters-body">
+                                    <form id="searchForm">
+                                        <div class="row g-2 gx-2 align-items-end">
+                                            <div class="col-12 col-sm-6 col-lg-4 col-xl-2">
+                                                <label for="patientNameFilter" class="form-label small text-muted mb-0">Paciente</label>
+                                                <input type="text" class="form-control form-control-sm" id="patientNameFilter" placeholder="Nombre del paciente">
+                                            </div>
+                                            <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+                                                <label for="modalityFilter" class="form-label small text-muted mb-0">Modalidad</label>
+                                                <select class="form-select form-select-sm" id="modalityFilter">
+                                                    <option value="">Todas</option>
+                                                    <option value="CT">CT - Tomografía</option>
+                                                    <option value="MR">MR - Resonancia</option>
+                                                    <option value="CR">CR - Radiografía</option>
+                                                    <option value="US">US - Ultrasonido</option>
+                                                    <option value="XA">XA - Angiografía</option>
+                                                    <option value="MG">MG - Mamografía</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-sm-6 col-lg-4 col-xl-2">
+                                                <label for="estadoFilter" class="form-label small text-muted mb-0">Estado</label>
+                                                <select class="form-select form-select-sm" id="estadoFilter">
+                                                    <option value="">Todos</option>
+                                                    <option value="borrador">Borrador</option>
+                                                    <option value="transcripto">Transcripto (para firmar)</option>
+                                                    <option value="revisado">Revisado</option>
+                                                    <option value="firmado">Firmado</option>
+                                                    <option value="finalizado">Finalizado</option>
+                                                    <option value="incompletos">Incompletos</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-6 col-sm-6 col-lg-4 col-xl-2 d-none" id="slaFilterWrap">
+                                                <label for="slaFilter" class="form-label small text-muted mb-0">SLA</label>
+                                                <select class="form-select form-select-sm" id="slaFilter">
+                                                    <option value="">—</option>
+                                                    <option value="vencido">Vencidos</option>
+                                                    <option value="por_vencer">Por vencer</option>
+                                                    <option value="sin_informe">Sin informe</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-lg-7 col-xl-5">
+                                                <span class="form-label small text-muted mb-0 d-block">Periodo</span>
+                                                <div class="d-flex flex-wrap align-items-center gap-1 informes-filters-period-atajos">
+                                                    <div class="input-group input-group-sm informes-filters-date-range flex-grow-1" style="min-width: 11rem;">
+                                                        <input type="date" class="form-control" id="fechaInicio" title="Desde" aria-label="Fecha desde">
+                                                        <span class="input-group-text px-2 py-0 text-muted small">a</span>
+                                                        <input type="date" class="form-control" id="fechaFin" title="Hasta" aria-label="Fecha hasta">
+                                                    </div>
+                                                    <div class="btn-group btn-group-sm flex-shrink-0 shadow-sm" role="group" aria-label="Rango de fechas rápido">
+                                                        <button type="button" class="btn btn-outline-secondary informes-quick-date" id="informesQuickDateToday" data-informes-preset="today" title="Informes con fecha de modificación en el día actual (local)">Hoy</button>
+                                                        <button type="button" class="btn btn-outline-secondary informes-quick-date" id="informesQuickDateYesterday" data-informes-preset="yesterday" title="Informes del día anterior">Ayer</button>
+                                                        <button type="button" class="btn btn-outline-secondary informes-quick-date" id="informesQuickDateLast7" data-informes-preset="last7" title="Últimos 7 días inclusive (como en el panel de estudios)">7 días</button>
+                                                        <button type="button" class="btn btn-outline-secondary informes-quick-date" id="informesQuickDateLast30" data-informes-preset="last30" title="Últimos 30 días inclusive">30 días</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-sm-6 col-lg-5 col-xl-2" id="filterUsuarioInformeWrap" style="display: none;">
+                                                <label for="filterUsuarioInforme" class="form-label small text-muted mb-0">Autor</label>
+                                                <select class="form-select form-select-sm" id="filterUsuarioInforme" title="Usuarios detectados en los resultados (columna Rol / informante)">
+                                                    <option value="">Todos los autores</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12 col-xl-auto d-flex flex-wrap gap-1 align-items-end justify-content-xl-end pt-1 pt-xl-0 ms-xl-auto">
+                                                <button type="button" class="btn btn-primary btn-sm" id="searchBtn" title="Buscar">
+                                                    <i class="fas fa-search me-sm-1"></i><span class="d-none d-sm-inline">Buscar</span>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="clearFiltersBtn" title="Limpiar filtros">
+                                                    <i class="fas fa-times me-sm-1"></i><span class="d-none d-sm-inline">Limpiar</span>
+                                                </button>
+                                                <button type="button" class="btn btn-outline-success btn-sm" id="btnCobranzaPlanilla" style="display:none;" title="Listado provisorio y exportación CSV/Excel — planilla de códigos">
+                                                    <i class="fas fa-file-invoice-dollar me-1"></i><span class="d-none d-md-inline">Planilla</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Planilla de códigos: listado provisorio -->
+                <div class="modal fade" id="cobranzaPlanillaModal" tabindex="-1" aria-labelledby="cobranzaPlanillaModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title mb-0" id="cobranzaPlanillaModalLabel">
+                                    <i class="fas fa-file-invoice-dollar me-2"></i>Planilla de Códigos (provisorio)
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted small mb-2">Usa las mismas fechas que los filtros de búsqueda. En cada fila podés editar <strong>estudio planilla</strong> y el valor en <strong>CODIGOS &lt;modalidad&gt;</strong> (solo en tus informes). El botón <strong>Guardar</strong> del pie se habilita al detectar cambios y guarda todas las filas editadas; al terminar se deshabilita de nuevo. <strong>Actualizar</strong> o el checkbox descartan cambios sin guardar. Podés exportar en <strong>CSV</strong> o <strong>Excel</strong>. Las filas en <span class="badge bg-success">verde</span> cumplen finalizado, códigos/regiones cargados, PACS y sin incompleto (listas para export filtrado).</p>
+                                <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="cobranzaSoloListos">
+                                        <label class="form-check-label" for="cobranzaSoloListos">Solo filas listas para facturación (export filtrado)</label>
+                                    </div>
+                                    <button type="button" class="btn btn-primary btn-sm" id="cobranzaPlanillaRefreshBtn">
+                                        <i class="fas fa-sync me-1"></i>Actualizar
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="cobranzaPlanillaCsvBtn">
+                                        <i class="fas fa-file-csv me-1"></i>Descargar CSV
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" id="cobranzaPlanillaExcelBtn">
+                                        <i class="fas fa-file-excel me-1"></i>Descargar Excel
+                                    </button>
+                                </div>
+                                <div class="table-responsive" style="max-height: 65vh;">
+                                    <table class="table table-sm table-bordered align-middle" id="cobranzaPlanillaTable">
+                                        <thead class="table-light" id="cobranzaPlanillaThead"></thead>
+                                        <tbody id="cobranzaPlanillaTbody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" id="cobranzaPlanillaGuardarBtn" disabled>
+                                    <i class="fas fa-save me-1"></i>Guardar
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editar planilla de códigos (dueño del informe) -->
+                <div class="modal fade" id="cobranzaEditModal" tabindex="-1" aria-labelledby="cobranzaEditModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="cobranzaEditModalLabel"><i class="fas fa-edit me-2"></i>Planilla de Códigos del informe</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <input type="hidden" id="cobranzaEditInformeId" value="">
+                                <div class="mb-3">
+                                    <label class="form-label">Descripción estudio (PACS)</label>
+                                    <textarea class="form-control" id="cobranzaEditEstudioPacs" rows="2" readonly></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" for="cobranzaEditEstudioPlanilla">Estudio para planilla (editable)</label>
+                                    <textarea class="form-control" id="cobranzaEditEstudioPlanilla" rows="2" maxlength="8000" placeholder="Texto para la planilla de códigos"></textarea>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label" for="cobranzaEditRegiones">Cantidad de regiones informadas (CODIGOS)</label>
+                                    <input type="number" class="form-control" id="cobranzaEditRegiones" min="0" step="1" required placeholder="Ej. 3 o 4">
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" id="cobranzaEditSaveBtn">Guardar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="row mb-4">
+                    <div class="col">
+                        <div class="card">
+                            <div class="card-header py-2 px-3 informes-results-header">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-12 col-md-auto">
+                                        <h5 class="card-title mb-0 text-nowrap">
+                                            <i class="fas fa-list me-2"></i>
+                                            Resultados
+                                        </h5>
+                                    </div>
+                                    <div class="col-12 col-md">
+                                        <label for="searchInput" class="form-label small text-muted mb-0">Búsqueda general</label>
+                                        <input type="text" class="form-control form-control-sm" id="searchInput" form="searchForm" placeholder="Título, paciente, ID…" autocomplete="off">
+                                    </div>
+                                    <div class="col-12 col-md-auto d-flex align-items-end justify-content-md-end">
+                                        <span class="badge bg-info" id="resultsCount">0 informes encontrados</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="reportsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="sortable" data-sort="patient_name" style="cursor: pointer;">
+                                                    Paciente <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable d-none d-sm-table-cell" data-sort="modality" style="cursor: pointer;">
+                                                    Modalidad <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable d-none d-md-table-cell" data-sort="estado" style="cursor: pointer;">
+                                                    Estado <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th id="informanteColumn" class="sortable d-none d-lg-table-cell" data-sort="usuario_nombre" style="display: none; cursor: pointer;">
+                                                    Rol <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable d-none d-lg-table-cell" data-sort="fecha_creacion" style="cursor: pointer;">
+                                                    Fecha Creación <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable d-none d-xl-table-cell" data-sort="fecha_modificacion" style="cursor: pointer;">
+                                                    Última Modificación <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="d-none d-md-table-cell">Audios</th>
+                                                <th style="min-width: 250px;">
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                                                        <span>Acciones</span>
+                                                        <div id="pacsFormatToggleWrap" class="pacs-format-toggle-container" style="margin-left: 15px; display: none;" hidden>
+                                                            <label class="pacs-format-toggle" title="Formato al enviar a PACS (PDF / imagen). Requiere permisos «Enviar a PACS» y «Selector formato PACS (PDF/IMG)» en Gestión de usuarios">
+                                                                <input type="checkbox" class="pacs-format-switch" id="pacs-format-global">
+                                                                <span class="pacs-format-slider">
+                                                                    <span class="pacs-format-label-left">📄 PDF</span>
+                                                                    <span class="pacs-format-label-right">🖼️ IMG</span>
+                                                                </span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="reportsTableBody">
+                                            <!-- Los resultados se cargarán aquí dinámicamente -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <!-- Pagination -->
+                                <div id="paginationContainer">
+                                    <!-- La paginación se generará aquí dinámicamente -->
+                                </div>
+                                
+                                <!-- Selector de elementos por página -->
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <div>
+                                        <label for="perPageSelect" class="form-label small mb-0 me-2">Mostrar:</label>
+                                        <select class="form-select form-select-sm d-inline-block" id="perPageSelect" style="width: auto;">
+                                            <option value="10">10</option>
+                                            <option value="25" selected>25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                        <span class="small text-muted ms-2">por página</span>
+                                    </div>
+                                    <div id="paginationInfo" class="text-muted small">
+                                        <!-- Información de paginación se mostrará aquí -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de Confirmación de Eliminación -->
+                <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title" id="deleteConfirmModalLabel">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Confirmar Eliminación
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="text-center mb-3">
+                                    <i class="fas fa-trash-alt text-danger" style="font-size: 3rem;"></i>
+                                </div>
+                                <h6 class="text-center mb-3">¿Está seguro de que desea eliminar este informe?</h6>
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Advertencia:</strong> Esta acción no se puede deshacer. El informe y todos sus datos asociados serán eliminados permanentemente.
+                                </div>
+                                <div id="deleteReportInfo" class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title mb-2">Información del Informe:</h6>
+                                        <p class="card-text mb-1"><strong>Paciente:</strong> <span id="deletePatientName">-</span></p>
+                                        <p class="card-text mb-1"><strong>Modalidad:</strong> <span id="deleteModality">-</span></p>
+                                        <p class="card-text mb-1"><strong>Estado:</strong> <span id="deleteStatus">-</span></p>
+                                        <p class="card-text mb-0"><strong>Fecha:</strong> <span id="deleteDate">-</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Cancelar
+                                </button>
+                                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                                    <i class="fas fa-trash-alt me-2"></i>Eliminar Informe
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de Información del Usuario -->
+                <div class="modal fade" id="userInfoModal" tabindex="-1" aria-labelledby="userInfoModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="userInfoModalLabel">
+                                    <i class="fas fa-user-circle me-2"></i>Información del Informante
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="text-center mb-4">
+                                    <i class="fas fa-user-circle text-primary" style="font-size: 3rem;"></i>
+                                </div>
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <p class="mb-2"><strong>Nombre:</strong> <span id="userInfoNombre">-</span></p>
+                                        <p class="mb-2"><strong>Apellido:</strong> <span id="userInfoApellido">-</span></p>
+                                        <p class="mb-2"><strong>Email:</strong> <span id="userInfoEmail">-</span></p>
+                                        <p class="mb-2"><strong>Teléfono:</strong> <span id="userInfoTelefono">-</span></p>
+                                        <p class="mb-2"><strong>Matrícula Profesional:</strong> <span id="userInfoMatricula">-</span></p>
+                                        <p class="mb-0"><strong>Especialidad:</strong> <span id="userInfoEspecialidad">-</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Report Editor Modal -->
+                <div class="modal fade" id="reportEditorModal" tabindex="-1" aria-labelledby="reportEditorModalLabel" aria-hidden="true" style="z-index: 1060;">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="reportEditorModalLabel">
+                                    <i class="fas fa-edit me-2"></i>
+                                    Editor de Informe
+                                </h5>
+                                <div class="d-flex gap-2 align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleFullscreenModal" title="Pantalla completa">
+                                        <i class="fas fa-expand" id="fullscreenModalIcon"></i>
+                                    </button>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Template Selection -->
+                                <div class="template-section mb-4">
+                                    <div id="templateSelectorContainer">
+                                        <!-- El selector de plantillas se insertará aquí dinámicamente -->
+                                    </div>
+                                </div>
+
+                                <!-- Report Info -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <h6 class="card-title mb-1">Información del Informe</h6>
+                                                <p class="mb-1"><strong>Paciente:</strong> <span id="modalPatientName">-</span></p>
+                                                <p class="mb-1"><strong>ID Paciente:</strong> <span id="modalPatientId">-</span></p>
+                                                <p class="mb-0"><strong>Modalidad:</strong> <span id="modalModality">-</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <h6 class="card-title mb-1">Estado y Versión</h6>
+                                                <p class="mb-1"><strong>Estado:</strong> <span id="modalStatus">-</span></p>
+                                                <p class="mb-1"><strong>Versión:</strong> <span id="modalVersion">-</span></p>
+                                                <p class="mb-0"><strong>Última Modificación:</strong> <span id="modalLastModified">-</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Report Title -->
+                                <div class="mb-3">
+                                    <label for="reportTitle" class="form-label">Título del Informe</label>
+                                    <input type="text" class="form-control" id="reportTitle" placeholder="Título del informe">
+                                </div>
+
+                                <!-- TinyMCE Editor -->
+                                <div class="mb-3">
+                                    <label for="reportContent" class="form-label">Contenido del Informe</label>
+                                    <textarea id="reportContent" class="form-control"></textarea>
+                                </div>
+
+                                <!-- Audio Section -->
+                                <!-- Audio Section -->
+                <div class="mb-3" id="audioSection" style="display: none;">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-volume-up me-2"></i>
+                                                Audios del Informe
+                            </h6>
+                            <div class="audio-status">
+                                                <span class="badge bg-secondary" id="editAudioStatus">Detenido</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                                            <!-- Audio List -->
+                                            <div id="editAudioList" class="mb-3">
+                                                <p class="text-muted">No hay audios disponibles para este informe</p>
+                            </div>
+                            
+                            <!-- Audio Player Controls -->
+                                            <div id="editAudioPlayerControls" class="audio-player-controls" style="display: none;">
+                                                <!-- Audio Selection -->
+                                                <div class="row mb-3">
+                                                    <div class="col">
+                                                        <label for="editAudioSelect" class="form-label">Seleccionar Audio:</label>
+                                                        <select class="form-select" id="editAudioSelect" onchange="InformesManager.selectEditAudio(this.value)">
+                                                            <option value="">Selecciona un audio...</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Player Controls -->
+                                                <div class="row align-items-center mb-3">
+                                    <div class="col-auto">
+                                                        <button class="btn btn-primary btn-lg" id="editPlayPauseBtn" onclick="InformesManager.toggleEditAudioPlayPause()">
+                                                            <i class="fas fa-play" id="editPlayPauseIcon"></i>
+                                        </button>
+                                                        <button class="btn btn-secondary btn-lg ms-2" id="editStopBtn" onclick="InformesManager.stopEditAudio()">
+                                            <i class="fas fa-stop"></i>
+                                        </button>
+                                    </div>
+                                    <div class="col">
+                                        <div class="audio-progress-container">
+                                                            <div class="progress" style="height: 12px; cursor: pointer;" id="editAudioProgressBar" onclick="InformesManager.seekEditAudio(event)">
+                                                                <div class="progress-bar bg-primary" role="progressbar" style="width: 0%" id="editAudioProgressBarFill"></div>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between mt-2">
+                                                                <small class="text-muted" id="editCurrentTime">00:00</small>
+                                                                <small class="text-muted" id="editTotalTime">00:00</small>
+                                            </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                                
+                                                <!-- Volume Control -->
+                                                <div class="row align-items-center mb-3">
+                                    <div class="col-auto">
+                                                        <i class="fas fa-volume-down"></i>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="range" class="form-range" min="0" max="100" value="100" id="editVolumeSlider" onchange="InformesManager.setEditAudioVolume(this.value)">
+                                        </div>
+                                                    <div class="col-auto">
+                                                        <i class="fas fa-volume-up"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Speed and Volume Status -->
+                                <div class="row align-items-center mb-3">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-tachometer-alt me-1"></i>
+                                            <strong>Velocidad:</strong> <span id="editSpeedStatus">1x</span>
+                                        </small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted">
+                                            <i class="fas fa-volume-up me-1"></i>
+                                            <strong>Volumen:</strong> <span id="editVolumeStatus">100%</span>
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hotkeys Button -->
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <button class="btn btn-outline-info btn-sm" id="configureHotkeysBtn" onclick="InformesManager.showHotkeysConfigModal()" title="Configurar atajos de teclado">
+                                            <i class="fas fa-keyboard me-1"></i>Hotkeys
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Hotkeys Info -->
+                                <div class="row mb-2">
+                                    <div class="col-12">
+                                        <small class="text-muted" id="editHotkeysInfo">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <span id="editHotkeysInfoText">Presiona el botón Hotkeys para configurar los atajos</span>
+                                        </small>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            
+                                            <!-- Hidden Audio Element -->
+                                            <audio id="editAudioElement" preload="metadata"></audio>
+                        </div>
+                    </div>
+                </div>
+
+                                <!-- Status and Notes -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="reportStatus" class="form-label">Estado del Informe</label>
+                                        <select class="form-select" id="reportStatus">
+                                            <option value="borrador">Borrador</option>
+                                            <option value="transcripto">Transcripto</option>
+                                            <option value="revisado">Revisado</option>
+                                            <option value="firmado">Firmado</option>
+                                            <option value="finalizado">Finalizado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="reportNotes" class="form-label">Notas de Revisión</label>
+                                        <input type="text" class="form-control" id="reportNotes" placeholder="Notas adicionales">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Floating Transcription Panel -->
+                            <div id="floatingTranscriptionPanel" class="floating-transcription-panel" style="display: none;">
+                                <div class="floating-transcription-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-file-alt me-2"></i>
+                                        Transcripción con Timestamps
+                                    </h6>
+                                    <div class="floating-transcription-controls">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" id="floatingTranscriptionCopy" title="Copiar transcripción al portapapeles" onclick="event.stopPropagation(); InformesManager.copyFloatingTranscriptionToClipboard();">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success" id="floatingTranscriptionInsert" title="Insertar transcripción en el editor" onclick="event.stopPropagation(); InformesManager.insertFloatingTranscriptionToEditor();">
+                                            <i class="fas fa-file-import"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="floatingTranscriptionToggle" title="Minimizar/Maximizar">
+                                            <i class="fas fa-chevron-down" id="floatingTranscriptionToggleIcon"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="floatingTranscriptionClose" title="Cerrar">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="floating-transcription-body" id="floatingTranscriptionBody">
+                                    <div id="floatingTranscriptionText" 
+                                         style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-family: inherit; line-height: 1.7; text-align: left; cursor: text; padding: 10px;">
+                                        <p class="text-muted text-center">Selecciona un audio con transcripción para ver los timestamps</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cancelar
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="btnNewReportFromCurrent" title="Crear nuevo informe para el mismo estudio (útil para múltiples regiones)">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Nuevo Informe
+                                </button>
+                                <button type="button" class="btn btn-success" id="btnSaveReport">
+                                    <i class="fas fa-save me-2"></i>
+                                    Guardar Cambios
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnFirmarInforme" style="display:none;" title="Firmar informe transcripto">
+                                    <i class="fas fa-signature me-2"></i>
+                                    Firmar
+                                </button>
+                                <button type="button" class="btn btn-info" id="btnPreviewPDF">
+                                    <i class="fas fa-eye me-2"></i>
+                                    Previsualizar PDF
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnExportPDF">
+                                    <i class="fas fa-file-pdf me-2"></i>
+                                    Exportar PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visor PDF del informe (Ver/Editar; encima del modal del editor) -->
+                <div class="modal fade" id="informePdfViewerModal" tabindex="-1" aria-labelledby="informePdfViewerModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header bg-dark text-white">
+                                <h5 class="modal-title mb-0" id="informePdfViewerModalLabel">
+                                    <i class="fas fa-file-pdf me-2"></i><span id="informePdfViewerTitle">PDF del informe</span>
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body p-0" style="min-height: 70vh;">
+                                <iframe id="informePdfViewerFrame" class="w-100 border-0 d-block" style="height: 70vh;" title="Visor PDF del informe"></iframe>
+                            </div>
+                            <div class="modal-footer py-2">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audio Player Modal -->
+                <div class="modal fade" id="audioPlayerModal" tabindex="-1" aria-labelledby="audioPlayerModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="audioPlayerModalLabel">
+                                    <i class="fas fa-volume-up me-2"></i>
+                                    Reproductor de Audio
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Audio Info -->
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <h6 class="card-title mb-1">Información del Audio</h6>
+                                                <p class="mb-1"><strong>Archivo:</strong> <span id="audioPlayerFileName">-</span></p>
+                                                <p class="mb-1"><strong>Tamaño:</strong> <span id="audioPlayerFileSize">-</span></p>
+                                                <p class="mb-0"><strong>Fecha:</strong> <span id="audioPlayerFileDate">-</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <h6 class="card-title mb-1">Estado de Reproducción</h6>
+                                                <p class="mb-1"><strong>Estado:</strong> <span id="audioPlayerStatus">Detenido</span></p>
+                                                <p class="mb-1"><strong>Duración:</strong> <span id="audioPlayerDuration">00:00</span></p>
+                                                <p class="mb-0"><strong>Progreso:</strong> <span id="audioPlayerProgress">0%</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Audio Player Controls -->
+                                <div class="audio-player-container">
+                                    <div class="row align-items-center mb-3">
+                                        <div class="col-auto">
+                                            <button class="btn btn-primary btn-lg" id="audioPlayerPlayPauseBtn" onclick="InformesManager.toggleAudioPlayerPlayPause()">
+                                                <i class="fas fa-play" id="audioPlayerPlayPauseIcon"></i>
+                                            </button>
+                                            <button class="btn btn-secondary btn-lg ms-2" id="audioPlayerStopBtn" onclick="InformesManager.stopAudioPlayer()">
+                                                <i class="fas fa-stop"></i>
+                                            </button>
+                                        </div>
+                                        <div class="col">
+                                            <div class="audio-progress-container">
+                                                <div class="progress" style="height: 12px; cursor: pointer;" id="audioPlayerProgressBar" onclick="InformesManager.seekAudio(event)">
+                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 0%" id="audioPlayerProgressBarFill"></div>
+                                                </div>
+                                                <div class="d-flex justify-content-between mt-2">
+                                                    <small class="text-muted" id="audioPlayerCurrentTime">00:00</small>
+                                                    <small class="text-muted" id="audioPlayerTotalTime">00:00</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Volume Control -->
+                                    <div class="row align-items-center">
+                                        <div class="col-auto">
+                                            <i class="fas fa-volume-down"></i>
+                                        </div>
+                                        <div class="col">
+                                            <input type="range" class="form-range" min="0" max="100" value="100" id="audioPlayerVolumeSlider" onchange="InformesManager.setAudioPlayerVolume(this.value)">
+                                        </div>
+                                        <div class="col-auto">
+                                            <i class="fas fa-volume-up"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Audio Element (Hidden) -->
+                                <audio id="audioPlayerElement" preload="metadata"></audio>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transcription Modal -->
+                <div class="modal fade" id="transcriptionModal" tabindex="-1" aria-labelledby="transcriptionModalLabel" aria-hidden="true" style="z-index: 1075;">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="transcriptionModalLabel">
+                                    <i class="fas fa-file-alt me-2"></i>
+                                    Transcripción del Audio
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label class="form-label"><strong>Audio:</strong> <span id="transcriptionAudioName">-</span></label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="transcriptionText" class="form-label">Transcripción:</label>
+                                    <textarea class="form-control" id="transcriptionText" rows="15" readonly style="resize: vertical; font-family: monospace; white-space: pre-wrap;"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" id="btnCopyTranscription" onclick="InformesManager.copyTranscriptionToClipboard()">
+                                    <i class="fas fa-copy me-2"></i>
+                                    Copiar al Portapapeles
+                                </button>
+                                <button type="button" class="btn btn-primary" id="btnInsertTranscription">
+                                    <i class="fas fa-plus me-2"></i>
+                                    Insertar en Editor
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Confirmation Modal -->
+                <div class="modal fade" id="navigationConfirmModal" tabindex="-1" aria-labelledby="navigationConfirmModalLabel" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="navigationConfirmModalLabel">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    Cambios No Guardados
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>¡Atención!</strong> Tienes cambios sin guardar en el informe actual.
+                                </div>
+                                <p>¿Estás seguro de que quieres abandonar esta página? Los cambios no guardados se perderán.</p>
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-lightbulb me-1"></i>
+                                        <strong>Sugerencia:</strong> Guarda el informe antes de navegar para conservar tus cambios.
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="stayOnPageBtn">
+                                    <i class="fas fa-times me-2"></i>
+                                    Permanecer en la Página
+                                </button>
+                                <button type="button" class="btn btn-primary" id="saveAndLeaveBtn">
+                                    <i class="fas fa-save me-2"></i>
+                                    Guardar y Salir
+                                </button>
+                                <button type="button" class="btn btn-danger" id="leaveWithoutSavingBtn">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Salir Sin Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Template Manager Modal -->
+                <div id="templateManagerModalContainer">
+                    <!-- El modal de gestión de plantillas se insertará aquí dinámicamente -->
+                </div>
+
+                <!-- Audio Player Modal -->
+                <div class="modal fade" id="audioPlayerModal" tabindex="-1" aria-labelledby="audioPlayerModalLabel" aria-hidden="true" style="z-index: 1070;">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="audioPlayerModalLabel">
+                                    <i class="fas fa-volume-up me-2"></i>
+                                    Reproductor de Audios
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Report Info -->
+                                <div class="card bg-light mb-3">
+                                    <div class="card-body py-2">
+                                        <h6 class="card-title mb-1">Información del Estudio</h6>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p class="mb-1"><strong>Paciente:</strong> <span id="audioModalPatientName">-</span></p>
+                                                <p class="mb-0"><strong>ID Paciente:</strong> <span id="audioModalPatientId">-</span></p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p class="mb-1"><strong>Modalidad:</strong> <span id="audioModalModality">-</span></p>
+                                                <p class="mb-0"><strong>Total Audios:</strong> <span id="audioModalTotalCount">0</span></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Audio List -->
+                                <div id="audioListContainer">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando audios...</span>
+                                        </div>
+                                        <p class="mt-2 text-muted">Cargando audios del estudio...</p>
+                                    </div>
+                                </div>
+
+                                <!-- Current Audio Player -->
+                                <div id="currentAudioPlayerSection" class="mt-3" style="display: none;">
+                                    <div class="card border-primary">
+                                        <div class="card-header bg-primary text-white">
+                                            <h6 class="mb-0">
+                                                <i class="fas fa-play-circle me-2"></i>
+                                                Reproduciendo: <span id="currentAudioTitle">-</span>
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- Audio Element -->
+                                            <audio id="currentAudioPlayer" preload="metadata" style="display: none;">
+                                                Tu navegador no soporta el elemento de audio.
+                                            </audio>
+                                            
+                                            <!-- Custom Controls -->
+                                            <div class="audio-controls-custom">
+                                                <div class="row align-items-center mb-3">
+                                                    <div class="col-auto">
+                                                        <button class="btn btn-primary btn-lg" id="playPauseBtn" onclick="InformesManager.toggleAudioPlayPauseModal()">
+                                                            <i class="fas fa-play"></i>
+                                                        </button>
+                                                        <button class="btn btn-secondary btn-lg ms-2" id="stopBtn" onclick="InformesManager.stopAudioModal()">
+                                                            <i class="fas fa-stop"></i>
+                                                        </button>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="progress" style="height: 12px; cursor: pointer;" onclick="InformesManager.seekAudioModal(event)">
+                                                            <div class="progress-bar bg-primary" role="progressbar" style="width: 0%" id="audioProgressBar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between mt-2">
+                                                            <small class="text-muted" id="currentTime">00:00</small>
+                                                            <small class="text-muted" id="totalDuration">00:00</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Audio Status -->
+                                                <div class="text-center">
+                                                    <small id="audioStatus" class="text-muted">Listo para reproducir</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Audio Info -->
+                                            <div class="mt-3">
+                                                <div id="currentAudioInfo">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        Selecciona un audio para ver la información
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-2"></i>Cerrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Overlay -->
+                <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="../assets/js/pdf.js?v=202606251200"></script>
+    <script>
+        // Define detectBasePrefix globally before informes-manager.js uses it
+        function detectBasePrefix() {
+            try {
+                const path = window.location.pathname || '/';
+                const segments = path.split('/').filter(Boolean);
+                const last = segments[segments.length - 1] || '';
+                const isFile = last.includes('.') && !path.endsWith('/');
+                const depth = Math.max(0, segments.length - (isFile ? 1 : 0));
+                if (depth === 0) {
+                    return '.';
+                }
+                return Array(depth).fill('..').join('/');
+            } catch (e) {
+                return '.';
+            }
+        }
+    </script>
+    <script src="../assets/js/url-study-manager.js?v=202606251200"></script>
+    <script src="../assets/js/dashboard-orthanc.js?v=202606251200"></script>
+    <script src="../assets/js/template-manager-module.js?v=202609021320"></script>
+    <script src="../assets/js/transcription-health.js?v=202609021440"></script>
+    <script src="../js/qrcode/qrcode.min.js"></script>
+    <script src="../assets/js/informes-manager.js?v=202609041145"></script>
+    <script src="../modules/qa-publicacion/assets/js/qa-quick-action.js?v=202607091420"></script>
+    <script src="../assets/js/informes-recibidos-modal.js?v=202606251200"></script>
+    <script src="../assets/js/informes-carpeta-modal.js?v=202606251200"></script>
+    <script src="../assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    
+    <!-- Sidebar Toggle Script -->
+    <script>
+        // Function to load logo from configuration
+        async function loadWelcomeLogo() {
+            try {
+                const logoElement = document.getElementById('welcomeLogo');
+                if (!logoElement) return;
+                
+                const configResponse = await fetch('../api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.logo) {
+                    // Ajustar la ruta del logo si estamos en una subcarpeta (components/)
+                    let logoPath = configData.logo;
+                    // Si la ruta no empieza con ../ y estamos en components/, agregar ../
+                    if (window.location.pathname.includes('/components/') && !logoPath.startsWith('../') && !logoPath.startsWith('http')) {
+                        logoPath = '../' + logoPath;
+                    }
+                    logoElement.src = logoPath;
+                    logoElement.style.display = 'block';
+                } else {
+                    logoElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando logo de configuración:', error);
+                const logoElement = document.getElementById('welcomeLogo');
+                if (logoElement) {
+                    logoElement.style.display = 'none';
+                }
+            }
+        }
+        
+        // Function to load incomplete studies counter
+        async function loadIncompleteStudiesCounter() {
+            try {
+                const counterElement = document.getElementById('estudiosIncompletos');
+                if (!counterElement) return;
+                
+                const response = await fetch('../api/get_incomplete_studies.php');
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.incomplete_study_ids) {
+                    const incompleteCount = result.data.incomplete_study_ids.length;
+                    counterElement.textContent = incompleteCount;
+                    console.log(`📊 Contador de incompletos actualizado: ${incompleteCount}`);
+                } else {
+                    counterElement.textContent = '0';
+                }
+            } catch (error) {
+                console.error('Error cargando contador de estudios incompletos:', error);
+                const counterElement = document.getElementById('estudiosIncompletos');
+                if (counterElement) {
+                    counterElement.textContent = '0';
+                }
+            }
+        }
+        
+        // Function to refresh incomplete studies counter periodically
+        function startIncompleteCounterRefresh() {
+            // Cargar inicialmente
+            loadIncompleteStudiesCounter();
+            
+            // Actualizar cada 30 segundos
+            setInterval(() => {
+                loadIncompleteStudiesCounter();
+            }, 30000);
+        }
+
+        // Function to update welcome message with user name and especialidad
+        async function updateWelcomeMessage() {
+            try {
+                // Wait a bit for auth middleware to be fully initialized
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar título de bienvenida
+                        const welcomeTitle = document.getElementById('welcomeTitle');
+                        if (welcomeTitle) {
+                            welcomeTitle.textContent = `Gestión de Informes - ${fullName}`;
+                        }
+                        
+                        // Actualizar subtítulo con especialidad
+                        const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+                        if (welcomeSubtitle && user.especialidad) {
+                            welcomeSubtitle.textContent = user.especialidad;
+                        } else if (welcomeSubtitle && !user.especialidad) {
+                            welcomeSubtitle.textContent = 'Buscar, editar y gestionar informes médicos';
+                        }
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    // If getCurrentUser is not available, try again after a delay
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                // Try again after a delay
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Proteger página - requiere autenticación y permisos
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+            
+            // Verificar permisos específicos para Gestión Informes
+            const hasAccess = await requirePermissionSimple('gestionInformes', 'Gestión Informes', {
+                title: 'Acceso Denegado - Gestión Informes',
+                message: 'No tienes permisos para acceder a <strong>Gestión Informes</strong>.',
+                redirectUrl: '../dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            // Si no tiene permisos, no continuar con el resto del código
+            if (!hasAccess) {
+                return;
+            }
+            
+            // Cargar logo desde configuración
+            loadWelcomeLogo();
+            
+            // Actualizar información del usuario (nombre y especialidad)
+            updateWelcomeMessage();
+            
+            // Cargar y actualizar contador de estudios incompletos
+            startIncompleteCounterRefresh();
+            
+            // Sidebar toggle functionality
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+            // Mobile sidebar toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('show');
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.toggle('show');
+                    }
+                });
+            }
+
+            // Desktop sidebar toggle
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    sidebarLayout.classList.toggle('sidebar-hidden');
+                });
+            }
+
+            // Desktop sidebar show button (floating)
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+
+            // Close sidebar on overlay click (mobile)
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
+                });
+            }
+
+            // Close sidebar on nav link click (mobile)
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.remove('show');
+                    }
+                });
+            });
+
+            // Configurar botones de logout manualmente para asegurar que funcionen correctamente
+            // Esto es necesario porque el DOMContentLoaded de auth-middleware puede dispararse 
+            // antes de que los botones de logout se agreguen al DOM de informes-manager
+            if (window.authManager && typeof window.authManager.setupLogoutButtons === 'function') {
+                window.authManager.setupLogoutButtons();
+            } else if (window.auth && typeof window.auth.setupLogoutButtons === 'function') {
+                window.auth.setupLogoutButtons();
+            }
+
+            // Texto del botón colapsar filtros (informes)
+            const informesFiltCollapse = document.getElementById('informesSearchFiltersCollapse');
+            const informesFiltBtn = document.querySelector('.informes-filters-collapse-btn');
+            if (informesFiltCollapse && informesFiltBtn) {
+                const informesFiltLabel = informesFiltBtn.querySelector('.informes-filters-toggle-label');
+                informesFiltCollapse.addEventListener('hidden.bs.collapse', () => {
+                    if (informesFiltLabel) informesFiltLabel.textContent = 'Mostrar';
+                    informesFiltBtn.setAttribute('aria-expanded', 'false');
+                });
+                informesFiltCollapse.addEventListener('shown.bs.collapse', () => {
+                    if (informesFiltLabel) informesFiltLabel.textContent = 'Ocultar';
+                    informesFiltBtn.setAttribute('aria-expanded', 'true');
+                });
+            }
+
+            // InformesManager se inicializa automáticamente desde informes-manager.js
+        });
+    </script>
+
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+        }
+        
+        .badge {
+            font-size: 0.75em;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Filtros de búsqueda informes-manager: compacto */
+        .informes-filters-card .card-header {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        .informes-filters-body {
+            padding-top: 0.5rem !important;
+        }
+        .informes-filters-collapse-btn .informes-filters-chevron {
+            transition: transform 0.2s ease;
+        }
+        .informes-filters-collapse-btn.collapsed .informes-filters-chevron {
+            transform: rotate(180deg);
+        }
+        .informes-filters-date-range .form-control {
+            min-width: 0;
+        }
+        @media (min-width: 1200px) {
+            .informes-filters-date-range {
+                max-width: 100%;
+            }
+        }
+        .informes-quick-date.active {
+            color: #fff;
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        .informes-filters-period-atajos .informes-filters-date-range {
+            flex: 1 1 11rem;
+            max-width: 22rem;
+        }
+        .informes-results-header .form-control#searchInput {
+            max-width: 100%;
+        }
+        @media (min-width: 768px) {
+            .informes-results-header #searchInput {
+                max-width: 28rem;
+            }
+        }
+        
+        .audio-player {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .audio-player:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+        }
+        
+        .audio-player.active {
+            background: #e7f3ff;
+            border-color: #0d6efd;
+        }
+        
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .audio-info {
+            flex-grow: 1;
+            margin-left: 0.75rem;
+        }
+        
+        .audio-meta {
+            font-size: 0.875rem;
+            color: #6c757d;
+        }
+        
+        .play-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Toggle Switch para Formato PACS */
+        .pacs-format-toggle-container {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .pacs-format-toggle {
+            position: relative;
+            display: inline-block;
+            width: 110px;
+            height: 32px;
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .pacs-format-switch {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .pacs-format-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 2px 6px;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pacs-format-slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 3px;
+            bottom: 3px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                        0 1px 2px rgba(0, 0, 0, 0.15),
+                        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+            z-index: 2; /* Círculo sobre los labels */
+        }
+
+        .pacs-format-switch:checked + .pacs-format-slider {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .pacs-format-switch:checked + .pacs-format-slider:before {
+            transform: translateX(81px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                        0 1px 2px rgba(0, 0, 0, 0.15),
+                        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+        }
+
+        .pacs-format-label-left,
+        .pacs-format-label-right {
+            position: absolute;
+            font-size: 11px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3),
+                         0 0 1px rgba(0, 0, 0, 0.2);
+            z-index: 1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            pointer-events: none;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .pacs-format-label-left {
+            right: 8px; /* PDF justificado a la derecha cuando círculo está a la izquierda */
+            left: auto;
+            opacity: 1;
+            text-align: right;
+        }
+
+        .pacs-format-label-right {
+            left: 8px; /* IMG justificado a la izquierda cuando círculo está a la derecha */
+            right: auto;
+            opacity: 0;
+            text-align: left;
+        }
+
+        .pacs-format-switch:checked + .pacs-format-slider .pacs-format-label-left {
+            opacity: 0;
+        }
+
+        .pacs-format-switch:checked + .pacs-format-slider .pacs-format-label-right {
+            opacity: 1;
+        }
+
+        .pacs-format-toggle:hover .pacs-format-slider {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .pacs-format-switch:checked:hover + .pacs-format-slider {
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .pacs-format-toggle:active .pacs-format-slider:before {
+            transform: scale(0.95);
+        }
+
+        .pacs-format-switch:checked:active + .pacs-format-slider:before {
+            transform: translateX(81px) scale(0.95);
+        }
+
+        /* Estilos para toggle en encabezado de tabla */
+        thead th .pacs-format-toggle-container {
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        thead th .pacs-format-toggle {
+            width: 110px;
+            height: 32px;
+        }
+
+        thead th .pacs-format-slider {
+            font-size: 1em;
+        }
+
+        thead th .pacs-format-label-left,
+        thead th .pacs-format-label-right {
+            font-size: 11px;
+        }
+
+        thead th .pacs-format-slider:before {
+            height: 26px;
+            width: 26px;
+        }
+
+        thead th .pacs-format-switch:checked + .pacs-format-slider:before {
+            transform: translateX(78px);
+        }
+
+        /* Estilos para encabezados de columna ordenables */
+        .sortable {
+            user-select: none;
+            position: relative;
+        }
+
+        .sortable:hover {
+            background-color: rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .sortable .sort-icon {
+            margin-left: 5px;
+            opacity: 0.5;
+            font-size: 0.85em;
+            transition: opacity 0.2s;
+        }
+
+        .sortable:hover .sort-icon {
+            opacity: 1;
+        }
+
+        .sortable .sort-icon.fa-sort-up,
+        .sortable .sort-icon.fa-sort-down {
+            opacity: 1;
+            color: #0d6efd;
+        }
+
+        /* Indicador de informe en PACS */
+        .badge.bg-success[title="Enviado a PACS"] {
+            font-size: 0.75em;
+            padding: 0.35em 0.65em;
+            font-weight: 600;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.7;
+            }
+        }
+        
+        /* Sticky header para welcome section */
+        .main-content .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .main-content .container-fluid > .row:first-child .welcome-card {
+            margin-bottom: 0;
+        }
+        
+        /* Botón flotante para volver al inicio */
+        .scroll-to-top-btn {
+            position: fixed !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 99999 !important;
+            transition: opacity 0.3s ease, transform 0.3s ease !important;
+            font-size: 20px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .scroll-to-top-btn:hover {
+            background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+        }
+        
+        .scroll-to-top-btn:active {
+            transform: translateY(-1px) !important;
+        }
+        
+        .scroll-to-top-btn.show {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        
+        @media (max-width: 767.98px) {
+            .scroll-to-top-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 18px !important;
+            }
+            
+            .main-content .container-fluid > .row:first-child {
+                top: 56px;
+                z-index: 99;
+            }
+        }
+        
+        /* Estilos para contador de incompletos */
+        #estudiosIncompletos.text-danger {
+            color: #dc3545 !important;
+            font-weight: 700;
+        }
+        
+        /* Estilos para el logo en el header de bienvenida */
+        .welcome-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+        }
+        
+        .welcome-logo {
+            max-height: 80px;
+            max-width: 120px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+        }
+        
+        @media (max-width: 767.98px) {
+            #estudiosIncompletos {
+                font-size: 1rem !important;
+            }
+            
+            .stat-item .stat-label {
+                font-size: 0.65rem !important;
+            }
+        }
+        
+        @media (max-width: 991.98px) {
+            .welcome-logo {
+                max-height: 50px;
+                max-width: 80px;
+            }
+        }
+        
+        @media (max-width: 767.98px) {
+            .welcome-logo {
+                max-height: 40px;
+                max-width: 60px;
+            }
+            
+            .welcome-logo-container {
+                margin-left: 0.5rem;
+            }
+        }
+        
+        /* =====================================================
+         * SISTEMA DE Z-INDEX PARA MODALES
+         * =====================================================
+         * Jerarquía (modal → backdrop necesario):
+         *   studySelectionModal / activeStudyModal : 1055 → backdrop 1054
+         *   reportEditorModal                      : 1060 → backdrop 1059
+         *   templateManagerModal                   : 1070 → backdrop 1069
+         *   hotkeysConfigModal                     : 1080 → backdrop 1079
+         *   informePdfViewerModal                  : 1090 → backdrop 1085
+         *   modalConfirmarEnvioPacs/Eliminar        : 10000 → backdrop 9999
+         * ===================================================== */
+
+        /* Backdrop base: valor por defecto de Bootstrap (1040).
+           NO sobreescribir genéricamente a un valor alto porque
+           causaría que el backdrop tape modales con z-index bajo. */
+        body.modal-open .modal-backdrop {
+            z-index: 1040 !important;
+        }
+
+        /* ── reportEditorModal ── */
+        #reportEditorModal,
+        #reportEditorModal.show {
+            z-index: 1060 !important;
+        }
+        #reportEditorModal .modal-content {
+            position: relative;
+            z-index: 1061 !important;
+            pointer-events: auto;
+        }
+        body:has(#reportEditorModal.show) .modal-backdrop {
+            z-index: 1059 !important;
+        }
+
+        /* ── studySelectionModal / activeStudyModal ──
+           Se crean dinámicamente con inline z-index:1055.
+           Su backdrop debe quedar en 1054. */
+        body:has(#studySelectionModal.show) .modal-backdrop {
+            z-index: 1054 !important;
+        }
+        body:has(#activeStudyModal.show) .modal-backdrop {
+            z-index: 1054 !important;
+        }
+
+        /* ── templateManagerModal ── */
+        body:has(#templateManagerModal.show) .modal-backdrop {
+            z-index: 1069 !important;
+        }
+
+        /* ── hotkeysConfigModal ── */
+        #hotkeysConfigModal,
+        #hotkeysConfigModal.show,
+        .modal.show#hotkeysConfigModal {
+            z-index: 1080 !important;
+        }
+        body:has(#hotkeysConfigModal.show) .modal-backdrop:last-of-type {
+            z-index: 1079 !important;
+        }
+
+        /* ── informePdfViewerModal (PDF embebido en informe, encima del editor) ── */
+        #informePdfViewerModal,
+        #informePdfViewerModal.show {
+            z-index: 1090 !important;
+        }
+        #informePdfViewerModal .modal-content {
+            position: relative;
+            z-index: 1091 !important;
+            pointer-events: auto;
+        }
+        body:has(#informePdfViewerModal.show) .modal-backdrop {
+            z-index: 1085 !important;
+        }
+
+        /* ── modalConfirmarEnvioPacs ── */
+        #modalConfirmarEnvioPacs,
+        #modalConfirmarEnvioPacs.show {
+            z-index: 10000 !important;
+        }
+        #modalConfirmarEnvioPacs .modal-content {
+            position: relative;
+            z-index: 10001 !important;
+            pointer-events: auto;
+        }
+        body:has(#modalConfirmarEnvioPacs.show) .modal-backdrop {
+            z-index: 9999 !important;
+        }
+
+        /* ── modalConfirmarEliminarPacs ── */
+        #modalConfirmarEliminarPacs,
+        #modalConfirmarEliminarPacs.show {
+            z-index: 10000 !important;
+        }
+        #modalConfirmarEliminarPacs .modal-content {
+            position: relative;
+            z-index: 10001 !important;
+            pointer-events: auto;
+        }
+        body:has(#modalConfirmarEliminarPacs.show) .modal-backdrop {
+            z-index: 9999 !important;
+        }
+        /* Floating Transcription Panel */
+        .floating-transcription-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 450px;
+            max-width: calc(100vw - 40px);
+            max-height: 400px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1070;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            /* Permitir arrastre */
+            touch-action: none;
+        }
+
+        /* TinyMCE fullscreen (Ctrl+Shift+F): .tox-tinymce.tox-fullscreen usa z-index 1200/1201 en el skin oxide */
+        html.tox-fullscreen .floating-transcription-panel,
+        body.tox-fullscreen .floating-transcription-panel {
+            z-index: 1300 !important;
+        }
+        
+        .floating-transcription-panel:not(.focused) {
+            background: rgba(255, 255, 255, 0.75);
+            opacity: 0.9;
+        }
+        
+        .floating-transcription-panel.focused {
+            background: rgba(255, 255, 255, 0.98);
+            opacity: 1;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+        }
+        
+        .floating-transcription-panel.minimized {
+            max-height: 50px;
+        }
+        
+        .floating-transcription-panel.minimized .floating-transcription-body {
+            display: none;
+        }
+        
+        .floating-transcription-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(0, 123, 255, 0.1);
+            border-radius: 8px 8px 0 0;
+            cursor: grab;
+            user-select: none;
+        }
+        
+        .floating-transcription-header:active {
+            cursor: grabbing;
+        }
+        
+        .floating-transcription-controls {
+            pointer-events: auto;
+        }
+        
+        .floating-transcription-controls button {
+            pointer-events: auto;
+        }
+        
+        .floating-transcription-header h6 {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #0d6efd;
+        }
+        
+        .floating-transcription-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .floating-transcription-body {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .floating-transcription-text {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 15px;
+        }
+        
+        /* Estilos para palabras con timestamps (similar a ai-informes) */
+        .transcription-word {
+            transition: background-color 0.2s, color 0.2s;
+            padding: 2px 1px;
+            border-radius: 2px;
+        }
+        
+        .clickable-word {
+            cursor: pointer;
+        }
+        
+        .clickable-word:hover {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .transcription-word.active {
+            background-color: #ffeb3b !important;
+            color: #000 !important;
+            font-weight: 600;
+        }
+        
+        /* Asegurar que el panel no interfiera con el editor */
+        #reportEditorModal .modal-body {
+            padding-bottom: 450px; /* Espacio para el panel flotante */
+        }
+        
+        @media (max-width: 768px) {
+            .floating-transcription-panel {
+                width: calc(100vw - 20px);
+                right: 10px;
+                bottom: 10px;
+            }
+            
+            #reportEditorModal .modal-body {
+                padding-bottom: 300px;
+            }
+        }
+    </style>
+
+    <!-- Modal para Confirmar Envío a PACS -->
+    <div class="modal fade" id="modalConfirmarEnvioPacs" tabindex="-1" aria-labelledby="modalConfirmarEnvioPacsLabel" aria-hidden="true" style="z-index: 10000;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="modalConfirmarEnvioPacsLabel">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>Enviar Informe a PACS
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-warning fs-1"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <p class="mb-3">¿Estás seguro de que deseas enviar este informe a PORTAL ESTUDIOS?</p>
+                            <div class="alert alert-info mb-0">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Formato:</strong>
+                                    <span class="badge bg-secondary ms-2" id="modalConfirmarEnvioPacsFormato">PDF</span>
+                                </div>
+                                <small class="text-muted">
+                                    Esto convertirá el informe en un objeto DICOM y lo enviará a PORTAL ESTUDIOS.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnConfirmarEnvioPacs">
+                        <i class="fas fa-cloud-upload-alt me-1"></i>Enviar a PACS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmar Eliminación de PACS -->
+    <div class="modal fade" id="modalConfirmarEliminarPacs" tabindex="-1" aria-labelledby="modalConfirmarEliminarPacsLabel" aria-hidden="true" style="z-index: 10000;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="modalConfirmarEliminarPacsLabel">
+                        <i class="fas fa-cloud-download-alt me-2"></i>Eliminar Informe de PACS
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-warning fs-1"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <p class="mb-3">¿Estás seguro de que deseas eliminar este informe de PORTAL ESTUDIOS?</p>
+                            <div class="alert alert-warning mb-0">
+                                <div class="d-flex align-items-center mb-2">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>Advertencia:</strong>
+                                </div>
+                                <small>
+                                    Esto eliminará la serie de PORTAL ESTUDIOS y limpiará las referencias guardadas en la base de datos.
+                                    Esta acción no se puede deshacer.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnConfirmarEliminarPacs">
+                        <i class="fas fa-trash me-1"></i>Eliminar de PACS
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Informes desde carpetas (SMB / inotify) -->
+    <div class="modal fade" id="informesCarpetaModal" tabindex="-1" aria-labelledby="informesCarpetaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info-subtle">
+                    <h5 class="modal-title" id="informesCarpetaModalLabel">
+                        <i class="fas fa-folder-open me-2"></i>Informes desde carpetas (PDF / TXT)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Tabs -->
+                    <ul class="nav nav-tabs mb-3" id="icModalTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="icTabTrazabilidadBtn" data-bs-toggle="tab" data-bs-target="#icTabTrazabilidad" type="button" role="tab">
+                                <i class="fas fa-list me-1"></i>Trazabilidad
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="icTabPreviewBtn" data-bs-toggle="tab" data-bs-target="#icTabPreview" type="button" role="tab">
+                                <i class="fas fa-eye me-1"></i>Vista previa de pares
+                                <span class="badge bg-secondary ms-1 d-none" id="icPreviewBadge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="icModalTabContent">
+
+                        <!-- TAB 1: Trazabilidad -->
+                        <div class="tab-pane fade show active" id="icTabTrazabilidad" role="tabpanel">
+                            <p class="text-muted small mb-3">
+                                Trazabilidad de archivos detectados bajo las rutas configuradas en <strong>Configuración → Informes Recibidos</strong>
+                                (<code>ic_pdf_path</code>, <code>ic_txt_path</code>). El worker <code>workers/watch-informes-carpeta.sh</code> dispara el procesamiento.
+                                <strong>Pendiente par</strong> indica que falta el archivo complementario (TXT con el mismo prefijo <code>idpaciente_</code>) o que no hubo coincidencia por fecha.
+                            </p>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-3">
+                                    <select class="form-select" id="icEstadoFilter">
+                                        <option value="">Todos los estados</option>
+                                        <option value="detectado">Detectado</option>
+                                        <option value="pendiente_par">Pendiente par</option>
+                                        <option value="ingresado">Ingresado</option>
+                                        <option value="omitido_duplicado">Omitido duplicado</option>
+                                        <option value="error">Error</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" id="icIdpacienteFilter" placeholder="idpaciente">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-primary w-100" id="icRefreshBtn">
+                                        <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                    </button>
+                                </div>
+                                <div class="col-md-4 d-flex gap-1 flex-wrap">
+                                    <button type="button" class="btn btn-outline-secondary flex-grow-1" id="icStatsBtn" title="Ver estadísticas de archivos en carpeta vs BD">
+                                        <i class="fas fa-chart-bar me-1"></i>Estadísticas
+                                    </button>
+                                    <button type="button" class="btn btn-warning flex-grow-1" id="icReprocesarBtn" title="Reprocesar un lote (200 archivos)">
+                                        <i class="fas fa-redo me-1"></i>Reprocesar
+                                    </button>
+                                    <button type="button" class="btn btn-danger flex-grow-1" id="icReprocesarTodoBtn" title="Reprocesar automáticamente todos los archivos hasta completar">
+                                        <i class="fas fa-forward me-1"></i>Todo
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="icReprocesarResult" class="alert d-none mb-3" role="alert"></div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Tipo</th>
+                                            <th>Estado</th>
+                                            <th>idpaciente</th>
+                                            <th>Archivo</th>
+                                            <th>IR id</th>
+                                            <th>Detectado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="icTableBody">
+                                        <tr><td colspan="7" class="text-center text-muted">Cargando…</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Vista previa de pares -->
+                        <div class="tab-pane fade" id="icTabPreview" role="tabpanel">
+                            <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                                <button type="button" class="btn btn-outline-primary" id="icPreviewLoadBtn">
+                                    <i class="fas fa-search me-1"></i>Cargar propuestas de emparejamiento
+                                </button>
+                                <input type="text" class="form-control" id="icPreviewFilter" placeholder="Filtrar por ID paciente, archivo, modalidad, ACCNO, descripción…" style="max-width:380px;" autocomplete="off">
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox" id="icPreviewOnlyConfirmables">
+                                    <label class="form-check-label small" for="icPreviewOnlyConfirmables">
+                                        Solo candidatos a Confirmar
+                                    </label>
+                                </div>
+                                <span class="text-muted small" id="icPreviewInfo"></span>
+                            </div>
+                            <div id="icPreviewAlert" class="alert d-none mb-3" role="alert"></div>
+
+                            <!-- Tabla de pares propuestos -->
+                            <div id="icPreviewPares">
+                                <p class="text-muted small">Haga clic en <strong>Cargar propuestas</strong> para ver los pares sugeridos por el algoritmo antes de confirmarlos.</p>
+                            </div>
+
+                            <!-- Sin par -->
+                            <div id="icPreviewSinPar" class="d-none mt-3">
+                                <h6 class="text-muted"><i class="fas fa-exclamation-circle me-1"></i>PDFs sin par encontrado</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered align-middle">
+                                        <thead class="table-light">
+                                            <tr><th>ID</th><th>Archivo PDF</th><th>Fecha informe</th><th>Descripción</th></tr>
+                                        </thead>
+                                        <tbody id="icPreviewSinParBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div><!-- /tab-content -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Visor de archivos para Vista previa de pares (carpeta) – z-index alto para solaparse sobre informesCarpetaModal -->
+    <div class="modal fade" id="icFileViewerModal" tabindex="-1" aria-labelledby="icFileViewerModalLabel" aria-hidden="true" style="z-index: 1070;">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title mb-0" id="icFileViewerModalLabel">
+                        <i class="fas fa-file-lines me-2"></i><span id="icFileViewerTitle">Visor</span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0" style="height: 70vh;">
+                    <iframe id="icFileViewerFrame" class="w-100 border-0 d-none" style="height:100%;" title="Visor PDF carpeta"></iframe>
+                    <pre id="icFileViewerTxt" class="m-0 p-3 d-none" style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:0.9rem;height:100%;overflow:auto;"></pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Adjuntar informe PDF a estudio (portado desde tjsidimagenes) -->
+    <div class="modal fade" id="attachPdfModal" tabindex="-1" aria-labelledby="attachPdfModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="attachPdfModalLabel">
+                        <i class="fas fa-paperclip me-2"></i>
+                        Adjuntar informe PDF a estudio
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <style>
+                        #attachPdfModal .attach-modality-filters { padding: 0.65rem 0.75rem; background: #fff; border-radius: 0.5rem; border: 1px solid #e9ecef; }
+                        #attachPdfModal .attach-modality-buttons { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 0.25rem; gap: 0.5rem; }
+                        #attachPdfModal .attach-modality-btn { flex-shrink: 0; padding: 0.35rem 0.75rem; font-size: 0.8rem; white-space: nowrap; border: 1px solid #dee2e6; background: #fff; color: #495057; border-radius: 0.375rem; }
+                        #attachPdfModal .attach-modality-btn:hover { background: #f8f9fa; border-color: #adb5bd; }
+                        #attachPdfModal .attach-modality-btn.active { background: #0d6efd; border-color: #0d6efd; color: #fff; }
+                        #attachPdfModal th.attach-sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+                        #attachPdfModal th.attach-sortable .attach-sort-icon { opacity: 0.55; font-size: 0.75em; }
+                        #attachPdfModal th.attach-sortable:hover .attach-sort-icon { opacity: 1; }
+                    </style>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instrucciones:</strong> Busque un estudio, selecciónelo y suba un PDF. Se creará un informe asociado al estudio con el archivo adjunto.
+                    </div>
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-list me-2"></i>Paso 1: Seleccionar estudio</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted mb-0" for="attachStudyDateFrom">Desde</label>
+                                    <input type="date" class="form-control" id="attachStudyDateFrom" title="Desde">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted mb-0" for="attachStudyDateTo">Hasta</label>
+                                    <input type="date" class="form-control" id="attachStudyDateTo" title="Hasta">
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <small class="text-muted pb-1">Rango máx. <strong id="attachStudyMaxRangeLabel">120</strong> días (inclusive). Sin fechas debe indicar ID de paciente.</small>
+                                </div>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted mb-0" for="attachStudyPatientId">ID paciente (opcional si hay fechas)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                        <input type="text" class="form-control" id="attachStudyPatientId" placeholder="ID del paciente">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end">
+                                    <button type="button" class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2" id="attachStudySearchButton">
+                                        <span class="spinner-border spinner-border-sm d-none" id="attachStudySearchSpinner" role="status" aria-hidden="true"></span>
+                                        <i class="fas fa-search attach-study-search-btn-icon"></i>
+                                        <span>Buscar estudios</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0"><i class="fas fa-list me-2"></i>Resultados</h6>
+                                <span class="badge bg-primary" id="attachStudyCount">0 estudios</span>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small text-muted mb-0" for="attachStudySearchFilter">Filtrar en la lista</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                                    <input type="text" class="form-control" id="attachStudySearchFilter" placeholder="Paciente, ID, modalidad, descripción, accession…" autocomplete="off">
+                                </div>
+                                <small class="text-muted">Se aplica sobre los resultados ya cargados; vuelva a pulsar Buscar para consultar el PACS de nuevo.</small>
+                            </div>
+                            <div class="attach-modality-filters mb-2">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="small fw-semibold text-secondary">Filtrar por modalidad <span id="attachStudyModalityCounter" class="badge bg-secondary ms-1" style="display: none;">0</span></span>
+                                </div>
+                                <div class="d-flex attach-modality-buttons" id="attachStudyModalityButtonsContainer">
+                                    <button type="button" class="btn attach-modality-btn active" data-modality="all">Todas</button>
+                                </div>
+                            </div>
+                            <div class="table-responsive border rounded" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-hover table-sm align-middle mb-0 attach-studies-results-table" style="table-layout: fixed; width: 100%;">
+                                    <colgroup>
+                                        <col style="width: 24%;">
+                                        <col style="width: 11.5rem;">
+                                        <col style="width: 7.25rem;">
+                                        <col style="width: 7.25rem;">
+                                        <col style="width: 9.25rem;">
+                                    </colgroup>
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th scope="col" class="attach-sortable" data-attach-sort="patient_name">Paciente <i class="fas fa-sort attach-sort-icon ms-1"></i></th>
+                                            <th scope="col" class="d-none d-md-table-cell attach-sortable" data-attach-sort="patient_id">ID <i class="fas fa-sort attach-sort-icon ms-1"></i></th>
+                                            <th scope="col" class="attach-sortable text-nowrap" data-attach-sort="modality">Modalidad <i class="fas fa-sort attach-sort-icon ms-1"></i></th>
+                                            <th scope="col" class="d-none d-lg-table-cell attach-sortable" data-attach-sort="date">Fecha <i class="fas fa-sort attach-sort-icon ms-1"></i></th>
+                                            <th scope="col" class="text-center text-nowrap">Acción</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attachStudiesTableBody">
+                                        <tr>
+                                            <td colspan="5" class="text-center text-muted py-4">
+                                                Use filtros y pulse &quot;Buscar estudios&quot;.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="attachSelectedStudyInfo" class="mt-3" style="display: none;">
+                                <div class="alert alert-success mb-0">
+                                    <h6 class="alert-heading mb-2"><i class="fas fa-check-circle me-2"></i>Estudio seleccionado</h6>
+                                    <p class="mb-1"><strong>Paciente:</strong> <span id="attachSelectedPatientName">-</span></p>
+                                    <p class="mb-1"><strong>ID paciente:</strong> <span id="attachSelectedPatientId">-</span></p>
+                                    <p class="mb-1"><strong>Modalidad:</strong> <span id="attachSelectedModality">-</span></p>
+                                    <p class="mb-0"><strong>Estudio:</strong> <span id="attachSelectedStudyDescription">-</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-file-pdf me-2"></i>Paso 2: Subir PDF</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="attachPdfFile" class="form-label">Archivo PDF</label>
+                                <input type="file" class="form-control" id="attachPdfFile" accept=".pdf,application/pdf">
+                                <small class="text-muted">Máximo 50 MB.</small>
+                            </div>
+                            <div id="attachPdfPreview" class="mb-3" style="display: none;">
+                                <div class="alert alert-secondary mb-0">
+                                    <strong>Archivo:</strong> <span id="attachPdfFileName">-</span><br>
+                                    <small>Tamaño: <span id="attachPdfFileSize">-</span></small>
+                                </div>
+                            </div>
+                            <div class="mb-0">
+                                <label for="attachPdfTitle" class="form-label">Título (opcional)</label>
+                                <input type="text" class="form-control" id="attachPdfTitle" placeholder="Vacío = título automático">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnConfirmAttachPdf" disabled>
+                        <i class="fas fa-paperclip me-2"></i>Adjuntar informe
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Unificado: Adjuntar audio/informe -->
+    <div class="modal fade" id="adjuntarGeneralModal" tabindex="-1" aria-labelledby="adjuntarGeneralModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="adjuntarGeneralModalLabel">
+                        <i class="fas fa-paperclip me-2"></i>Adjuntar audio/informe
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <style>
+                        #adjuntarGeneralModal .adj-tab-panel { padding-top: 1rem; }
+                        #adjuntarGeneralModal .adj-tab-panel.d-none { display: none !important; }
+                        #adjuntarGeneralModal .nav-tabs .nav-link { cursor: pointer; }
+                    </style>
+
+                    <!-- Tipo: Audio | PDF -->
+                    <div class="card mb-3">
+                        <div class="card-body py-2">
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <span class="fw-semibold text-secondary small">Tipo de adjunto:</span>
+                                <div class="btn-group" role="group" aria-label="Tipo de adjunto">
+                                    <input type="radio" class="btn-check" name="adjModalType" id="adjModalTypeAudio" value="audio" checked>
+                                    <label class="btn btn-outline-primary btn-sm" for="adjModalTypeAudio">
+                                        <i class="fas fa-music me-1"></i>Audio
+                                    </label>
+                                    <input type="radio" class="btn-check" name="adjModalType" id="adjModalTypePdf" value="pdf">
+                                    <label class="btn btn-outline-success btn-sm" for="adjModalTypePdf">
+                                        <i class="fas fa-file-pdf me-1"></i>PDF/Informe
+                                    </label>
+                                </div>
+                                <span class="badge bg-secondary" id="adjModalTypeBadge">Audio: MP3, WAV, M4A, WebM, OGG, FLAC · Máx. 50 MB</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seleccionar archivo -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-upload me-2"></i><span id="adjModalFileCardTitle">Paso 1: Seleccionar audio</span></h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="adjModalFileInput" class="form-label" id="adjModalFileLabel">Archivo de audio</label>
+                                <input type="file" class="form-control" id="adjModalFileInput"
+                                    accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac,.aac">
+                                <small class="text-muted" id="adjModalFileHint">Formatos: MP3, WAV, M4A, WebM, OGG, FLAC, AAC. Máximo 50 MB.</small>
+                            </div>
+                            <div id="adjModalFilePreview" class="mb-3" style="display: none;">
+                                <div class="alert alert-secondary mb-0 py-2">
+                                    <i class="fas fa-music me-1" id="adjModalFileIcon"></i>
+                                    <strong id="adjModalFileName">-</strong>
+                                    <small class="ms-2 text-muted">Tamaño: <span id="adjModalFileSize">-</span></small>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="adjModalTitle" class="form-label">Título (opcional)</label>
+                                <input type="text" class="form-control" id="adjModalTitle" placeholder="Vacío = título automático">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Destino -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Paso 2: Seleccionar destino</h6>
+                        </div>
+                        <div class="card-body">
+                            <!-- Tabs de destino -->
+                            <ul class="nav nav-tabs" id="adjModalDestTabs" role="tablist">
+                                <li class="nav-item" role="presentation" id="adjModalTabInformeItem">
+                                    <button class="nav-link active" id="adjModalTabInformeBtn" type="button"
+                                        onclick="InformesManager.adjModalSwitchTab('informe')" role="tab">
+                                        <i class="fas fa-file-medical me-1"></i>Informe existente
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="adjModalTabPacsBtn" type="button"
+                                        onclick="InformesManager.adjModalSwitchTab('pacs')" role="tab">
+                                        <i class="fas fa-database me-1"></i>Estudio PACS <small class="text-muted">(nuevo informe)</small>
+                                    </button>
+                                </li>
+                            </ul>
+
+                            <!-- Tab A: Informe existente -->
+                            <div class="adj-tab-panel" id="adjModalTabInforme">
+                                <div class="row g-2 mb-3 mt-1">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted mb-0">Desde</label>
+                                        <input type="date" class="form-control form-control-sm" id="adjModalInformeDateFrom">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted mb-0">Hasta</label>
+                                        <input type="date" class="form-control form-control-sm" id="adjModalInformeDateTo">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small text-muted mb-0">Paciente (nombre o ID)</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" id="adjModalInformePatient"
+                                                placeholder="Nombre o ID" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 d-flex align-items-end">
+                                        <button type="button" class="btn btn-primary btn-sm w-100"
+                                            id="adjModalInformeSearchBtn"
+                                            onclick="InformesManager.adjModalSearchInformes()">
+                                            <span class="spinner-border spinner-border-sm d-none me-1"
+                                                id="adjModalInformeSearchSpinner"></span>
+                                            <i class="fas fa-search me-1" id="adjModalInformeSearchIcon"></i>
+                                            Buscar
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive border rounded" style="max-height: 280px; overflow-y: auto;">
+                                    <table class="table table-hover table-sm align-middle mb-0" style="table-layout: fixed; width: 100%;">
+                                        <colgroup>
+                                            <col style="width: 4.5rem;">
+                                            <col style="width: 22%;">
+                                            <col>
+                                            <col style="width: 6.5rem;">
+                                            <col style="width: 7rem;">
+                                            <col style="width: 6rem;">
+                                        </colgroup>
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Paciente</th>
+                                                <th>Descripción</th>
+                                                <th>Fecha</th>
+                                                <th>Estado</th>
+                                                <th class="text-center">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adjModalInformesTableBody">
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-3">
+                                                    <i class="fas fa-search me-1"></i>Ingrese criterios y pulse Buscar.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Tab B: Estudio PACS -->
+                            <div class="adj-tab-panel d-none" id="adjModalTabPacs">
+                                <div class="row g-2 mb-2 mt-1">
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted mb-0">Desde</label>
+                                        <input type="date" class="form-control form-control-sm" id="adjModalPacsDateFrom">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="form-label small text-muted mb-0">Hasta</label>
+                                        <input type="date" class="form-control form-control-sm" id="adjModalPacsDateTo">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">Rango máx. 120 días. Sin fechas, indicar ID paciente.</label>
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted mb-0">ID paciente (opcional si hay fechas)</label>
+                                        <div class="input-group input-group-sm">
+                                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                            <input type="text" class="form-control" id="adjModalPacsPatientId"
+                                                placeholder="ID del paciente" autocomplete="off">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 d-flex align-items-end">
+                                        <button type="button" class="btn btn-primary w-100"
+                                            id="adjModalPacsSearchBtn"
+                                            onclick="InformesManager.adjModalSearchPacs()">
+                                            <span class="spinner-border spinner-border-sm d-none me-1"
+                                                id="adjModalPacsSearchSpinner"></span>
+                                            <i class="fas fa-search me-1" id="adjModalPacsSearchIcon"></i>
+                                            Buscar estudios
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="small text-muted">Resultados</span>
+                                    <span class="badge bg-primary" id="adjModalPacsCount">0 estudios</span>
+                                </div>
+                                <div class="table-responsive border rounded" style="max-height: 280px; overflow-y: auto;">
+                                    <table class="table table-hover table-sm align-middle mb-0" style="table-layout: fixed; width: 100%;">
+                                        <colgroup>
+                                            <col>
+                                            <col style="width: 11rem;">
+                                            <col style="width: 6.5rem;">
+                                            <col style="width: 7rem;">
+                                            <col style="width: 6rem;">
+                                        </colgroup>
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>Paciente</th>
+                                                <th>ID Paciente</th>
+                                                <th>Modalidad</th>
+                                                <th>Fecha</th>
+                                                <th class="text-center">Acción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="adjModalPacsTableBody">
+                                            <tr>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    <i class="fas fa-search me-1"></i>Use filtros y pulse Buscar estudios.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Destino seleccionado -->
+                            <div id="adjModalDestInfo" class="mt-3" style="display: none;">
+                                <div class="alert alert-success mb-0 py-2">
+                                    <h6 class="alert-heading mb-1">
+                                        <i class="fas fa-check-circle me-2"></i><span id="adjModalDestTitle">Destino seleccionado</span>
+                                    </h6>
+                                    <div id="adjModalDestDetails" class="small"></div>
+                                </div>
+                            </div>
+
+                        </div><!-- /card-body -->
+                    </div><!-- /card destino -->
+
+                </div><!-- /modal-body -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="adjModalConfirmBtn" disabled
+                        onclick="InformesManager.adjModalConfirm()">
+                        <span class="spinner-border spinner-border-sm d-none me-1" id="adjModalConfirmSpinner"></span>
+                        <i class="fas fa-paperclip me-1" id="adjModalConfirmIcon"></i>
+                        <span id="adjModalConfirmLabel">Adjuntar</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Configuración de Hotkeys -->
+    <div class="modal fade" id="hotkeysConfigModal" tabindex="-1" aria-labelledby="hotkeysConfigModalLabel" aria-hidden="true" style="z-index: 1080;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="hotkeysConfigModalLabel">
+                        <i class="fas fa-keyboard me-2"></i>
+                        Configuración de Atajos de Teclado
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instrucciones:</strong> Haz clic en un campo para configurar el atajo. Presiona la combinación de teclas deseada.
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Acción</th>
+                                    <th>Atajo Actual</th>
+                                    <th>Configurar</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hotkeysConfigTableBody">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" onclick="InformesManager.resetHotkeysToDefault()">
+                        <i class="fas fa-undo me-2"></i>Restaurar Predeterminados
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid');
+                
+                function getScrollPosition() {
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const scrollOptions = { top: 0, behavior: 'smooth' };
+                    window.scrollTo(scrollOptions);
+                    if (document.documentElement) document.documentElement.scrollTo(scrollOptions);
+                    if (document.body) document.body.scrollTo(scrollOptions);
+                    if (mainContent) mainContent.scrollTo(scrollOptions);
+                    if (containerFluid) containerFluid.scrollTo(scrollOptions);
+                }
+                
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (mainContent) mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (containerFluid) containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                setTimeout(toggleScrollButton, 500);
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+    <!-- Modal Mi firma / sello -->
+    <div class="modal fade" id="miFirmaModal" tabindex="-1" aria-labelledby="miFirmaModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="miFirmaModalLabel"><i class="fas fa-signature me-2"></i>Mi firma y sello</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-5 text-center">
+                            <div class="border rounded p-3 bg-light mb-2" style="min-height:140px;">
+                                <img id="miFirmaPreview" alt="Vista previa firma" style="max-width:100%;max-height:120px;display:none;">
+                                <p id="miFirmaPreviewEmpty" class="text-muted mb-0 small">Sin rúbrica cargada</p>
+                            </div>
+                            <input type="file" id="miFirmaFile" accept="image/png,image/jpeg,image/webp" class="form-control form-control-sm mb-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btnMiFirmaQr">
+                                <i class="fas fa-qrcode me-1"></i> Capturar con QR (teléfono)
+                            </button>
+                            <div id="miFirmaQrBox" class="mt-2 d-none text-center"></div>
+                        </div>
+                        <div class="col-md-7">
+                            <label class="form-label" for="miFirmaSelloTexto">Texto del sello</label>
+                            <textarea class="form-control" id="miFirmaSelloTexto" rows="5" placeholder="Dr. Nombre&#10;Especialidad&#10;M.P. 123456"></textarea>
+                            <div class="form-text">Se inserta al firmar el informe (HTML o página de sello en PDF externo).</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarMiFirma"><i class="fas fa-save me-1"></i>Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

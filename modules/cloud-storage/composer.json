@@ -1,0 +1,15 @@
+{
+    "name": "tjsmedical/cloud-storage",
+    "description": "Módulo de almacenamiento en la nube para estudios DICOM (Cloudflare R2)",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": ">=7.4",
+        "aws/aws-sdk-php": "^3.373"
+    },
+    "autoload": {
+        "psr-4": {
+            "CloudStorage\\": ""
+        }
+    }
+}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Capturar firma</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 0; padding: 12px; background: #f5f5f5; }
+        h1 { font-size: 1.1rem; margin: 0 0 8px; }
+        #padWrap { background: #fff; border: 1px solid #ccc; border-radius: 8px; touch-action: none; }
+        canvas { width: 100%; height: 220px; display: block; }
+        .row { display: flex; gap: 8px; margin-top: 12px; }
+        button { flex: 1; padding: 12px; font-size: 1rem; border: 0; border-radius: 8px; }
+        #clear { background: #eee; }
+        #save { background: #0d6efd; color: #fff; }
+        #msg { margin-top: 10px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <h1>Dibuje su firma</h1>
+    <p id="status" style="font-size:0.85rem;color:#666;">Validando sesión…</p>
+    <div id="padWrap"><canvas id="pad" width="600" height="220"></canvas></div>
+    <div class="row">
+        <button type="button" id="clear">Limpiar</button>
+        <button type="button" id="save">Guardar firma</button>
+    </div>
+    <div id="msg"></div>
+    <script>
+(function () {
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('session_id') || '';
+    const statusEl = document.getElementById('status');
+    const msg = document.getElementById('msg');
+    const canvas = document.getElementById('pad');
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    let drawing = false;
+    let last = null;
+    let createdBy = null;
+
+    function pos(e) {
+        const r = canvas.getBoundingClientRect();
+        const t = e.touches ? e.touches[0] : e;
+        return {
+            x: (t.clientX - r.left) * (canvas.width / r.width),
+            y: (t.clientY - r.top) * (canvas.height / r.height)
+        };
+    }
+    function start(e) { e.preventDefault(); drawing = true; last = pos(e); }
+    function move(e) {
+        e.preventDefault();
+        if (!drawing) return;
+        const p = pos(e);
+        ctx.beginPath();
+        ctx.moveTo(last.x, last.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+        last = p;
+    }
+    function end(e) { e.preventDefault(); drawing = false; }
+    canvas.addEventListener('mousedown', start);
+    canvas.addEventListener('mousemove', move);
+    canvas.addEventListener('mouseup', end);
+    canvas.addEventListener('mouseleave', end);
+    canvas.addEventListener('touchstart', start, { passive: false });
+    canvas.addEventListener('touchmove', move, { passive: false });
+    canvas.addEventListener('touchend', end, { passive: false });
+
+    document.getElementById('clear').onclick = function () {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    };
+
+    async function validate() {
+        if (!sessionId) {
+            statusEl.textContent = 'Sesión inválida';
+            return;
+        }
+        const r = await fetch('api/mobile_session.php?session_id=' + encodeURIComponent(sessionId));
+        const d = await r.json();
+        if (!d.success || !d.data) {
+            statusEl.textContent = 'Sesión expirada o inválida';
+            return;
+        }
+        if ((d.data.session_type || '') !== 'firma') {
+            statusEl.textContent = 'Esta sesión no es de firma';
+            return;
+        }
+        createdBy = d.data.created_by;
+        statusEl.textContent = 'Sesión OK. Dibuje y pulse Guardar.';
+    }
+
+    document.getElementById('save').onclick = async function () {
+        msg.textContent = 'Enviando…';
+        try {
+            const dataUrl = canvas.toDataURL('image/png');
+            const body = {
+                session_id: sessionId,
+                imagen_base64: dataUrl,
+                sello_texto: ''
+            };
+            // La API de firma requiere sesión de usuario; usamos endpoint móvil dedicado
+            const r = await fetch('api/users/firma/mobile-upload.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            let d = {};
+            try { d = await r.json(); } catch (_) {}
+            if (!r.ok || !d.success) {
+                throw new Error(d.message || ('Error HTTP ' + r.status));
+            }
+            msg.textContent = 'Firma guardada. Puede cerrar esta ventana.';
+            statusEl.textContent = 'Listo';
+        } catch (e) {
+            msg.textContent = e.message || 'Error al guardar';
+        }
+    };
+
+    validate();
+})();
+    </script>
+</body>
+</html>

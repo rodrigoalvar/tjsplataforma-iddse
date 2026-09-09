@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Informes - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+    <style>
+        .ai-informes-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .ai-informes-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .filters-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .actions-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action-ai {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status-pending { background-color: #ffc107; color: #000; }
+        .status-processing { background-color: #0dcaf0; color: #000; }
+        .status-completed { background-color: #198754; color: #fff; }
+        .status-failed { background-color: #dc3545; color: #fff; }
+        .status-draft { background-color: #6c757d; color: #fff; }
+        .status-approved { background-color: #198754; color: #fff; }
+        .status-rejected { background-color: #dc3545; color: #fff; }
+
+        #estudiosTable {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .dataTables_wrapper {
+            padding: 20px;
+        }
+
+        /* Estilos para el buscador */
+        .card-header {
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .card-header .input-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        @media (max-width: 768px) {
+            .card-header {
+                flex-direction: column;
+                align-items: stretch !important;
+            }
+
+            .card-header .input-group {
+                max-width: 100% !important;
+            }
+        }
+
+        #clearSearchBtn {
+            transition: all 0.2s;
+        }
+
+        #clearSearchBtn:hover {
+            background-color: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .modal-content {
+            border-radius: 15px;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .file-upload-area {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload-area.dragover {
+            border-color: #198754;
+            background-color: #e3f2fd;
+            transform: scale(1.02);
+        }
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .file-upload-area:hover {
+            background: #e9ecef;
+            border-color: #764ba2;
+        }
+
+        .file-upload-area.dragover {
+            background: #e7f3ff;
+            border-color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Verificar permisos específicos para AI Informes
+            const hasAccess = await requirePermissionSimple('ai_informes', 'AI Informes', {
+                title: 'Acceso Denegado - AI Informes',
+                message: 'No tienes permisos para acceder a <strong>AI Informes</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            if (!hasAccess) {
+                return;
+            }
+            
+            setupSidebarFunctionality();
+        });
+        
+        function setupSidebarFunctionality() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+            
+            updateSidebarUserInfo();
+        }
+        
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (error) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="container-fluid py-4">
+                <!-- Header -->
+                <div class="ai-informes-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1><i class="fas fa-robot me-2"></i>AI Informes</h1>
+                            <p class="mb-0 mt-2">Transcripción de audio con Whisper y generación de informes con Medgemma</p>
+                        </div>
+                        <div id="queueStatusIndicator" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Botones de prueba (solo visible para ROOT) -->
+                <div id="testButtonsCard" class="card mb-3" style="display: none;">
+                    <div class="card-body">
+                        <h6 class="card-title"><i class="fas fa-flask me-2"></i>Modo Prueba</h6>
+                        <p class="card-text text-muted small">Usa estos botones para probar los modales de transcripción e informe sin guardar en la base de datos:</p>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-primary" onclick="window.openTestTranscribeModal && window.openTestTranscribeModal()" title="Probar Transcripción">
+                                <i class="fas fa-microphone"></i> Probar Transcripción
+                            </button>
+                            <button class="btn btn-success" onclick="window.openTestGenerateReportModal && window.openTestGenerateReportModal()" title="Probar Generar Informe">
+                                <i class="fas fa-robot"></i> Probar Generar Informe
+                            </button>
+                        </div>
+                        <hr class="my-3">
+                        <p class="card-text text-muted small mb-2">Herramientas de mantenimiento:</p>
+                        <div class="d-flex gap-2 flex-wrap mb-2">
+                            <div class="input-group" style="max-width: 400px;">
+                                <input type="number" class="form-control" id="cleanupAudioId" placeholder="Audio ID (ej: 35)" min="1">
+                                <button class="btn btn-warning" onclick="cleanupBlockedTranscription()" title="Limpiar transcripción bloqueada">
+                                    <i class="fas fa-broom"></i> Limpiar Transcripción Bloqueada
+                                </button>
+                            </div>
+                            <button class="btn btn-danger" onclick="showBlockedTranscriptionsModal()" title="Ver y limpiar transcripciones bloqueadas">
+                                <i class="fas fa-list"></i> Ver Transcripciones Bloqueadas
+                            </button>
+                        </div>
+                        <small class="text-muted d-block">Herramientas para limpiar estados bloqueados o inconsistentes.</small>
+                    </div>
+                </div>
+
+                <!-- Tabla de Estudios -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Lista de Estudios con Audios</h5>
+                        <div class="input-group" style="max-width: 400px;">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Buscar por paciente, modalidad, descripción..." autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" id="clearSearchBtn" title="Limpiar búsqueda" style="display: none;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table id="estudiosTable" class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Paciente</th>
+                                    <th>ID Paciente</th>
+                                    <th>Modalidad</th>
+                                    <th>Descripción</th>
+                                    <th>Fecha Estudio</th>
+                                    <th>Audios</th>
+                                    <th>Transcripciones</th>
+                                    <th>Informes AI</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los datos se cargarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal para transcribir audio -->
+            <div class="modal fade" id="transcribeModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Transcribir Audio con AI</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="transcribeStudyId">
+                            <div class="file-upload-area" id="audioUploadArea" onclick="document.getElementById('audioFileInput').click()">
+                                <i class="fas fa-microphone fa-3x text-primary mb-3"></i>
+                                <p class="mb-0">Haz clic o arrastra el archivo de audio aquí</p>
+                                <small class="text-muted">Formatos: MP3, WAV, M4A, OGG</small>
+                            </div>
+                            <input type="file" id="audioFileInput" accept="audio/*" style="display: none;" onchange="handleAudioFileSelect(event)">
+                            <div id="audioFileInfo" class="mt-3" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-file me-2"></i>
+                                    <span id="audioFileName"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="transcribeBtn" onclick="transcribeAudio()" disabled>Transcribir</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal para generar informe -->
+            <div class="modal fade" id="generateReportModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Generar Informe con AI</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="generateReportStudyId">
+                            
+                            <!-- Paso 1: Audio y Transcripción -->
+                            <div class="mb-4">
+                                <h6 class="mb-3"><i class="fas fa-microphone me-2"></i>Paso 1: Audio y Transcripción</h6>
+                                
+                                <!-- Opción A: Adjuntar nuevo audio -->
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Adjuntar Audio Nuevo</h6>
+                                        <div class="file-upload-area" id="audioUploadAreaReport" onclick="document.getElementById('audioFileInputReport').click()" style="min-height: 100px;">
+                                            <i class="fas fa-microphone fa-2x text-primary mb-2"></i>
+                                            <p class="mb-0">Haz clic o arrastra el archivo de audio aquí</p>
+                                            <small class="text-muted">Formatos: MP3, WAV, M4A, OGG</small>
+                                        </div>
+                                        <input type="file" id="audioFileInputReport" accept="audio/*" style="display: none;" onchange="handleAudioFileSelectReport(event)">
+                                        <div id="audioFileInfoReport" class="mt-2" style="display: none;">
+                                            <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                                <span><i class="fas fa-file me-2"></i><span id="audioFileNameReport"></span></span>
+                                                <button class="btn btn-sm btn-primary" id="transcribeNewAudioBtn" onclick="transcribeAndContinue()" disabled>
+                                                    <i class="fas fa-microphone"></i> Transcribir
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Opción B: Usar transcripción existente -->
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6 class="card-title">O usar Transcripción Existente</h6>
+                                        <select class="form-select" id="transcriptionSelect">
+                                            <option value="">Seleccionar transcripción...</option>
+                                        </select>
+                                        <div id="transcriptionPreview" class="mt-2" style="display: none;">
+                                            <div class="alert alert-light">
+                                                <small><strong>Vista previa:</strong></small>
+                                                <p class="mb-0 small" id="transcriptionTextPreview" style="max-height: 100px; overflow-y: auto;"></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Paso 2: Plantilla -->
+                            <div class="mb-4">
+                                <h6 class="mb-3"><i class="fas fa-file-alt me-2"></i>Paso 2: Plantilla (Opcional)</h6>
+                                <select class="form-select" id="templateSelect">
+                                    <option value="">Sin plantilla</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Vista previa del informe generado -->
+                            <div id="reportPreviewSection" style="display: none;">
+                                <h6 class="mb-3"><i class="fas fa-eye me-2"></i>Vista Previa del Informe</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="reportPreviewContent" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="generateReportBtn" onclick="generateReport()" disabled>
+                                <i class="fas fa-robot"></i> Generar Informe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal para PROBAR transcripción (sin guardar en BD) -->
+            <div class="modal fade" id="testTranscribeModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="fas fa-flask me-2"></i>Probar Transcripción (Modo Prueba)</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Modo Prueba:</strong> Esta transcripción no se guardará en la base de datos. 
+                                Puedes usar el resultado para probar la generación de informes.
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Archivo de Audio</label>
+                                <div class="file-upload-area" id="testAudioUploadArea" style="min-height: 120px; cursor: pointer;">
+                                    <i class="fas fa-microphone fa-3x text-primary mb-3"></i>
+                                    <p class="mb-0">Haz clic o arrastra el archivo de audio aquí</p>
+                                    <small class="text-muted">Formatos: MP3, WAV, M4A, OGG</small>
+                                </div>
+                                <input type="file" id="testAudioFileInput" accept="audio/*" style="display: none;" onchange="handleTestAudioFileSelect(event)">
+                                <div id="testAudioFileInfo" class="mt-2" style="display: none;">
+                                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                                        <span><i class="fas fa-file me-2"></i><span id="testAudioFileName"></span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Resultado de la transcripción -->
+                            <div id="testTranscriptionResult" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label mb-0">Transcripción:</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTimestampsBtn" onclick="toggleTimestamps()" title="Mostrar/ocultar timestamps" style="display: none;">
+                                        <i class="fas fa-clock me-1"></i> <span id="timestampsToggleText">Mostrar Timestamps</span>
+                                    </button>
+                                </div>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="testTranscriptionText" style="max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;"></div>
+                                    </div>
+                                </div>
+                                <!-- Estadísticas de la transcripción -->
+                                <div id="testTranscriptionStats" style="display: none;" class="mt-2"></div>
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-success" onclick="useTestTranscriptionForReport()">
+                                        <i class="fas fa-robot me-1"></i> Usar esta transcripción para Probar Generar Informe
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" onclick="clearTestTranscription()">
+                                        <i class="fas fa-trash me-1"></i> Limpiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary" id="testTranscribeBtn" onclick="testTranscribeAudio()" disabled>
+                                <i class="fas fa-microphone"></i> Transcribir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal para PROBAR generar informe (sin guardar en BD) -->
+            <div class="modal fade" id="testGenerateReportModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-success text-white">
+                            <h5 class="modal-title"><i class="fas fa-flask me-2"></i>Probar Generar Informe (Modo Prueba)</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Modo Prueba:</strong> Este informe no se guardará en la base de datos.
+                            </div>
+                            
+                            <!-- Transcripción -->
+                            <div class="mb-3">
+                                <label class="form-label">Transcripción:</label>
+                                <textarea class="form-control" id="testReportTranscriptionText" rows="5" placeholder="La transcripción aparecerá aquí..."></textarea>
+                            </div>
+                            
+                            <!-- Plantilla (Opcional) -->
+                            <div class="mb-3">
+                                <label class="form-label">Plantilla (Opcional):</label>
+                                <select class="form-select" id="testReportTemplateSelect">
+                                    <option value="">Sin plantilla</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Vista previa del informe generado -->
+                            <div id="testReportPreviewSection" style="display: none;">
+                                <label class="form-label">Vista Previa del Informe:</label>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <div id="testReportPreviewContent" style="max-height: 400px; overflow-y: auto; white-space: pre-wrap;"></div>
+                                    </div>
+                                </div>
+                                <!-- Estadísticas de la generación -->
+                                <div id="testReportStats" style="display: none;" class="mt-2"></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary" id="testGenerateReportBtn" onclick="testGenerateReport()">
+                                <i class="fas fa-robot"></i> Generar Informe
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alertas -->
+            <div id="alertContainer" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <!-- Transcription Highlight Plugin -->
+    <script src="assets/js/transcription-highlight-plugin.js?v=202606251200"></script>
+    <script src="assets/js/transcription-highlight-config.js?v=202606251200"></script>
+    <script src="assets/js/ai-informes.js?v=202606251200"></script>
+</body>
+</html>

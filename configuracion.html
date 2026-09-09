@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración del Sistema - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+    <style>
+        .config-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .config-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .config-header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .config-header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+
+        .config-tabs {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .nav-tabs {
+            border-bottom: 2px solid #e9ecef;
+            padding: 0;
+            margin: 0;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            border-radius: 0;
+            padding: 15px 25px;
+            color: #666;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .nav-tabs .nav-link:hover {
+            background: #f8f9fa;
+            color: #667eea;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+
+        .tab-content {
+            padding: 30px;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+        }
+
+        .config-section h3 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .config-item {
+            margin-bottom: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .config-item label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .config-item .description {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .config-item input,
+        .config-item select {
+            width: 100%;
+            padding: 10px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .config-item input:focus,
+        .config-item select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .config-item input[readonly] {
+            background: #e9ecef;
+            cursor: not-allowed;
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-save:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .test-connection-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .test-connection-btn:hover {
+            background: #218838;
+        }
+
+        .connection-status {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .connection-status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .connection-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #0c5460;
+            font-size: 14px;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+
+        .config-header {
+            position: relative;
+        }
+
+        .header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .header-content {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Verificar permisos de administración
+            if (window.getCurrentUser) {
+                const user = window.getCurrentUser();
+                if (!user || !['root', 'admin'].includes(user.nivel?.toLowerCase())) {
+                    window.location.href = 'dashboard-unified.html';
+                    return;
+                }
+            }
+            
+            loadConfigurations();
+
+            // Visibilidad pestaña Study routing (permiso gui_study_routing o root con all)
+            try {
+                const u = window.getCurrentUser && window.getCurrentUser();
+                let perms = u?.permisos || [];
+                if (typeof perms === 'string') {
+                    try { perms = JSON.parse(perms); } catch (e) { perms = []; }
+                }
+                if (!Array.isArray(perms)) perms = [];
+                const nivel = (u?.nivel || '').toLowerCase();
+                const canSr = nivel === 'root' || perms.includes('all') || perms.includes('gui_study_routing');
+                if (!canSr) {
+                    document.getElementById('study-routing-tab-li')?.remove();
+                    document.getElementById('study-routing')?.remove();
+                }
+            } catch (e) { /* ignorar */ }
+            
+            // Configurar funcionalidad del sidebar
+            setupSidebarFunctionality();
+        });
+        
+        // Función para configurar la funcionalidad del sidebar
+        function setupSidebarFunctionality() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+            
+            // Actualizar nombre de usuario en sidebar
+            updateSidebarUserInfo();
+        }
+        
+        // Función para actualizar información del usuario en el sidebar
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            const fullName = user.apellido ? `Dr. ${user.nombre} ${user.apellido}` : `Dr. ${user.nombre}`;
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole && user.rol) {
+                            sidebarUserRole.textContent = user.rol;
+                        }
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (error) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="config-container">
+                <div class="config-header">
+                    <h1><i class="fas fa-cog"></i> Configuración del Sistema</h1>
+                    <p>Gestiona los parámetros de base de datos, servidor PACS, URLs y otras configuraciones del sistema</p>
+                </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="config-tabs">
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="database-tab" data-bs-toggle="tab" data-bs-target="#database" type="button" role="tab">
+                        <i class="fas fa-database"></i> Base de Datos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pacs-tab" data-bs-toggle="tab" data-bs-target="#pacs" type="button" role="tab">
+                        <i class="fas fa-server"></i> Servidor PACS
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation" id="study-routing-tab-li">
+                    <button class="nav-link" id="study-routing-tab" data-bs-toggle="tab" data-bs-target="#study-routing" type="button" role="tab">
+                        <i class="fas fa-route"></i> Study routing
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation" id="portal-estudios-tab-li">
+                    <button class="nav-link" id="portal-estudios-tab" data-bs-toggle="tab" data-bs-target="#portal-estudios" type="button" role="tab">
+                        <i class="fas fa-hospital-user"></i> Portal estudios
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="informes-recibidos-tab" data-bs-toggle="tab" data-bs-target="#informes-recibidos" type="button" role="tab">
+                        <i class="fas fa-file-import"></i> Informes Recibidos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="estudios-recibidos-tab" data-bs-toggle="tab" data-bs-target="#estudios-recibidos" type="button" role="tab">
+                        <i class="fas fa-clock"></i> Estudios Recibidos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="gasalud-envio-tab" data-bs-toggle="tab" data-bs-target="#gasalud-envio" type="button" role="tab">
+                        <i class="fas fa-file-export"></i> Envío Gasalud
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pacs-study-history-tab" data-bs-toggle="tab" data-bs-target="#pacs-study-history" type="button" role="tab">
+                        <i class="fas fa-history"></i> Visores nodos PACS
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="urls-tab" data-bs-toggle="tab" data-bs-target="#urls" type="button" role="tab">
+                        <i class="fas fa-link"></i> URLs
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button" role="tab">
+                        <i class="fas fa-sliders-h"></i> General
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="worklist-tab" data-bs-toggle="tab" data-bs-target="#worklist" type="button" role="tab">
+                        <i class="fas fa-list-alt"></i> Worklist
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ai-informes-tab" data-bs-toggle="tab" data-bs-target="#ai-informes" type="button" role="tab">
+                        <i class="fas fa-robot"></i> AI Informes
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ftp-tab" data-bs-toggle="tab" data-bs-target="#ftp" type="button" role="tab">
+                        <i class="fas fa-cloud-upload-alt"></i> FTP
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#system-logs" type="button" role="tab">
+                        <i class="fas fa-terminal"></i> Logs
+                    </button>
+                </li>
+            </ul>
+            <div class="tab-content" id="configTabContent">
+                <!-- Pestaña Base de Datos -->
+                <div class="tab-pane fade show active" id="database" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Los cambios en la configuración de base de datos se guardan en la tabla <code>configuracion</code> de la base de datos actual. El sistema leerá estos valores automáticamente. Si deseas que estos valores sean los predeterminados para nuevas instalaciones, también puedes actualizar el archivo <code>config/database.php</code>.</p>
+                    </div>
+                    <div id="databaseConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('database')">
+                        <i class="fas fa-save"></i> Guardar Configuración de Base de Datos
+                    </button>
+                </div>
+
+                <!-- Pestaña Servidor PACS -->
+                <div class="tab-pane fade" id="pacs" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Los cambios en la configuración de PACS se guardan en la base de datos y se aplican automáticamente. El sistema recargará la configuración desde la base de datos al iniciar.</p>
+                    </div>
+                    <div id="pacsConfig"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-save" onclick="saveConfigurations('pacs')">
+                            <i class="fas fa-save"></i> Guardar Configuración de PACS
+                        </button>
+                        <button class="test-connection-btn" onclick="testPacsConnection()">
+                            <i class="fas fa-plug"></i> Probar Conexión
+                        </button>
+                        <span id="pacsConnectionStatus"></span>
+                    </div>
+                </div>
+
+                <!-- Pestaña Study routing -->
+                <div class="tab-pane fade" id="study-routing" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Study routing:</strong> define si los enlaces de <strong>Ver</strong> y <strong>Descargar</strong> usan el PACS local o R2 (manifest / ZIP presignado). Requiere R2 habilitado en Cloud Storage y permisos <code>study_routing</code> para los usuarios. URL pública del manifest: Cloud Storage → Configuración → <em>URL pública del portal</em>.</p>
+                    </div>
+                    <div id="study_routingConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('study_routing')">
+                        <i class="fas fa-save"></i> Guardar Study routing
+                    </button>
+                </div>
+
+                <!-- Pestaña Portal de Estudios (fase 0) -->
+                <div class="tab-pane fade" id="portal-estudios" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Portal de estudios:</strong> esta pestaña prepara el enrutamiento unificado (Local / Remoto / R2) para <code>paciente.html</code>.</p>
+                        <p class="mb-0"><strong>Importante:</strong> mientras <code>portal_estudios_v2_enabled</code> esté en <strong>No</strong>, el portal mantiene el comportamiento legacy actual sin cambios.</p>
+                    </div>
+                    <div id="portal_estudiosConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('portal_estudios')">
+                        <i class="fas fa-save"></i> Guardar Configuración de Portal de Estudios
+                    </button>
+                </div>
+
+                <!-- Pestaña Informes Recibidos -->
+                <div class="tab-pane fade" id="informes-recibidos" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Auto-vinculación por score:</strong> cuando está activada, al recibir un informe por API se calcula un score de coincidencia y se vincula automáticamente si supera el umbral configurado.</p>
+                        <p class="mb-0"><strong>Auto envío a PACS:</strong> si lo activa en la lista inferior, después de vincular el informe recibido (por API con vinculación automática o manual desde el gestor) el sistema intentará enviar el PDF del informe a Orthanc con la misma lógica que el botón de envío a PACS. Si falla Orthanc o la red, la vinculación no se deshace; el error quedará registrado en el log del servidor.</p>
+                        <p class="mb-0 mt-2"><strong>Carpetas PDF/TXT (SMB):</strong> al final de esta pestaña, <code>ic_pdf_path</code> e <code>ic_txt_path</code> definen las rutas Linux donde están montados los recursos Windows (valores sugeridos por defecto: <code>/var/www/tjsiddse/uploads/informespdf_net</code> y <code>/var/www/tjsiddse/uploads/mensajesris_net</code>). El servicio <code>workers/watch-informes-carpeta.sh</code> vigila esas rutas y registra la cola en base de datos.</p>
+                    </div>
+                    <div class="alert alert-warning" style="margin-bottom: 20px;">
+                        <p class="mb-0"><i class="fas fa-exclamation-triangle"></i> Si el informe objetivo ya está en PACS y la política es <strong>bloquear</strong>, el recibido quedará pendiente con motivo de actualización bloqueada hasta quitar primero la versión anterior de PACS.</p>
+                    </div>
+                    <div id="informes_recibidosConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('informes_recibidos')">
+                        <i class="fas fa-save"></i> Guardar Configuración de Informes Recibidos
+                    </button>
+                </div>
+
+                <!-- Pestaña Estudios Recibidos (SLA) -->
+                <div class="tab-pane fade" id="estudios-recibidos" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>SLA de publicación:</strong> el reloj arranca cuando el estudio aparece en el PACS local (Orthanc). El cumplimiento es el informe <strong>publicado en PACS</strong>. Por defecto la función está <strong>apagada</strong> (<code>sla_activo=0</code>) para no afectar a usuarios hasta activarla.</p>
+                        <p class="mb-0">Plantillas por modalidad y el snippet Lua para Orthanc OnStableStudy están debajo de los campos. Permiso de monitoreo en informes-manager: <code>monitorearSlaEstudios</code>.</p>
+                    </div>
+                    <div id="estudios_recibidosConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('estudios_recibidos')">
+                        <i class="fas fa-save"></i> Guardar Configuración SLA
+                    </button>
+                    <hr class="my-4">
+                    <h5><i class="fas fa-layer-group me-2"></i>Plantillas SLA</h5>
+                    <p class="text-muted small">Prioridad numérica menor gana. Modalidades en CSV (ej. <code>CT,MR</code>); vacío = todas las modalidades.</p>
+                    <div id="slaPlantillasPanel" class="mb-3"></div>
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label small mb-0">Nombre</label>
+                            <input type="text" class="form-control form-control-sm" id="slaTplNombre" placeholder="Urgentes CT">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-0">Horas</label>
+                            <input type="number" class="form-control form-control-sm" id="slaTplHoras" value="48" min="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-0">Modalidades</label>
+                            <input type="text" class="form-control form-control-sm" id="slaTplMods" placeholder="CT,MR">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-0">Prioridad</label>
+                            <input type="number" class="form-control form-control-sm" id="slaTplPrio" value="10">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-sm btn-primary w-100" id="slaTplAddBtn">Agregar</button>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <h5><i class="fas fa-code me-2"></i>Webhook Orthanc (OnStableStudy)</h5>
+                    <p class="small text-muted">Endpoint: <code id="slaWebhookUrlHint"></code> — Header <code>Authorization: Bearer &lt;sla_webhook_secret&gt;</code></p>
+                    <pre class="bg-light border p-3 small" id="slaLuaSnippet" style="white-space:pre-wrap;"></pre>
+                </div>
+
+                <!-- Pestaña Envío Gasalud (PDF outbound) -->
+                <div class="tab-pane fade" id="gasalud-envio" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Envío de informes PDF</strong> a Gasalud (<code>/api/v2/Informes</code>): multipart con Paciente, AcessionNumber, Nombre, <strong>Archivo</strong>, Prestador, Descripcion y Tipo.</p>
+                        <p class="mb-0">Solo informes <strong>generados en la plataforma</strong> (no PDFs de API recibidos, para evitar loop). Auth recomendada: <em>Login API</em> → Bearer. Por defecto el envío está <strong>apagado</strong> hasta activarlo.</p>
+                    </div>
+                    <div class="alert alert-secondary small">
+                        <strong>Campos multipart (Swagger):</strong>
+                        <code>Paciente</code> (DNI), <code>AcessionNumber</code>, <code>Nombre</code>,
+                        <code>Archivo</code> (PDF), <code>Prestador</code> (matrícula PV1/worklist),
+                        <code>Descripcion</code>, <code>Tipo</code>=pdf.
+                        Ver <code>doc/usuario/gasalud-envio-informes.md</code>.
+                    </div>
+                    <div id="gasalud_envioConfig"></div>
+                    <div style="margin-top: 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-save" onclick="saveConfigurations('gasalud_envio')">
+                            <i class="fas fa-save"></i> Guardar Envío Gasalud
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="gasaludTestBtn" onclick="testGasaludEndpoint(false)">
+                            <i class="fas fa-check"></i> Validar config
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="gasaludLoginBtn" onclick="testGasaludEndpoint(true)">
+                            <i class="fas fa-key"></i> Probar login
+                        </button>
+                        <span id="gasaludTestStatus" class="small text-muted"></span>
+                    </div>
+                </div>
+
+                <!-- Pestaña URLs WADO / proxy por nodo (Historial de estudios) -->
+                <div class="tab-pane fade" id="pacs-study-history" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Visores en nodos remotos:</strong> define por cada nodo de <strong>PACS Nodes Manager</strong> la base <strong>WADO-URI</strong> (p. ej. DCM4CHEE legacy, para UDV / enlace directo) y la base del <strong>proxy DICOMweb</strong> (p. ej. Stone Web Viewer con knopkem). Los nodos <code>local</code> suelen ignorar estos campos si el estudio ya está en Orthanc.</p>
+                        <p class="mb-0"><strong>Migración SQL:</strong> si la tabla aún no tiene las columnas, ejecute <code>modules/study-history-manager/database/migration_add_node_viewer_bases.sql</code>.</p>
+                    </div>
+                    <div id="pacsStudyHistoryMigrationAlert" class="alert alert-warning d-none" role="alert"></div>
+                    <div id="pacsStudyHistoryConfig"></div>
+                    <button type="button" class="btn-save" id="pacsStudyHistorySaveBtn" onclick="savePacsNodesStudyHistoryUrls()">
+                        <i class="fas fa-save"></i> Guardar URLs por nodo
+                    </button>
+                </div>
+
+                <!-- Pestaña URLs -->
+                <div class="tab-pane fade" id="urls" role="tabpanel">
+                    <div id="urlsConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('urls')">
+                        <i class="fas fa-save"></i> Guardar Configuración de URLs
+                    </button>
+                </div>
+
+                <!-- Pestaña General -->
+                <div class="tab-pane fade" id="general" role="tabpanel">
+                    <div id="generalConfig"></div>
+                    <button class="btn-save" onclick="saveConfigurations('general')">
+                        <i class="fas fa-save"></i> Guardar Configuración General
+                    </button>
+                </div>
+
+                <!-- Pestaña Worklist -->
+                <div class="tab-pane fade" id="worklist" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Configuración de Worklist para integración automática (pull/push) y sincronización con Orthanc en modo filesystem (legacy) o REST (plugin nuevo).</p>
+                    </div>
+                    <div id="worklistConfig"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-save" onclick="saveWorklistConfig()">
+                            <i class="fas fa-save"></i> Guardar Configuración de Worklist
+                        </button>
+                        <button class="test-connection-btn" onclick="testWorklistConnection()">
+                            <i class="fas fa-plug"></i> Probar Conexión Worklist/Orthanc
+                        </button>
+                        <span id="worklistConnectionStatus"></span>
+                    </div>
+                </div>
+
+                <!-- Pestaña AI Informes -->
+                <div class="tab-pane fade" id="ai-informes" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Configuración para AI Informes usando Ollama (Whisper para transcripción y Medgemma para generación de informes). Asegúrate de que Ollama esté corriendo y los modelos estén instalados.</p>
+                    </div>
+                    <div class="alert alert-warning" style="margin-bottom: 20px;">
+                        <h6><i class="fas fa-exclamation-triangle me-2"></i><strong>Configuración de Ollama para acceso por LAN/WAN</strong></h6>
+                        <p class="mb-2">Por defecto, Ollama solo escucha en <code>localhost</code> (127.0.0.1). Para permitir acceso desde otras máquinas en la red, necesitas configurar la variable de entorno <code>OLLAMA_HOST</code>:</p>
+                        <div class="bg-light p-3 rounded" style="font-family: monospace; font-size: 0.9em;">
+                            <strong>Opción 1 (Recomendada):</strong> Escuchar en todas las interfaces<br>
+                            <code>export OLLAMA_HOST=0.0.0.0:11434</code><br><br>
+                            <strong>Opción 2:</strong> Escuchar en IP específica de la LAN<br>
+                            <code>export OLLAMA_HOST=192.168.0.33:11434</code><br><br>
+                            <strong>Para hacer permanente:</strong> Agregar al archivo <code>~/.bashrc</code> o crear servicio systemd
+                        </div>
+                        <p class="mt-2 mb-0"><small>Después de configurar, reinicia Ollama: <code>systemctl restart ollama</code> o <code>pkill ollama && ollama serve</code></small></p>
+                    </div>
+                    <div id="aiInformesConfig"></div>
+                    <div style="margin-top: 20px; display: flex; gap: 10px; align-items: center;">
+                        <button class="btn-save" onclick="saveAiInformesConfig()">
+                            <i class="fas fa-save"></i> Guardar Configuración de AI Informes
+                        </button>
+                        <button class="test-connection-btn" onclick="testOllamaConnection()">
+                            <i class="fas fa-plug"></i> Probar Conexión Ollama
+                        </button>
+                        <span id="ollamaConnectionStatus"></span>
+                    </div>
+                </div>
+
+                <!-- Pestaña FTP -->
+                <div class="tab-pane fade" id="ftp" role="tabpanel">
+                    <div class="info-box">
+                        <p><i class="fas fa-info-circle"></i> <strong>Nota:</strong> Configuración para envío automático de audios a servidor FTP. Los audios se enviarán automáticamente después de ser guardados en el sistema (si está habilitado) o manualmente desde la grabadora de audio.</p>
+                    </div>
+                    <div class="alert alert-info" style="margin-bottom: 20px;">
+                        <h6><i class="fas fa-info-circle me-2"></i><strong>Requisitos</strong></h6>
+                        <p class="mb-0">Asegúrate de que la extensión FTP de PHP esté habilitada. Puedes verificar ejecutando: <code>php -m | grep ftp</code></p>
+                    </div>
+                    <div id="ftpConfig"></div>
+                    <div id="ftpConnectionStatus" style="margin-top: 10px;"></div>
+                </div>
+
+                <!-- Pestaña Logs -->
+                <div class="tab-pane fade" id="system-logs" role="tabpanel">
+                    <div class="info-box">
+                        <p class="mb-0"><i class="fas fa-info-circle"></i> Visor de logs operativos. Más secciones se pueden agregar aquí (R2, workers, etc.).</p>
+                    </div>
+
+                    <div class="card mb-4 border">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <strong><i class="fas fa-exchange-alt me-2"></i>HL7 / MLLP</strong>
+                                <span class="badge ms-2" id="hl7LogAliveBadge">—</span>
+                                <small class="text-muted ms-2" id="hl7LogStatusText"></small>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <label class="small mb-0" for="hl7LogLines">Líneas</label>
+                                <select id="hl7LogLines" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="100">100</option>
+                                    <option value="300" selected>300</option>
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                </select>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="hl7LogAutoRefresh">
+                                    <label class="form-check-label small" for="hl7LogAutoRefresh">Auto 5s</label>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-primary" id="hl7LogRefreshBtn">
+                                    <i class="fas fa-sync-alt me-1"></i>Actualizar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <pre id="hl7LogViewer" class="mb-0 p-3 bg-dark text-light small" style="max-height:420px; overflow:auto; white-space:pre-wrap; word-break:break-word;">Cargá o abrí esta pestaña para ver el log del listener…</pre>
+                        </div>
+                        <div class="card-footer small text-muted" id="hl7LogMeta">Archivo: modules/hl7-worklist/logs/listener.log</div>
+                    </div>
+
+                    <div class="card mb-4 border">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <div>
+                                <strong><i class="fas fa-file-medical me-2"></i>Mensajes HL7 recibidos</strong>
+                                <small class="text-muted ms-2">Contenido de los .hl7 (inbox / processed / failed)</small>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <label class="small mb-0" for="hl7MsgFolder">Carpeta</label>
+                                <select id="hl7MsgFolder" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="">Todas</option>
+                                    <option value="inbox" selected>inbox</option>
+                                    <option value="processed">processed</option>
+                                    <option value="failed">failed</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="hl7MsgRefreshBtn">
+                                    <i class="fas fa-sync-alt me-1"></i>Listar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label small mb-1" for="hl7MsgSelect">Archivo</label>
+                                    <select id="hl7MsgSelect" class="form-select form-select-sm" size="10" style="min-height:220px;">
+                                        <option value="">— Abrí Logs o pulsá Listar —</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="form-label small mb-1">Contenido</label>
+                                    <pre id="hl7MsgViewer" class="mb-0 p-3 bg-dark text-light small" style="max-height:360px; overflow:auto; white-space:pre-wrap; word-break:break-word;">Seleccioná un mensaje de la lista…</pre>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer small text-muted" id="hl7MsgMeta">Los mensajes incluyen datos de paciente; acceso restringido a configuración/worklist.</div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Transcription Highlight Config Component -->
+    <script src="assets/js/transcription-highlight-config.js?v=202606251200"></script>
+    <script src="assets/js/configuracion.js?v=202609091720"></script>
+</body>
+</html>
+

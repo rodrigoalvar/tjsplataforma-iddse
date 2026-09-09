@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal paciente — redirección</title>
+    <script>
+        (function () {
+            try {
+                fetch('modules/audit-manager/api/portal-paciente-log.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ page: 'portalpaciente.html' }),
+                }).catch(function () {
+                    var u = 'modules/audit-manager/api/portal-paciente-log.php?page=' + encodeURIComponent('portalpaciente.html');
+                    new Image().src = u;
+                });
+            } catch (e) {}
+        })();
+    </script>
+    <meta http-equiv="refresh" content="0;url=paciente.html">
+</head>
+<body>
+    <p style="font-family:system-ui,sans-serif;padding:1.5rem">Redirigiendo al <a href="paciente.html">portal de paciente</a>…</p>
+</body>
+</html>

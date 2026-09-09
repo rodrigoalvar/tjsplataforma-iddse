@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración PACS - Formato de Envío</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+
+        .config-section {
+            margin: 30px 0;
+        }
+
+        .config-section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .formato-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .formato-option {
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 25px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            position: relative;
+            background: white;
+        }
+
+        .formato-option:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .formato-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .formato-option.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 28px;
+            height: 28px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .formato-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .formato-option h3 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .formato-option p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn {
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .info-box h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+            padding-left: 24px;
+            position: relative;
+        }
+
+        .info-box li::before {
+            content: "•";
+            position: absolute;
+            left: 8px;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .formato-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            ⚙️ Configuración de Envío a PACS
+        </h1>
+        <p class="subtitle">
+            Configura el formato por defecto que se usará al enviar informes a Orthanc PACS desde Informes Manager
+        </p>
+
+        <div class="alert alert-info" id="alertInfo">
+            <span>ℹ️</span>
+            <span>Esta configuración se aplicará a TODOS los envíos futuros desde Informes Manager.</span>
+        </div>
+
+        <div class="config-section">
+            <h2>Formato por Defecto</h2>
+            
+            <div class="formato-options">
+                <!-- Opción PDF -->
+                <div class="formato-option selected" data-format="pdf" onclick="seleccionarFormato('pdf')">
+                    <div class="formato-icon">📄</div>
+                    <h3>PDF</h3>
+                    <p>Documento con texto seleccionable y copiable</p>
+                    <span class="badge badge-success">Recomendado</span>
+                </div>
+
+                <!-- Opción PNG -->
+                <div class="formato-option" data-format="jpg" onclick="seleccionarFormato('jpg')">
+                    <div class="formato-icon">🖼️</div>
+                    <h3>PNG / Imagen</h3>
+                    <p>Imagen compatible con todos los visores DICOM</p>
+                    <span class="badge badge-warning">Universal</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="guardarConfiguracion()">
+                💾 Guardar Configuración
+            </button>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ ¿Qué significa esta configuración?</h3>
+            <ul>
+                <li>Esta configuración define qué formato se usará <strong>automáticamente</strong> al enviar informes desde Informes Manager</li>
+                <li>No necesitarás elegir el formato cada vez, se usará el que configures aquí</li>
+                <li>Puedes cambiar esta configuración en cualquier momento</li>
+                <li>La configuración se guarda en la base de datos y aplica para todos los usuarios</li>
+            </ul>
+        </div>
+
+        <div class="info-box" style="border-left-color: #28a745; margin-top: 20px;">
+            <h3>✅ Cuándo usar cada formato:</h3>
+            <ul>
+                <li><strong>PDF:</strong> Informes con texto que necesites copiar, imprimir o archivar</li>
+                <li><strong>PNG:</strong> Cuando necesites máxima compatibilidad con todos los visores DICOM</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        let formatoSeleccionado = 'pdf';
+
+        // Cargar configuración actual al iniciar
+        window.addEventListener('DOMContentLoaded', cargarConfiguracionActual);
+
+        async function cargarConfiguracionActual() {
+            try {
+                const response = await fetch('../api/informes/config-formato-pacs.php', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + obtenerToken()
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    formatoSeleccionado = data.formato;
+                    actualizarUI(formatoSeleccionado);
+                    
+                    console.log('✅ Configuración cargada:', data.formato);
+                    
+                    // Mostrar advertencia si hay alguna
+                    if (data.warning) {
+                        const alertInfo = document.getElementById('alertInfo');
+                        alertInfo.className = 'alert alert-warning';
+                        alertInfo.innerHTML = `
+                            <span>⚠️</span>
+                            <span>${data.warning}</span>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Error cargando configuración:', error);
+            }
+        }
+
+        function seleccionarFormato(formato) {
+            formatoSeleccionado = formato;
+            actualizarUI(formato);
+        }
+
+        function actualizarUI(formato) {
+            // Actualizar cards
+            document.querySelectorAll('.formato-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelector(`[data-format="${formato}"]`).classList.add('selected');
+        }
+
+        async function guardarConfiguracion() {
+            const btn = event.target;
+            btn.disabled = true;
+            document.getElementById('loadingOverlay').classList.add('active');
+
+            try {
+                const response = await fetch('../api/informes/config-formato-pacs.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + obtenerToken()
+                    },
+                    body: JSON.stringify({
+                        formato: formatoSeleccionado
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    const alertInfo = document.getElementById('alertInfo');
+                    alertInfo.className = 'alert alert-success';
+                    alertInfo.innerHTML = `
+                        <span>✅</span>
+                        <span>${data.message}</span>
+                    `;
+
+                    // También guardar en localStorage como respaldo
+                    localStorage.setItem('pacs_formato_defecto', formatoSeleccionado);
+
+                    console.log('✅ Configuración guardada:', formatoSeleccionado);
+                    
+                    // Opcional: recargar página después de 2 segundos
+                    setTimeout(() => {
+                        alertInfo.className = 'alert alert-info';
+                        alertInfo.innerHTML = `
+                            <span>ℹ️</span>
+                            <span>Esta configuración se aplicará a TODOS los envíos futuros desde Informes Manager.</span>
+                        `;
+                    }, 3000);
+
+                } else {
+                    throw new Exception(data.message);
+                }
+
+            } catch (error) {
+                console.error('Error guardando configuración:', error);
+                alert('Error al guardar configuración:\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                document.getElementById('loadingOverlay').classList.remove('active');
+            }
+        }
+
+        function obtenerToken() {
+            // Intentar obtener de múltiples fuentes
+            return localStorage.getItem('session_token') || 
+                   sessionStorage.getItem('session_token') ||
+                   document.cookie.split('; ').find(row => row.startsWith('session_token='))?.split('=')[1] ||
+                   '';
+        }
+    </script>
+</body>
+</html>
+

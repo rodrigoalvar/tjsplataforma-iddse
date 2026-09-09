@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor Workspace - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="../styles.css" rel="stylesheet">
+    <link href="../assets/css/reports.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+        }
+        
+        .workspace-editor-container {
+            padding: 15px;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .template-section {
+            margin-bottom: 15px;
+        }
+
+        .editor-section {
+            margin-bottom: 15px;
+        }
+
+        .editor-container {
+            min-height: 400px;
+        }
+
+        /* Ajustes para TinyMCE en workspace */
+        .tox-tinymce {
+            border: 1px solid #dee2e6 !important;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="workspace-editor-container">
+        <!-- Template Selection -->
+        <div class="template-section">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-file-medical me-2"></i>
+                        Selección de Plantilla
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <select id="templateSelect" class="form-select">
+                                <option value="">Seleccionar plantilla...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100" id="loadTemplateBtn">
+                                <i class="fas fa-download me-2"></i>
+                                Cargar Plantilla
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Editor Section -->
+        <div class="editor-section">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Editor de Texto
+                    </h6>
+                    <button class="btn btn-success btn-sm" id="saveReportBtn" style="display: none; visibility: visible;">
+                        <i class="fas fa-save me-2" id="saveReportBtnIcon"></i>
+                        <span id="saveReportBtnText">Guardar Informe</span>
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="editor-container">
+                        <textarea id="reportEditor"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+    <script src="../assets/js/reports.js"></script>
+    
+    <script>
+        // Workspace Editor Module
+        const WorkspaceEditor = {
+            editor: null,
+            templates: {},
+            studyData: null, // Datos del estudio actual
+            currentReportId: null, // ID del informe actual si existe
+            isEditing: true, // Estado de edición: true = modo edición, false = modo protegido
+            isSaved: false, // Indica si el informe ha sido guardado
+
+            // Inicializar
+            init: async function() {
+                // Cargar datos del estudio desde URL o postMessage
+                this.loadStudyData();
+                await this.loadTemplates();
+                this.initTinyMCE();
+                this.setupEventListeners();
+                this.setupMessageListener();
+                
+                // Verificar periódicamente si hay datos del estudio (fallback)
+                // Esto asegura que el botón se muestre incluso si los datos llegan tarde
+                let checkCount = 0;
+                const maxChecks = 10; // Verificar hasta 10 veces (5 segundos)
+                const checkInterval = setInterval(() => {
+                    checkCount++;
+                    if (this.studyData && (this.studyData.studyId || this.studyData.studyInstanceUID)) {
+                        this.showSaveButton();
+                        clearInterval(checkInterval);
+                    } else if (checkCount >= maxChecks) {
+                        clearInterval(checkInterval);
+                        console.log('ℹ️ No se recibieron datos del estudio después de 5 segundos');
+                    }
+                }, 500); // Verificar cada 500ms
+            },
+
+            // Cargar datos del estudio desde URL o postMessage
+            loadStudyData: function() {
+                // Primero intentar desde URL
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('studyId') || urlParams.has('studyInstanceUID')) {
+                    this.studyData = {
+                        studyId: urlParams.get('studyId'),
+                        studyInstanceUID: urlParams.get('studyInstanceUID'),
+                        orthancStudyId: urlParams.get('orthancStudyId'),
+                        patientId: urlParams.get('patientId'),
+                        patientName: urlParams.get('patientName'),
+                        modality: urlParams.get('modality'),
+                        studyDescription: urlParams.get('studyDescription')
+                    };
+                    console.log('📋 Datos del estudio cargados desde URL:', this.studyData);
+                    // Mostrar botón de guardar si hay datos del estudio
+                    this.showSaveButton();
+                } else {
+                    // Solicitar datos al workspace padre
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ type: 'requestStudyData' }, '*');
+                    }
+                }
+            },
+
+            // Mostrar botón de guardar
+            showSaveButton: function() {
+                if (this.studyData && (this.studyData.studyId || this.studyData.studyInstanceUID)) {
+                    const saveBtn = document.getElementById('saveReportBtn');
+                    if (saveBtn) {
+                        saveBtn.style.display = 'block';
+                        saveBtn.style.visibility = 'visible';
+                        console.log('✅ Botón de guardar mostrado - Datos del estudio:', this.studyData);
+                    } else {
+                        console.warn('⚠️ Botón saveReportBtn no encontrado en el DOM');
+                    }
+                } else {
+                    console.log('ℹ️ No hay datos del estudio para mostrar botón de guardar');
+                }
+            },
+
+            // Configurar listener para mensajes del workspace
+            setupMessageListener: function() {
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'loadStudyData' && event.data.studyData) {
+                        this.studyData = event.data.studyData;
+                        console.log('📋 Datos del estudio recibidos desde workspace:', this.studyData);
+                        console.log('🔍 Verificación de campos:', {
+                            modality: this.studyData.modality,
+                            studyDescription: this.studyData.studyDescription,
+                            tieneModality: !!this.studyData.modality,
+                            tieneStudyDescription: !!this.studyData.studyDescription
+                        });
+                        // Mostrar botón de guardar
+                        this.showSaveButton();
+                        // Cargar informe existente si hay datos del estudio
+                        if (this.studyData.studyId || this.studyData.studyInstanceUID) {
+                            this.loadExistingReport();
+                        }
+                    }
+                });
+            },
+
+            // Cargar plantillas
+            loadTemplates: async function() {
+                try {
+                    const token = this.getSessionToken();
+                    const url = '../api/plantillas/list.php';
+                    
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data) {
+                            this.templates = {};
+                            const select = document.getElementById('templateSelect');
+                            
+                            // Limpiar opciones existentes excepto la primera
+                            select.innerHTML = '<option value="">Seleccionar plantilla...</option>';
+                            
+                            Object.values(data.data).forEach(template => {
+                                this.templates[template.id] = {
+                                    id: template.id,
+                                    name: template.name,
+                                    content: template.content
+                                };
+                                
+                                const option = document.createElement('option');
+                                option.value = template.id;
+                                option.textContent = template.name;
+                                select.appendChild(option);
+                            });
+                            
+                            console.log('✅ Plantillas cargadas:', Object.keys(this.templates).length);
+                            
+                            // Si no hay plantillas, mostrar mensaje informativo
+                            if (Object.keys(this.templates).length === 0) {
+                                const option = document.createElement('option');
+                                option.value = '';
+                                option.textContent = 'No hay plantillas disponibles';
+                                option.disabled = true;
+                                select.appendChild(option);
+                            }
+                        } else {
+                            // Si la respuesta no tiene datos, mostrar mensaje
+                            const select = document.getElementById('templateSelect');
+                            if (select) {
+                                const option = document.createElement('option');
+                                option.value = '';
+                                option.textContent = 'No hay plantillas disponibles';
+                                option.disabled = true;
+                                select.appendChild(option);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error cargando plantillas:', error);
+                }
+            },
+
+            // Inicializar TinyMCE
+            initTinyMCE: async function() {
+                if (typeof tinymce === 'undefined') {
+                    console.error('TinyMCE no está disponible');
+                    return;
+                }
+
+                // Obtener tamaño guardado del editor desde el iframe padre
+                let savedEditorSize = null;
+                try {
+                    if (window.parent && window.parent !== window) {
+                        // Intentar obtener tamaño guardado desde el workspace
+                        const message = { type: 'getEditorSize' };
+                        window.parent.postMessage(message, '*');
+                        
+                        // Escuchar respuesta (con timeout)
+                        savedEditorSize = await new Promise((resolve) => {
+                            const timeout = setTimeout(() => resolve(null), 500);
+                            window.addEventListener('message', function handler(event) {
+                                if (event.data && event.data.type === 'editorSize' && event.data.size) {
+                                    clearTimeout(timeout);
+                                    window.removeEventListener('message', handler);
+                                    resolve(event.data.size);
+                                }
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.warn('No se pudo obtener tamaño guardado del editor:', error);
+                }
+                
+                const initialHeight = savedEditorSize ? savedEditorSize.height : 400;
+                const initialWidth = savedEditorSize ? savedEditorSize.width : null;
+                
+                tinymce.init({
+                    selector: '#reportEditor',
+                    language: 'es',
+                    language_url: 'https://cdn.tiny.cloud/1/no-api-key/tinymce/6/langs/es.js', // CDN alternativo para el idioma
+                    plugins: 'lists table link code autosave',
+                    toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | code',
+                    height: initialHeight,
+                    width: initialWidth || undefined, // Solo establecer width si está guardado
+                    menubar: false,
+                    branding: false,
+                    autosave_ask_before_unload: false,
+                    autosave_interval: '20s',
+                    autosave_restore_when_empty: true,
+                    autosave_retention: '30m',
+                    setup: (editor) => {
+                        this.editor = editor;
+                        editor.on('init', () => {
+                            console.log('Editor TinyMCE inicializado en workspace');
+                            
+                            // Restaurar tamaño si está guardado
+                            if (savedEditorSize) {
+                                const container = editor.getContainer();
+                                if (container) {
+                                    if (savedEditorSize.width) {
+                                        container.style.width = savedEditorSize.width + 'px';
+                                    }
+                                    if (savedEditorSize.height) {
+                                        container.style.height = savedEditorSize.height + 'px';
+                                    }
+                                    // Forzar actualización del editor
+                                    editor.nodeChanged();
+                                }
+                            }
+                            
+                            // Mostrar botón de guardar si hay datos del estudio
+                            if (WorkspaceEditor.studyData) {
+                                WorkspaceEditor.showSaveButton();
+                                // Cargar informe existente
+                                setTimeout(() => {
+                                    WorkspaceEditor.loadExistingReport();
+                                }, 500);
+                            }
+                        });
+                        
+                        // Detectar cuando se redimensiona el editor
+                        let resizeTimeout = null;
+                        let lastSize = null;
+                        
+                        const handleResize = () => {
+                            clearTimeout(resizeTimeout);
+                            resizeTimeout = setTimeout(() => {
+                                const container = editor.getContainer();
+                                if (container) {
+                                    const rect = container.getBoundingClientRect();
+                                    const editorSize = {
+                                        width: Math.round(rect.width),
+                                        height: Math.round(rect.height)
+                                    };
+                                    
+                                    // Solo enviar si el tamaño cambió significativamente (más de 5px)
+                                    if (!lastSize || 
+                                        Math.abs(lastSize.width - editorSize.width) > 5 || 
+                                        Math.abs(lastSize.height - editorSize.height) > 5) {
+                                        
+                                        lastSize = editorSize;
+                                        console.log('📏 Tamaño del editor TinyMCE detectado:', editorSize);
+                                        
+                                        // Enviar tamaño al iframe padre
+                                        if (window.parent && window.parent !== window) {
+                                            window.parent.postMessage({
+                                                type: 'editorResize',
+                                                size: editorSize
+                                            }, '*');
+                                        }
+                                    }
+                                }
+                            }, 500); // Debounce de 500ms para evitar demasiados mensajes
+                        };
+                        
+                        // Escuchar cambios de tamaño del contenedor
+                        const container = editor.getContainer();
+                        if (container) {
+                            // Usar ResizeObserver para detectar cambios de tamaño
+                            if (window.ResizeObserver) {
+                                const resizeObserver = new ResizeObserver(handleResize);
+                                resizeObserver.observe(container);
+                                
+                                // También observar el iframe interno de TinyMCE si existe
+                                setTimeout(() => {
+                                    const iframe = container.querySelector('iframe');
+                                    if (iframe) {
+                                        resizeObserver.observe(iframe);
+                                    }
+                                }, 1000);
+                                
+                                // Guardar referencia para limpiar después
+                                editor._resizeObserver = resizeObserver;
+                            }
+                            
+                            // También escuchar eventos específicos de TinyMCE
+                            editor.on('ResizeEditor', handleResize);
+                            
+                            // Escuchar cambios de tamaño de la ventana
+                            window.addEventListener('resize', handleResize);
+                            
+                            // Detectar cuando el usuario arrastra el handle de resize de TinyMCE
+                            // TinyMCE tiene un handle de resize en la esquina inferior derecha
+                            setTimeout(() => {
+                                const resizeHandle = container.querySelector('.tox-statusbar__resize-handle');
+                                if (resizeHandle) {
+                                    let isResizing = false;
+                                    resizeHandle.addEventListener('mousedown', () => {
+                                        isResizing = true;
+                                    });
+                                    
+                                    window.addEventListener('mouseup', () => {
+                                        if (isResizing) {
+                                            isResizing = false;
+                                            // Esperar un momento para que el resize termine
+                                            setTimeout(handleResize, 100);
+                                        }
+                                    });
+                                }
+                            }, 2000);
+                        }
+                    }
+                });
+            },
+
+            // Configurar event listeners
+            setupEventListeners: function() {
+                document.getElementById('loadTemplateBtn').addEventListener('click', () => {
+                    this.loadSelectedTemplate();
+                });
+                
+                const saveBtn = document.getElementById('saveReportBtn');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', () => {
+                        if (this.isEditing) {
+                            // Si está en modo edición, guardar
+                            this.saveReport();
+                        } else {
+                            // Si está en modo protegido, habilitar edición
+                            this.enableEditing();
+                        }
+                    });
+                }
+            },
+
+            // Cargar plantilla seleccionada
+            loadSelectedTemplate: function() {
+                const select = document.getElementById('templateSelect');
+                const templateId = select.value;
+                
+                // Verificar si hay plantillas disponibles
+                if (Object.keys(this.templates).length === 0) {
+                    this.showToast('No hay plantillas disponibles. Por favor, crea una plantilla primero.', 'warning');
+                    return;
+                }
+                
+                if (!templateId) {
+                    this.showToast('Por favor selecciona una plantilla', 'warning');
+                    return;
+                }
+                
+                const template = this.templates[templateId];
+                if (!template) {
+                    this.showToast('Plantilla no encontrada', 'error');
+                    return;
+                }
+                
+                if (this.editor) {
+                    this.editor.setContent(template.content || '');
+                    this.showToast(`Plantilla "${template.name}" cargada correctamente`, 'success');
+                    console.log('Plantilla cargada:', template.name);
+                } else {
+                    this.showToast('Editor TinyMCE no está inicializado', 'error');
+                    console.error('Editor TinyMCE no está inicializado');
+                }
+            },
+
+            // Cargar informe existente
+            loadExistingReport: async function() {
+                if (!this.studyData) {
+                    console.log('No hay datos del estudio para cargar informe');
+                    return;
+                }
+
+                const studyId = this.studyData.studyId || this.studyData.studyInstanceUID;
+                if (!studyId) {
+                    console.log('No hay ID de estudio para cargar informe');
+                    return;
+                }
+
+                try {
+                    const token = this.getSessionToken();
+                    if (!token) {
+                        console.warn('No hay token de sesión para cargar informe');
+                        return;
+                    }
+
+                    const url = `../api/informes/get.php?estudio_id=${encodeURIComponent(studyId)}&incluir_audios=true`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data.informes && data.data.informes.length > 0) {
+                            const informe = data.data.informes[0];
+                            this.currentReportId = informe.id;
+                            
+                            // Cargar contenido en el editor
+                            if (this.editor) {
+                                this.editor.setContent(informe.contenido_html || '');
+                                this.showToast(`Informe cargado: ${informe.titulo}`, 'success');
+                            } else {
+                                // Esperar a que el editor se inicialice
+                                const checkEditor = setInterval(() => {
+                                    if (this.editor) {
+                                        clearInterval(checkEditor);
+                                        this.editor.setContent(informe.contenido_html || '');
+                                        this.showToast(`Informe cargado: ${informe.titulo}`, 'success');
+                                    }
+                                }, 100);
+                                setTimeout(() => clearInterval(checkEditor), 5000);
+                            }
+                            
+                            // Si hay informe existente, proteger el editor
+                            this.isSaved = true;
+                            this.isEditing = false;
+                            this.protectEditor();
+                            
+                            // Mostrar botón de guardar (que será "Editar" si está protegido)
+                            this.showSaveButton();
+                        } else {
+                            // No hay informe existente, mostrar botón de guardar si hay datos del estudio
+                            this.isSaved = false;
+                            this.isEditing = true;
+                            this.showSaveButton();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error al cargar informe:', error);
+                    // Aún así mostrar botón de guardar si hay datos del estudio
+                    this.showSaveButton();
+                }
+            },
+
+            // Guardar informe
+            saveReport: async function() {
+                // Obtener datos directamente de la URL como fallback (igual que reports.js)
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlModality = urlParams.get('modality') || '';
+                const urlStudyDescription = urlParams.get('studyDescription') || '';
+                
+                if (!this.studyData) {
+                    this.showToast('No hay datos del estudio para guardar el informe', 'error');
+                    return;
+                }
+
+                const studyInstanceUID = this.studyData.studyInstanceUID || this.studyData.studyId;
+                if (!studyInstanceUID) {
+                    this.showToast('Error: No se encontró ID del estudio', 'error');
+                    return;
+                }
+
+                if (!this.editor) {
+                    this.showToast('Error: El editor no está inicializado', 'error');
+                    return;
+                }
+
+                const content = this.editor.getContent();
+                if (!content || content.trim() === '') {
+                    const shouldContinue = await this.showConfirmDialog(
+                        'Informe vacío',
+                        'El informe está vacío. ¿Desea guardarlo de todas formas?',
+                        'warning'
+                    );
+                    if (!shouldContinue) {
+                        return;
+                    }
+                }
+
+                try {
+                    const token = this.getSessionToken();
+                    console.log('🔑 Token de sesión obtenido:', token ? 'Encontrado' : 'NO ENCONTRADO');
+                    if (!token) {
+                        this.showToast('Error: Sesión no válida. Por favor, recarga la página e inicia sesión nuevamente.', 'error');
+                        return;
+                    }
+
+                    // Obtener modality y studyDescription:
+                    // Prioridad: studyData > URL params > URL completa (regex) > sessionStorage cache
+                    let modality = this.studyData.modality || urlModality || '';
+                    let studyDescription = this.studyData.studyDescription || urlStudyDescription || '';
+                    
+                    // Si aún no tenemos los datos, intentar leerlos de la URL completa
+                    if (!modality || !studyDescription) {
+                        const fullUrl = window.location.href;
+                        const urlMatch = fullUrl.match(/[?&]modality=([^&]*)/);
+                        const descMatch = fullUrl.match(/[?&]studyDescription=([^&]*)/);
+                        if (urlMatch && !modality) {
+                            modality = decodeURIComponent(urlMatch[1]);
+                        }
+                        if (descMatch && !studyDescription) {
+                            studyDescription = decodeURIComponent(descMatch[1]);
+                        }
+                    }
+                    
+                    // Si modality sigue vacío, buscar en sessionStorage (cache puesto por el dashboard)
+                    // Esto evita llamar al PACS directamente y usa datos ya obtenidos por el dashboard
+                    if (!modality) {
+                        const studyId = this.studyData.orthancStudyId || this.studyData.studyId;
+                        if (studyId) {
+                            const cachedModality = sessionStorage.getItem(`study_modality_${studyId}`);
+                            if (cachedModality && cachedModality !== 'N/A') {
+                                modality = cachedModality;
+                                this.studyData.modality = modality;
+                                console.log('✅ modality obtenida desde sessionStorage cache:', modality);
+                            }
+                        }
+                    }
+                    
+                    console.log('🔍 Modality y studyDescription finales:', { modality, studyDescription });
+
+                    // Preparar datos del informe (igual que reports.js)
+                    const reportData = {
+                        estudio_id: studyInstanceUID,
+                        study_instance_uid: studyInstanceUID,
+                        study_id: this.studyData.studyId,
+                        patient_id: this.studyData.patientId,
+                        patient_name: this.studyData.patientName,
+                        modality: modality,
+                        study_description: studyDescription,
+                        contenido_html: content || '',
+                        titulo: this.generateReportTitle(),
+                        estado: 'borrador',
+                        session_token: token
+                    };
+                    
+                    // Log de depuración para verificar que los datos se están enviando
+                    console.log('📤 Datos del informe a guardar (completo):', reportData);
+                    console.log('📤 Verificación de campos críticos:', {
+                        'modality': reportData.modality,
+                        'study_description': reportData.study_description,
+                        'modality_vacio': !reportData.modality || reportData.modality === '',
+                        'study_description_vacio': !reportData.study_description || reportData.study_description === '',
+                        'studyData_completo': this.studyData,
+                        'urlParams_completo': Array.from(urlParams.entries()),
+                        'URL_completa': window.location.href
+                    });
+                    
+                    // ADVERTENCIA si los campos están vacíos
+                    if (!reportData.modality || reportData.modality === '') {
+                        console.error('❌ ERROR: modality está vacío al guardar el informe');
+                    }
+                    if (!reportData.study_description || reportData.study_description === '') {
+                        console.error('❌ ERROR: study_description está vacío al guardar el informe');
+                    }
+
+                    // Si hay un informe existente, incluir el ID para actualización
+                    if (this.currentReportId) {
+                        reportData.informe_id = this.currentReportId;
+                        reportData.id = this.currentReportId;
+                    }
+
+                    // Enviar al servidor
+                    const response = await fetch('../api/informes/save.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify(reportData)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        let errorData;
+                        try {
+                            errorData = JSON.parse(errorText);
+                        } catch (e) {
+                            errorData = { message: errorText };
+                        }
+                        this.showToast(errorData.message || `Error al guardar (HTTP ${response.status})`, 'error');
+                        return;
+                    }
+
+                    const data = await response.json();
+                    if (data.success) {
+                        // Actualizar currentReportId si es un nuevo informe
+                        const informeId = data.data && data.data.informe_id ? data.data.informe_id : this.currentReportId;
+                        if (informeId && !this.currentReportId) {
+                            this.currentReportId = informeId;
+                        }
+                        
+                        // Subir audios del workspace si existen
+                        if (informeId) {
+                            // Solicitar audios del workspace usando postMessage
+                            const recordings = await this.requestWorkspaceRecordings();
+                            if (recordings && recordings.length > 0) {
+                                await this.uploadWorkspaceAudios(informeId, recordings);
+                            } else {
+                                console.log('No hay audios del workspace para subir');
+                            }
+                        }
+                        
+                        // Marcar como guardado y proteger el editor
+                        this.isSaved = true;
+                        this.isEditing = false;
+                        this.protectEditor();
+                        
+                        this.showToast('Informe guardado correctamente', 'success');
+                        console.log('Informe guardado:', data);
+                    } else {
+                        this.showToast(data.message || 'Error al guardar el informe', 'error');
+                    }
+                } catch (error) {
+                    console.error('Error al guardar informe:', error);
+                    this.showToast('Error al guardar el informe: ' + error.message, 'error');
+                }
+            },
+
+            // Generar título del informe
+            generateReportTitle: function() {
+                if (this.studyData && this.studyData.patientName) {
+                    const date = new Date().toLocaleDateString('es-ES');
+                    return `Informe - ${this.studyData.patientName} - ${date}`;
+                }
+                return `Informe - ${new Date().toLocaleDateString('es-ES')}`;
+            },
+
+            // Solicitar audios del workspace usando postMessage
+            requestWorkspaceRecordings: function() {
+                return new Promise((resolve) => {
+                    console.log('📡 Solicitando audios del workspace mediante postMessage...');
+                    
+                    // Timeout para evitar esperar indefinidamente
+                    const timeout = setTimeout(() => {
+                        console.warn('⏱️ Timeout esperando respuesta del workspace');
+                        resolve([]);
+                    }, 3000);
+                    
+                    // Listener temporal para recibir la respuesta
+                    const messageHandler = (event) => {
+                        // Verificar que el mensaje sea del parent y sea la respuesta esperada
+                        if (event.data && event.data.type === 'workspaceRecordingsResponse') {
+                            clearTimeout(timeout);
+                            window.removeEventListener('message', messageHandler);
+                            console.log('✅ Audios recibidos del workspace:', event.data.recordings?.length || 0);
+                            resolve(event.data.recordings || []);
+                        }
+                    };
+                    
+                    window.addEventListener('message', messageHandler);
+                    
+                    // Enviar solicitud al parent
+                    if (window.parent) {
+                        window.parent.postMessage({
+                            type: 'requestWorkspaceRecordings'
+                        }, '*');
+                        console.log('📤 Solicitud enviada al parent');
+                    } else {
+                        clearTimeout(timeout);
+                        window.removeEventListener('message', messageHandler);
+                        console.warn('⚠️ window.parent no disponible');
+                        resolve([]);
+                    }
+                });
+            },
+
+            // Obtener nombre del usuario para el nombre del archivo
+            getUserNameForFilename: function() {
+                try {
+                    // Prioridad 1: Usar window.getCurrentUser() de auth-middleware.js
+                    if (typeof window.getCurrentUser === 'function') {
+                        const user = window.getCurrentUser();
+                        if (user) {
+                            // Usar nombre completo o username
+                            const userName = user.nombre || user.username || user.usuario || 'usuario';
+                            // Limpiar nombre para que sea válido como nombre de archivo
+                            return userName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+                        }
+                    }
+                    
+                    // Prioridad 2: Intentar localStorage con clave 'user'
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        try {
+                            const user = JSON.parse(userData);
+                            const userName = user.nombre || user.username || user.usuario || 'usuario';
+                            return userName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+                        } catch (e) {
+                            console.warn('Error parseando userData de localStorage:', e);
+                        }
+                    }
+                    
+                    // Prioridad 3: Intentar sessionStorage
+                    const sessionUserData = sessionStorage.getItem('userData');
+                    if (sessionUserData) {
+                        try {
+                            const user = JSON.parse(sessionUserData);
+                            const userName = user.nombre || user.username || user.usuario || 'usuario';
+                            return userName.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+                        } catch (e) {
+                            console.warn('Error parseando userData de sessionStorage:', e);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error obteniendo nombre del usuario:', error);
+                }
+                
+                // Fallback: usar 'usuario' si no se puede obtener el nombre
+                return 'usuario';
+            },
+
+            // Subir audios grabados en el workspace
+            uploadWorkspaceAudios: async function(informeId, workspaceRecordings) {
+                if (!informeId) {
+                    console.warn('No hay informe_id para subir audios del workspace');
+                    return { success: false, message: 'Primero debe guardar el informe' };
+                }
+
+                if (!workspaceRecordings || workspaceRecordings.length === 0) {
+                    console.log('No hay audios del workspace para subir');
+                    return { success: true, message: 'No hay audios pendientes' };
+                }
+
+                console.log(`📊 Total de grabaciones a subir: ${workspaceRecordings.length}`);
+
+                const token = this.getSessionToken();
+                if (!token) {
+                    return { success: false, message: 'Sesión no válida' };
+                }
+
+                // Obtener nombre del usuario y patientId para el nombre del archivo
+                const userName = this.getUserNameForFilename();
+                const patientId = this.studyData?.patientId || 'sin_paciente';
+                const timestamp = Date.now();
+
+                const results = [];
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const recording of workspaceRecordings) {
+                    try {
+                        // Convertir blob URL a blob
+                        const response = await fetch(recording.url);
+                        const blob = await response.blob();
+                        
+                        // Determinar extensión y tipo MIME real del archivo
+                        // MediaRecorder graba en WebM, no en WAV
+                        let fileExtension = 'webm';
+                        let mimeType = 'audio/webm';
+                        
+                        // Verificar el tipo MIME real del blob
+                        if (blob.type) {
+                            if (blob.type.includes('webm')) {
+                                fileExtension = 'webm';
+                                mimeType = 'audio/webm';
+                            } else if (blob.type.includes('mp4')) {
+                                fileExtension = 'mp4';
+                                mimeType = 'audio/mp4';
+                            } else if (blob.type.includes('ogg')) {
+                                fileExtension = 'ogg';
+                                mimeType = 'audio/ogg';
+                            } else if (blob.type.includes('wav')) {
+                                fileExtension = 'wav';
+                                mimeType = 'audio/wav';
+                            }
+                        }
+                        
+                        // Crear un File desde el blob con la extensión correcta
+                        // Usar el ID de la grabación como parte del timestamp para asegurar unicidad
+                        const uniqueTimestamp = recording.id || Date.now();
+                        const fileName = `${userName}_${patientId}_${uniqueTimestamp}.${fileExtension}`;
+                        const audioFile = new File([blob], fileName, { type: mimeType });
+
+                        console.log('📤 Subiendo audio del workspace:', {
+                            id: recording.id,
+                            timestamp: recording.timestamp,
+                            size: audioFile.size
+                        });
+
+                        const formData = new FormData();
+                        formData.append('audio', audioFile, fileName);
+                        formData.append('informe_id', informeId.toString());
+                        formData.append('tipo_grabacion', 'simple');
+                        formData.append('session_token', token);
+
+                        const uploadResponse = await fetch('../api/audios/upload.php', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer ' + token
+                            },
+                            body: formData
+                        });
+
+                        if (!uploadResponse.ok) {
+                            const errorText = await uploadResponse.text();
+                            let errorData;
+                            try {
+                                errorData = JSON.parse(errorText);
+                            } catch (e) {
+                                errorData = { message: errorText || `Error HTTP ${uploadResponse.status}` };
+                            }
+                            console.error('Error subiendo audio:', recording.id, errorData);
+                            results.push({ success: false, file: fileName, error: errorData.message || `Error HTTP ${uploadResponse.status}` });
+                            errorCount++;
+                            continue;
+                        }
+
+                        const result = await uploadResponse.json();
+                        if (result.success) {
+                            results.push({ success: true, file: fileName });
+                            successCount++;
+                            console.log('✅ Audio subido exitosamente:', fileName);
+                        } else {
+                            results.push({ success: false, file: fileName, error: result.message || 'Error desconocido' });
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        console.error('Error procesando audio del workspace:', recording.id, error);
+                        results.push({ success: false, file: `grabacion_${recording.id}`, error: error.message });
+                        errorCount++;
+                    }
+                }
+
+                if (successCount > 0) {
+                    this.showToast(`${successCount} audio(s) del workspace subido(s) correctamente`, 'success');
+                }
+                if (errorCount > 0) {
+                    this.showToast(`${errorCount} audio(s) no se pudieron subir`, 'warning');
+                }
+
+                return {
+                    success: errorCount === 0,
+                    message: `Subidos: ${successCount}, Errores: ${errorCount}`,
+                    results: results
+                };
+            },
+
+            // Proteger el editor (modo solo lectura)
+            protectEditor: function() {
+                if (this.editor) {
+                    // Hacer el editor readonly
+                    this.editor.mode.set('readonly');
+                    console.log('🔒 Editor protegido (modo readonly)');
+                }
+                
+                // Actualizar botón a "Editar Informe"
+                const saveBtn = document.getElementById('saveReportBtn');
+                const saveBtnIcon = document.getElementById('saveReportBtnIcon');
+                const saveBtnText = document.getElementById('saveReportBtnText');
+                
+                if (saveBtn) {
+                    saveBtn.classList.remove('btn-success');
+                    saveBtn.classList.add('btn-primary');
+                }
+                if (saveBtnIcon) {
+                    saveBtnIcon.className = 'fas fa-edit me-2';
+                }
+                if (saveBtnText) {
+                    saveBtnText.textContent = 'Editar Informe';
+                }
+                
+                // Deshabilitar controles de audio en el workspace
+                this.disableAudioControls();
+            },
+
+            // Habilitar edición del editor
+            enableEditing: function() {
+                if (this.editor) {
+                    // Habilitar edición
+                    this.editor.mode.set('design');
+                    console.log('✏️ Editor habilitado para edición');
+                }
+                
+                // Actualizar botón a "Guardar Informe"
+                const saveBtn = document.getElementById('saveReportBtn');
+                const saveBtnIcon = document.getElementById('saveReportBtnIcon');
+                const saveBtnText = document.getElementById('saveReportBtnText');
+                
+                if (saveBtn) {
+                    saveBtn.classList.remove('btn-primary');
+                    saveBtn.classList.add('btn-success');
+                }
+                if (saveBtnIcon) {
+                    saveBtnIcon.className = 'fas fa-save me-2';
+                }
+                if (saveBtnText) {
+                    saveBtnText.textContent = 'Guardar Informe';
+                }
+                
+                // Habilitar controles de audio en el workspace
+                this.enableAudioControls();
+                
+                this.isEditing = true;
+            },
+
+            // Deshabilitar controles de audio en el workspace
+            disableAudioControls: function() {
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage({
+                        type: 'disableAudioControls'
+                    }, '*');
+                    console.log('🔒 Controles de audio deshabilitados en workspace');
+                }
+            },
+
+            // Habilitar controles de audio en el workspace
+            enableAudioControls: function() {
+                if (window.parent && window.parent.postMessage) {
+                    window.parent.postMessage({
+                        type: 'enableAudioControls'
+                    }, '*');
+                    console.log('🔓 Controles de audio habilitados en workspace');
+                }
+            },
+
+            // Obtener token de sesión
+            getSessionToken: function() {
+                try {
+                    // Intentar obtener de múltiples fuentes (mismo patrón que otros módulos)
+                    const lsToken = localStorage.getItem('session_token') || 
+                                   localStorage.getItem('sessionToken') ||
+                                   localStorage.getItem('auth_token');
+                    const ssToken = sessionStorage.getItem('session_token') || 
+                                   sessionStorage.getItem('sessionToken') ||
+                                   sessionStorage.getItem('auth_token');
+                    if (lsToken) return lsToken;
+                    if (ssToken) return ssToken;
+                    
+                    // Intentar obtener de cookies
+                    const match = document.cookie.match(/(?:^|; )session_token=([^;]+)/);
+                    if (match) return decodeURIComponent(match[1]);
+                    const match2 = document.cookie.match(/(?:^|; )sessionToken=([^;]+)/);
+                    if (match2) return decodeURIComponent(match2[1]);
+                    const match3 = document.cookie.match(/(?:^|; )auth_token=([^;]+)/);
+                    if (match3) return decodeURIComponent(match3[1]);
+                    
+                    // También intentar con getCookie como fallback
+                    const cookieToken = this.getCookie('session_token') || 
+                                      this.getCookie('sessionToken') ||
+                                      this.getCookie('auth_token');
+                    if (cookieToken) return cookieToken;
+                    
+                    return null;
+                } catch (e) {
+                    console.error('Error obteniendo token de sesión:', e);
+                    return null;
+                }
+            },
+
+            // Obtener cookie
+            getCookie: function(name) {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+                return null;
+            },
+
+            /**
+             * Escapar HTML para prevenir XSS
+             */
+            escapeHtml: function(text) {
+                const map = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#039;'
+                };
+                return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+            },
+
+            /**
+             * Mostrar diálogo de confirmación usando Bootstrap Modal
+             */
+            showConfirmDialog: function(title, message, type = 'warning') {
+                return new Promise((resolve) => {
+                    // Crear modal si no existe
+                    let modal = document.getElementById('workspaceEditorConfirmModal');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'workspaceEditorConfirmModal';
+                        modal.className = 'modal fade';
+                        modal.setAttribute('tabindex', '-1');
+                        modal.setAttribute('aria-labelledby', 'workspaceEditorConfirmModalLabel');
+                        modal.setAttribute('aria-hidden', 'true');
+                        modal.innerHTML = `
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header" id="workspaceEditorConfirmModalHeader">
+                                        <h5 class="modal-title" id="workspaceEditorConfirmModalLabel"></h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <div class="modal-body" id="workspaceEditorConfirmModalBody"></div>
+                                    <div class="modal-footer" id="workspaceEditorConfirmModalFooter">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="workspaceEditorConfirmCancelBtn">Cancelar</button>
+                                        <button type="button" class="btn" id="workspaceEditorConfirmOkBtn">Confirmar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    }
+                    
+                    const modalTitle = document.getElementById('workspaceEditorConfirmModalLabel');
+                    const modalBody = document.getElementById('workspaceEditorConfirmModalBody');
+                    const modalHeader = document.getElementById('workspaceEditorConfirmModalHeader');
+                    const okBtn = document.getElementById('workspaceEditorConfirmOkBtn');
+                    const cancelBtn = document.getElementById('workspaceEditorConfirmCancelBtn');
+                    
+                    // Configurar icono y color según el tipo
+                    let icon, headerClass, btnClass;
+                    switch(type) {
+                        case 'danger':
+                            icon = 'fas fa-exclamation-circle';
+                            headerClass = 'bg-danger text-white';
+                            btnClass = 'btn-danger';
+                            break;
+                        case 'warning':
+                        default:
+                            icon = 'fas fa-exclamation-triangle';
+                            headerClass = 'bg-warning text-dark';
+                            btnClass = 'btn-warning';
+                            break;
+                        case 'info':
+                            icon = 'fas fa-info-circle';
+                            headerClass = 'bg-info text-white';
+                            btnClass = 'btn-info';
+                            break;
+                    }
+                    
+                    modalTitle.innerHTML = `<i class="${icon} me-2"></i>${this.escapeHtml(title)}`;
+                    modalBody.textContent = message;
+                    modalHeader.className = `modal-header ${headerClass}`;
+                    okBtn.className = `btn ${btnClass}`;
+                    okBtn.textContent = 'Confirmar';
+                    
+                    // Limpiar event listeners anteriores
+                    const newOkBtn = okBtn.cloneNode(true);
+                    const newCancelBtn = cancelBtn.cloneNode(true);
+                    okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+                    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+                    
+                    const bsModal = new bootstrap.Modal(modal);
+                    
+                    const onConfirm = () => {
+                        cleanup();
+                        bsModal.hide();
+                        resolve(true);
+                    };
+                    
+                    const onCancel = () => {
+                        cleanup();
+                        bsModal.hide();
+                        resolve(false);
+                    };
+                    
+                    const onHidden = () => {
+                        cleanup();
+                        resolve(false);
+                    };
+                    
+                    const cleanup = () => {
+                        newOkBtn.removeEventListener('click', onConfirm);
+                        newCancelBtn.removeEventListener('click', onCancel);
+                        modal.removeEventListener('hidden.bs.modal', onHidden);
+                    };
+                    
+                    newOkBtn.addEventListener('click', onConfirm);
+                    newCancelBtn.addEventListener('click', onCancel);
+                    modal.addEventListener('hidden.bs.modal', onHidden);
+                    
+                    bsModal.show();
+                });
+            },
+
+            /**
+             * Mostrar toast notification profesional
+             */
+            showToast: function(message, type = 'info') {
+                // Crear contenedor de toasts si no existe
+                let toastContainer = document.getElementById('workspaceEditorToastContainer');
+                if (!toastContainer) {
+                    toastContainer = document.createElement('div');
+                    toastContainer.id = 'workspaceEditorToastContainer';
+                    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+                    toastContainer.style.zIndex = '9999';
+                    document.body.appendChild(toastContainer);
+                }
+                
+                const toastId = 'workspace_editor_toast_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                const bgClass = type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : type === 'warning' ? 'bg-warning' : 'bg-info';
+                const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation-circle' : 'info-circle';
+                
+                const toastHtml = `
+                    <div id="${toastId}" class="toast align-items-center text-white ${bgClass} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                <i class="fas fa-${icon} me-2"></i>
+                                ${this.escapeHtml(message)}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+                        </div>
+                    </div>
+                `;
+                
+                toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+                
+                const toastElement = document.getElementById(toastId);
+                if (toastElement && typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                    const toast = new bootstrap.Toast(toastElement, {
+                        autohide: true,
+                        delay: type === 'error' ? 5000 : type === 'warning' ? 4000 : 3000
+                    });
+                    
+                    toast.show();
+                    
+                    // Limpiar después de ocultar
+                    toastElement.addEventListener('hidden.bs.toast', () => {
+                        toastElement.remove();
+                    });
+                } else {
+                    console.warn('⚠️ Bootstrap Toast no disponible, usando fallback');
+                    // Fallback: mostrar como alerta de Bootstrap
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type === 'warning' ? 'warning' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+                    alertDiv.style.zIndex = '9999';
+                    alertDiv.style.minWidth = '300px';
+                    alertDiv.innerHTML = `
+                        <i class="fas fa-${icon} me-2"></i>
+                        ${this.escapeHtml(message)}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(alertDiv);
+                    
+                    setTimeout(() => {
+                        if (alertDiv.parentNode) {
+                            alertDiv.remove();
+                        }
+                    }, type === 'error' ? 5000 : 3000);
+                }
+            }
+        };
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            WorkspaceEditor.init();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Voice Commands</title>
+    <script src="js/auth-middleware.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #005a87;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+        });
+    </script>
+    <h1>Debug Voice Commands</h1>
+    
+    <div class="debug-section">
+        <h2>Test Input</h2>
+        <input type="text" id="testInput" value="insertar modelo informe_radiologico" style="width: 100%; padding: 10px;">
+        <button onclick="testCommand()">Test Command</button>
+        <button onclick="testDirectly()">Test Directly</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Editor</h2>
+        <textarea id="testEditor" placeholder="El contenido se insertará aquí..."></textarea>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Debug Log</h2>
+        <div id="debugLog" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+    
+    <div class="debug-section">
+        <h2>Available Templates</h2>
+        <div id="templatesList"></div>
+    </div>
+
+    <script src="assets/js/voice-commands-config.js"></script>
+    <script src="assets/js/voice-actions.js"></script>
+    <script src="assets/js/speech.js"></script>
+    
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('debugLog').textContent = '';
+        }
+        
+        function testCommand() {
+            const input = document.getElementById('testInput').value;
+            log(`Testing command: "${input}"`);
+            
+            // Test processActionCommand
+            if (typeof VoiceCommandsConfig !== 'undefined') {
+                const actionResult = VoiceCommandsConfig.processActionCommand(input);
+                log(`processActionCommand result: ${JSON.stringify(actionResult, null, 2)}`);
+                
+                if (actionResult) {
+                    // Test executeAction
+                    if (typeof VoiceActions !== 'undefined') {
+                        log(`Executing action: ${actionResult.action} with parameters: ${JSON.stringify(actionResult.parameters)}`);
+                        const success = VoiceActions.executeAction(actionResult.action, actionResult.parameters);
+                        log(`executeAction result: ${success}`);
+                    } else {
+                        log('VoiceActions not available');
+                    }
+                } else {
+                    log('No action command detected');
+                }
+            } else {
+                log('VoiceCommandsConfig not available');
+            }
+        }
+        
+        function testDirectly() {
+            const templateName = 'informe_radiologico';
+            log(`Testing direct template insertion: ${templateName}`);
+            
+            if (typeof VoiceActions !== 'undefined') {
+                const result = VoiceActions.insertTemplate(templateName);
+                log(`Direct insertTemplate result: ${result}`);
+            } else {
+                log('VoiceActions not available');
+            }
+        }
+        
+        function showTemplates() {
+            const templatesDiv = document.getElementById('templatesList');
+            if (typeof VoiceActions !== 'undefined' && VoiceActions.templates) {
+                const templates = Object.keys(VoiceActions.templates);
+                templatesDiv.innerHTML = '<h3>Available Templates:</h3><ul>' + 
+                    templates.map(t => `<li>${t}</li>`).join('') + '</ul>';
+            } else {
+                templatesDiv.innerHTML = 'VoiceActions or templates not available';
+            }
+        }
+        
+        // Override insertContent for testing
+        window.addEventListener('load', function() {
+            log('Page loaded, initializing debug environment...');
+            
+            // Show available templates
+            showTemplates();
+            
+            // Override console methods to capture logs
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            
+            console.log = function(...args) {
+                log('LOG: ' + args.join(' '));
+                originalLog.apply(console, args);
+            };
+            
+            console.error = function(...args) {
+                log('ERROR: ' + args.join(' '));
+                originalError.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                log('WARN: ' + args.join(' '));
+                originalWarn.apply(console, args);
+            };
+            
+            log('Debug environment ready');
+        });
+        
+        // Mock TinyMCE for testing
+        window.tinymce = {
+            get: function(id) {
+                return {
+                    insertContent: function(content) {
+                        const editor = document.getElementById('testEditor');
+                        editor.value += content.replace(/<br>/g, '\n');
+                        log(`Content inserted via TinyMCE mock: ${content.substring(0, 50)}...`);
+                    },
+                    getBody: function() {
+                        return document.getElementById('testEditor');
+                    }
+                };
+            },
+            activeEditor: null
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviar Informe a PACS - Selector de Formato</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .format-selector {
+            margin-bottom: 30px;
+        }
+
+        .format-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+            height: 60px;
+            background: #f0f0f0;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-switch input {
+            display: none;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            transition: 0.4s;
+            display: flex;
+        }
+
+        .toggle-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s ease;
+            z-index: 1;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-option .icon {
+            font-size: 20px;
+        }
+
+        .toggle-slider::before {
+            content: "";
+            position: absolute;
+            height: 52px;
+            width: calc(50% - 8px);
+            left: 4px;
+            top: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: 0.4s;
+            border-radius: 26px;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        #toggleJpg:checked ~ .toggle-slider::before {
+            transform: translateX(calc(100% + 8px));
+        }
+
+        #togglePdf:checked ~ .toggle-option.pdf,
+        #toggleJpg:checked ~ .toggle-option.jpg {
+            color: white;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .info-box h3 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .info-box ul li {
+            margin-bottom: 4px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            display: none;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn.loading .spinner {
+            display: block;
+        }
+
+        .btn.loading .btn-text {
+            display: none;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result.success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+            display: block;
+        }
+
+        .result.error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+            display: block;
+        }
+
+        .result strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Tooltip para mostrar características */
+        .feature-badge {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📤 Enviar Informe a PACS</h1>
+        <p class="subtitle">Selecciona el formato para enviar tu informe</p>
+
+        <div class="format-selector">
+            <label class="format-label">Formato de Envío</label>
+            <div class="toggle-switch">
+                <input type="radio" name="format" id="togglePdf" value="pdf" checked>
+                <input type="radio" name="format" id="toggleJpg" value="jpg">
+                <div class="toggle-slider">
+                    <label for="togglePdf" class="toggle-option pdf">
+                        <span class="icon">📄</span>
+                        <span>PDF</span>
+                    </label>
+                    <label for="toggleJpg" class="toggle-option jpg">
+                        <span class="icon">🖼️</span>
+                        <span>Imagen</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box" id="infoBoxPdf">
+            <h3>📄 Formato PDF</h3>
+            <ul>
+                <li>Texto seleccionable y copiable</li>
+                <li>Archivo más ligero</li>
+                <li>Fácil de imprimir</li>
+                <li>Formato profesional</li>
+            </ul>
+            <div style="margin-top: 10px;">
+                <span class="feature-badge">Recomendado</span>
+                <span class="feature-badge">Alta calidad</span>
+            </div>
+        </div>
+
+        <div class="info-box" id="infoBoxJpg" style="display: none; border-left-color: #fd7e14;">
+            <h3>🖼️ Formato Imagen (JPG)</h3>
+            <ul>
+                <li>Compatible con todos los visores DICOM</li>
+                <li>Visualización inmediata</li>
+                <li>Integración nativa con PACS</li>
+                <li>Sin necesidad de plugins adicionales</li>
+            </ul>
+            <div style="margin-top: 10px;">
+                <span class="feature-badge">Máxima compatibilidad</span>
+                <span class="feature-badge">Visualización rápida</span>
+            </div>
+        </div>
+
+        <button class="btn" id="btnEnviar">
+            <span class="spinner"></span>
+            <span class="btn-text">
+                <span id="btnIcon">📤</span>
+                Enviar a PACS
+            </span>
+        </button>
+
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        // Configuración
+        const INFORME_ID = 123; // Cambiar por el ID real del informe
+        const API_URL = '/api/informes/send-to-pacs.php';
+        
+        // Elementos DOM
+        const togglePdf = document.getElementById('togglePdf');
+        const toggleJpg = document.getElementById('toggleJpg');
+        const infoBoxPdf = document.getElementById('infoBoxPdf');
+        const infoBoxJpg = document.getElementById('infoBoxJpg');
+        const btnEnviar = document.getElementById('btnEnviar');
+        const btnIcon = document.getElementById('btnIcon');
+        const result = document.getElementById('result');
+
+        // Cambiar información según el formato seleccionado
+        function updateInfo() {
+            const isPdf = togglePdf.checked;
+            
+            infoBoxPdf.style.display = isPdf ? 'block' : 'none';
+            infoBoxJpg.style.display = isPdf ? 'none' : 'block';
+            btnIcon.textContent = isPdf ? '📄' : '🖼️';
+        }
+
+        togglePdf.addEventListener('change', updateInfo);
+        toggleJpg.addEventListener('change', updateInfo);
+
+        // Enviar a PACS
+        btnEnviar.addEventListener('click', async () => {
+            const format = document.querySelector('input[name="format"]:checked').value;
+            
+            // Mostrar loading
+            btnEnviar.classList.add('loading');
+            btnEnviar.disabled = true;
+            result.style.display = 'none';
+            result.className = 'result';
+
+            try {
+                // Obtener token de sesión (ajustar según tu sistema de autenticación)
+                const sessionToken = sessionStorage.getItem('session_token') || 
+                                   localStorage.getItem('session_token') ||
+                                   'YOUR_SESSION_TOKEN'; // Fallback para pruebas
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + sessionToken
+                    },
+                    body: JSON.stringify({
+                        informe_id: INFORME_ID,
+                        format: format
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Éxito
+                    result.className = 'result success';
+                    result.innerHTML = `
+                        <strong>✅ ${data.message}</strong>
+                        <div style="margin-top: 10px; font-size: 13px;">
+                            <div><strong>Instance ID:</strong> ${data.data.instance_id}</div>
+                            <div><strong>Study ID:</strong> ${data.data.study_id}</div>
+                            <div><strong>Tamaño:</strong> ${data.data.file_size_mb} MB</div>
+                            ${data.is_update ? '<div style="color: #856404; margin-top: 5px;">⚠️ Este informe reemplazó una versión anterior</div>' : ''}
+                        </div>
+                    `;
+                } else {
+                    // Error
+                    result.className = 'result error';
+                    result.innerHTML = `
+                        <strong>❌ Error al enviar informe</strong>
+                        <div style="margin-top: 5px; font-size: 13px;">${data.message}</div>
+                    `;
+                }
+
+            } catch (error) {
+                // Error de red o excepción
+                result.className = 'result error';
+                result.innerHTML = `
+                    <strong>❌ Error de conexión</strong>
+                    <div style="margin-top: 5px; font-size: 13px;">${error.message}</div>
+                `;
+            } finally {
+                // Ocultar loading
+                btnEnviar.classList.remove('loading');
+                btnEnviar.disabled = false;
+            }
+        });
+
+        // Inicializar
+        updateInfo();
+    </script>
+</body>
+</html>
+

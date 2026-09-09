@@ -1,0 +1,21 @@
+[Unit]
+Description=Worklist TXT fanout desde MensajesRIS hacia inbox Worklist
+After=local-fs.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/tjsiddse
+ExecStart=/var/www/tjsiddse/workers/worklist-fanout-txt.sh
+User=dicomsuites
+Group=dicomsuites
+Restart=always
+RestartSec=5
+LimitNOFILE=65536
+
+# Por defecto solo replica TXT nuevos. Para procesar los existentes al iniciar:
+# Environment=WORKLIST_FANOUT_BACKFILL=1
+Environment=SOURCE_DIR=/var/www/tjsiddse/uploads/mensajesris_net
+Environment=TARGET_DIR=/var/www/tjsiddse/uploads/inboxtxt
+
+[Install]
+WantedBy=multi-user.target

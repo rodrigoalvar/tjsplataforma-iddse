@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Logout Cache - Portal Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0"><i class="bi bi-bug"></i> Test Logout Cache</h4>
+                        <small>Verificar si la caché se limpia correctamente al cerrar sesión</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Estado Actual -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5>📊 Estado Actual de la Caché</h5>
+                                <div class="border p-3 rounded bg-light">
+                                    <div id="currentCacheStatus">Cargando...</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>👤 Información de Sesión</h5>
+                                <div class="border p-3 rounded bg-light">
+                                    <div id="sessionInfo">Cargando...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Acciones de Prueba -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5>🧪 Acciones de Prueba</h5>
+                                <div class="btn-group-vertical w-100" role="group">
+                                    <button class="btn btn-info mb-2" onclick="addTestData()">
+                                        <i class="bi bi-plus-circle"></i> Agregar Datos de Prueba a la Caché
+                                    </button>
+                                    <button class="btn btn-warning mb-2" onclick="checkCache()">
+                                        <i class="bi bi-search"></i> Verificar Estado de la Caché
+                                    </button>
+                                    <button class="btn btn-success mb-2" onclick="testClearSession()">
+                                        <i class="bi bi-trash"></i> Probar Limpieza Manual (clearSession)
+                                    </button>
+                                    <button class="btn btn-danger mb-2" onclick="testLogout()">
+                                        <i class="bi bi-box-arrow-right"></i> Probar Logout Completo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resultados -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5>📋 Resultados de las Pruebas</h5>
+                                <div class="border p-3 rounded" style="height: 300px; overflow-y: auto;">
+                                    <div id="testResults"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth-middleware.js"></script>
+    <script src="assets/js/persistence.js"></script>
+    
+    <script>
+        let testCounter = 0;
+
+        // Función para agregar mensaje a los resultados
+        function addResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('testResults');
+            const timestamp = new Date().toLocaleTimeString();
+            const alertClass = type === 'success' ? 'alert-success' : 
+                              type === 'error' ? 'alert-danger' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            resultsDiv.innerHTML += `
+                <div class="alert ${alertClass} alert-sm mb-2">
+                    <small><strong>[${timestamp}]</strong> ${message}</small>
+                </div>
+            `;
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        // Función para verificar el estado actual de la caché
+        function checkCache() {
+            addResult('🔍 Verificando estado de la caché...', 'info');
+            
+            const cacheKeys = [];
+            const persistenceKeys = [];
+            
+            // Verificar localStorage
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key) {
+                    cacheKeys.push(key);
+                    if (key.startsWith('editor_persistence_') || 
+                        key.startsWith('editor_session_') ||
+                        key.startsWith('orthanc_dashboard_') ||
+                        key.includes('_default') ||
+                        key.startsWith('tinymce_') ||
+                        key.startsWith('audio_')) {
+                        persistenceKeys.push(key);
+                    }
+                }
+            }
+            
+            // Verificar sessionStorage
+            const sessionKeys = [];
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                if (key) {
+                    sessionKeys.push(key);
+                }
+            }
+            
+            // Actualizar UI
+            document.getElementById('currentCacheStatus').innerHTML = `
+                <strong>localStorage:</strong> ${localStorage.length} claves<br>
+                <strong>Claves de persistencia:</strong> ${persistenceKeys.length}<br>
+                <strong>sessionStorage:</strong> ${sessionStorage.length} claves<br>
+                <small class="text-muted">Claves de persistencia: ${persistenceKeys.join(', ') || 'Ninguna'}</small>
+            `;
+            
+            addResult(`📊 localStorage: ${localStorage.length} claves, Persistencia: ${persistenceKeys.length} claves, sessionStorage: ${sessionStorage.length} claves`, 'info');
+            
+            if (persistenceKeys.length > 0) {
+                addResult(`🔑 Claves de persistencia encontradas: ${persistenceKeys.join(', ')}`, 'warning');
+            } else {
+                addResult('✅ No se encontraron claves de persistencia', 'success');
+            }
+        }
+
+        // Función para agregar datos de prueba
+        function addTestData() {
+            testCounter++;
+            addResult('➕ Agregando datos de prueba a la caché...', 'info');
+            
+            // Agregar datos de prueba
+            localStorage.setItem('editor_persistence_test', `Test data ${testCounter}`);
+            localStorage.setItem('orthanc_dashboard_test', `Dashboard test ${testCounter}`);
+            localStorage.setItem('tinymce_test', `TinyMCE test ${testCounter}`);
+            localStorage.setItem('audio_test', `Audio test ${testCounter}`);
+            sessionStorage.setItem('editor_session_test', `Session test ${testCounter}`);
+            
+            addResult(`✅ Datos de prueba agregados (contador: ${testCounter})`, 'success');
+            checkCache();
+        }
+
+        // Función para probar limpieza manual
+        async function testClearSession() {
+            addResult('🧹 Probando limpieza manual con clearSession...', 'info');
+            
+            if (window.authManager && typeof window.authManager.clearSession === 'function') {
+                await window.authManager.clearSession();
+                addResult('✅ clearSession ejecutado', 'success');
+            } else {
+                addResult('❌ authManager.clearSession no disponible', 'error');
+            }
+            
+            setTimeout(() => {
+                checkCache();
+            }, 500);
+        }
+
+        // Función para probar logout completo
+        async function testLogout() {
+            addResult('🚪 Probando logout completo...', 'warning');
+            
+            if (window.authManager && typeof window.authManager.logout === 'function') {
+                // Interceptar la redirección para poder ver los resultados
+                const originalLocation = window.location;
+                let redirected = false;
+                
+                Object.defineProperty(window, 'location', {
+                    value: {
+                        ...originalLocation,
+                        href: originalLocation.href,
+                        set href(url) {
+                            redirected = true;
+                            addResult(`🔄 Logout intentó redirigir a: ${url}`, 'info');
+                            addResult('⚠️ Redirección interceptada para mostrar resultados', 'warning');
+                            setTimeout(() => {
+                                checkCache();
+                            }, 1000);
+                        }
+                    },
+                    writable: true
+                });
+                
+                await window.authManager.logout();
+                
+                if (!redirected) {
+                    addResult('✅ Logout ejecutado sin redirección', 'success');
+                    setTimeout(() => {
+                        checkCache();
+                    }, 500);
+                }
+            } else {
+                addResult('❌ authManager.logout no disponible', 'error');
+            }
+        }
+
+        // Función para actualizar información de sesión
+        function updateSessionInfo() {
+            const sessionInfo = document.getElementById('sessionInfo');
+            const user = window.authManager ? window.authManager.getCurrentUser() : null;
+            const sessionToken = window.authManager ? window.authManager.sessionToken : null;
+            
+            sessionInfo.innerHTML = `
+                <strong>Usuario:</strong> ${user ? user.user_name : 'No autenticado'}<br>
+                <strong>Token:</strong> ${sessionToken ? 'Presente' : 'Ausente'}<br>
+                <strong>AuthManager:</strong> ${window.authManager ? 'Disponible' : 'No disponible'}<br>
+                <strong>PersistenceModule:</strong> ${window.PersistenceModule ? 'Disponible' : 'No disponible'}
+            `;
+        }
+
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            addResult('🚀 Test de logout cache iniciado', 'info');
+            
+            // Verificar disponibilidad de módulos
+            setTimeout(() => {
+                updateSessionInfo();
+                checkCache();
+                
+                if (!window.authManager) {
+                    addResult('⚠️ authManager no está disponible. Asegúrate de estar autenticado.', 'warning');
+                }
+                
+                if (!window.PersistenceModule) {
+                    addResult('⚠️ PersistenceModule no está disponible.', 'warning');
+                }
+            }, 1000);
+        });
+
+        // Actualizar información cada 5 segundos
+        setInterval(() => {
+            updateSessionInfo();
+        }, 5000);
+    </script>
+</body>
+</html>

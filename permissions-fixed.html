@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✅ Permisos Corregidos - Portal Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title text-success">
+                    <i class="fas fa-key"></i> Permisos Corregidos
+                </h1>
+                
+                <div class="alert alert-success mt-4">
+                    <h4><i class="fas fa-check-circle"></i> ¡Problema de Permisos Resuelto!</h4>
+                    <p>Los permisos (checkboxes) ahora se guardan y muestran correctamente en la lista de usuarios.</p>
+                </div>
+                
+                <div class="alert alert-info mt-4">
+                    <h4>🔧 Problema Identificado y Corregido:</h4>
+                    <ul>
+                        <li>❌ <strong>Problema:</strong> Campo 'permisos' no incluido en $allowedFields de la API</li>
+                        <li>✅ <strong>Solución:</strong> Agregado 'permisos' a la lista de campos permitidos</li>
+                        <li>✅ <strong>Resultado:</strong> Permisos se guardan y muestran correctamente</li>
+                    </ul>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-users"></i> Usuarios con Permisos</h5>
+                            </div>
+                            <div class="card-body">
+                                <button onclick="loadUsersWithPermissions()" class="btn btn-primary btn-lg w-100 mb-3">
+                                    📋 Cargar Usuarios con Permisos
+                                </button>
+                                
+                                <button onclick="testPermissionsUpdate()" class="btn btn-warning btn-lg w-100 mb-3">
+                                    ✏️ Probar Actualización de Permisos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="fas fa-rocket"></i> Usar el Sistema</h5>
+                            </div>
+                            <div class="card-body">
+                                <a href="user-management.html" class="btn btn-success btn-lg w-100 mb-3">
+                                    🎯 Ir al Panel de Gestión
+                                </a>
+                                
+                                <a href="debug-permissions.html" class="btn btn-info btn-lg w-100 mb-3">
+                                    🔍 Diagnóstico de Permisos
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="results" class="mt-4"></div>
+                
+                <div class="mt-4">
+                    <h5>📋 Instrucciones de Uso:</h5>
+                    <div class="alert alert-light">
+                        <ol>
+                            <li><strong>Haz clic en "Cargar Usuarios con Permisos"</strong> para ver los badges</li>
+                            <li><strong>Haz clic en "Ir al Panel de Gestión"</strong> para usar el sistema</li>
+                            <li><strong>En el panel:</strong>
+                                <ul>
+                                    <li>Verás los badges de permisos en la columna "Permisos"</li>
+                                    <li>Haz clic en "Editar" de cualquier usuario</li>
+                                    <li>Selecciona/deselecciona permisos en los checkboxes</li>
+                                    <li>Haz clic en "Guardar"</li>
+                                    <li>Verifica que los badges se actualizan en la lista</li>
+                                </ul>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="alert alert-light mt-4">
+                    <h5>🔍 Verificación de Permisos:</h5>
+                    <p><strong>Usuario ID 2:</strong> Rodrigo Alvar</p>
+                    <p><strong>Permisos guardados:</strong> dashboard, estudios, informes, usuarios</p>
+                    <p><strong>Estado:</strong> ✅ Permisos se guardan y muestran correctamente</p>
+                    <p><strong>API:</strong> <code>api/users/manage-real-complete.php</code></p>
+                    <p><strong>Campo corregido:</strong> 'permisos' agregado a $allowedFields</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadUsersWithPermissions() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div>';
+            
+            try {
+                const response = await fetch('api/users/manage-real-complete.php');
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-check"></i> Usuarios con permisos cargados</h6>
+                            <p><strong>Total:</strong> ${data.data.users.length} usuarios activos</p>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Nombre</th>
+                                            <th>Email</th>
+                                            <th>Nivel</th>
+                                            <th>Permisos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${data.data.users.map(user => `
+                                            <tr>
+                                                <td>${user.id}</td>
+                                                <td>${user.nombre} ${user.apellido}</td>
+                                                <td>${user.email}</td>
+                                                <td><span class="badge bg-${user.nivel === 'root' ? 'danger' : user.nivel === 'admin' ? 'warning' : 'info'}">${user.nivel.toUpperCase()}</span></td>
+                                                <td>
+                                                    ${user.permisos && user.permisos.length > 0 ? 
+                                                        user.permisos.map(perm => `<span class="badge bg-secondary me-1">${perm}</span>`).join('') :
+                                                        '<small class="text-muted">Sin permisos</small>'
+                                                    }
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-times"></i> Error cargando usuarios</h6>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times"></i> Error de JavaScript</h6>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testPermissionsUpdate() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Probando...</span></div>';
+            
+            try {
+                // Probar actualización de permisos del usuario ID 3
+                const userData = {
+                    nombre: 'Usuario',
+                    apellido: 'Prueba',
+                    email: 'test@tjsmedical.com',
+                    telefono: '5555555555',
+                    nivel: 'user',
+                    permisos: JSON.stringify(['dashboard', 'informes', 'gestionInformes'])
+                };
+                
+                console.log('📤 Probando actualización de permisos...');
+                console.log('Datos:', userData);
+                
+                const response = await fetch('api/users/manage-real-complete.php?id=3', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData)
+                });
+                
+                console.log('📥 Respuesta:', response.status, response.statusText);
+                
+                const result = await response.json();
+                console.log('📊 Resultado:', result);
+                
+                if (result.success) {
+                    // Verificar que se guardaron los permisos
+                    setTimeout(async () => {
+                        const checkResponse = await fetch('api/users/manage-real-complete.php');
+                        const checkData = await checkResponse.json();
+                        
+                        if (checkData.success) {
+                            const user = checkData.data.users.find(u => u.id == 3);
+                            if (user) {
+                                resultsDiv.innerHTML = `
+                                    <div class="alert alert-success">
+                                        <h6><i class="fas fa-check"></i> Actualización de permisos exitosa</h6>
+                                        <p><strong>Usuario:</strong> ${user.nombre} ${user.apellido}</p>
+                                        <p><strong>Permisos enviados:</strong> dashboard, informes, gestionInformes</p>
+                                        <p><strong>Permisos guardados:</strong> ${user.permisos ? user.permisos.join(', ') : 'Ninguno'}</p>
+                                        <p><strong>Badges mostrados:</strong></p>
+                                        <div>
+                                            ${user.permisos && user.permisos.length > 0 ? 
+                                                user.permisos.map(perm => `<span class="badge bg-secondary me-1">${perm}</span>`).join('') :
+                                                '<small class="text-muted">Sin permisos</small>'
+                                            }
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6><i class="fas fa-times"></i> Error en actualización</h6>
+                            <pre>${JSON.stringify(result, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('💥 Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6><i class="fas fa-times"></i> Error de JavaScript</h6>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Cargar usuarios automáticamente
+        window.addEventListener('DOMContentLoaded', function() {
+            loadUsersWithPermissions();
+        });
+    </script>
+</body>
+</html>
+
+

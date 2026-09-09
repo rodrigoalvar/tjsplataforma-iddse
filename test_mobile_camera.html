@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mobile Camera Permissions</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h4><i class="fas fa-camera me-2"></i>Test de Permisos de Cámara</h4>
+                    </div>
+                    <div class="card-body">
+                        <div id="test-results">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-2">Verificando capacidades del navegador...</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button class="btn btn-primary" id="test-camera-btn" disabled>
+                                <i class="fas fa-camera me-1"></i>Probar Cámara
+                            </button>
+                            <button class="btn btn-secondary" id="check-permissions-btn">
+                                <i class="fas fa-shield-alt me-1"></i>Verificar Permisos
+                            </button>
+                        </div>
+                        
+                        <div id="camera-preview" class="mt-4" style="display: none;">
+                            <video id="test-video" width="100%" height="300" style="border: 1px solid #ddd; border-radius: 8px;"></video>
+                        </div>
+                        
+                        <div id="logs" class="mt-4" style="background: #f5f5f5; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;">
+                            <strong>Logs de Prueba:</strong><br>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function checkBrowserCapabilities() {
+            const resultsDiv = document.getElementById('test-results');
+            let html = '<h5>Capacidades del Navegador:</h5><ul>';
+            
+            // Verificar getUserMedia
+            const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+            html += `<li class="${hasGetUserMedia ? 'text-success' : 'text-danger'}">
+                <i class="fas fa-${hasGetUserMedia ? 'check' : 'times'} me-1"></i>
+                getUserMedia: ${hasGetUserMedia ? 'Disponible' : 'No disponible'}
+            </li>`;
+            log(`getUserMedia disponible: ${hasGetUserMedia}`);
+            
+            // Verificar HTTPS
+            const isHTTPS = location.protocol === 'https:' || location.hostname === 'localhost';
+            html += `<li class="${isHTTPS ? 'text-success' : 'text-warning'}">
+                <i class="fas fa-${isHTTPS ? 'check' : 'exclamation-triangle'} me-1"></i>
+                HTTPS: ${isHTTPS ? 'Sí' : 'No (requerido para cámara)'}
+            </li>`;
+            log(`HTTPS: ${isHTTPS}`);
+            
+            // Verificar Permissions API
+            const hasPermissionsAPI = !!navigator.permissions;
+            html += `<li class="${hasPermissionsAPI ? 'text-success' : 'text-info'}">
+                <i class="fas fa-${hasPermissionsAPI ? 'check' : 'info-circle'} me-1"></i>
+                Permissions API: ${hasPermissionsAPI ? 'Disponible' : 'No disponible'}
+            </li>`;
+            log(`Permissions API disponible: ${hasPermissionsAPI}`);
+            
+            // Verificar dispositivos de medios
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                    html += `<li class="${videoDevices.length > 0 ? 'text-success' : 'text-warning'}">
+                        <i class="fas fa-${videoDevices.length > 0 ? 'check' : 'exclamation-triangle'} me-1"></i>
+                        Cámaras detectadas: ${videoDevices.length}
+                    </li>`;
+                    log(`Cámaras detectadas: ${videoDevices.length}`);
+                } catch (error) {
+                    html += `<li class="text-warning">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Error enumerando dispositivos: ${error.message}
+                    </li>`;
+                    log(`Error enumerando dispositivos: ${error.message}`);
+                }
+            }
+            
+            html += '</ul>';
+            resultsDiv.innerHTML = html;
+            
+            // Habilitar botón de prueba
+            document.getElementById('test-camera-btn').disabled = !hasGetUserMedia;
+        }
+
+        async function testCamera() {
+            try {
+                log('Iniciando prueba de cámara...');
+                
+                const constraints = {
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                };
+                
+                log('Solicitando acceso a cámara...');
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                log('✅ Acceso a cámara concedido');
+                
+                const video = document.getElementById('test-video');
+                video.srcObject = stream;
+                video.play();
+                
+                document.getElementById('camera-preview').style.display = 'block';
+                
+                // Detener stream después de 5 segundos
+                setTimeout(() => {
+                    stream.getTracks().forEach(track => track.stop());
+                    log('Stream de cámara detenido');
+                    document.getElementById('camera-preview').style.display = 'none';
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ Error de cámara: ${error.name} - ${error.message}`);
+                
+                let errorMessage = 'Error desconocido';
+                if (error.name === 'NotAllowedError') {
+                    errorMessage = 'Permisos denegados por el usuario';
+                } else if (error.name === 'NotFoundError') {
+                    errorMessage = 'No se encontró ninguna cámara';
+                } else if (error.name === 'NotReadableError') {
+                    errorMessage = 'Cámara en uso por otra aplicación';
+                } else if (error.name === 'OverconstrainedError') {
+                    errorMessage = 'Configuración de cámara no compatible';
+                } else if (error.name === 'SecurityError') {
+                    errorMessage = 'Error de seguridad (HTTPS requerido)';
+                }
+                
+                log(`Detalle: ${errorMessage}`);
+            }
+        }
+
+        async function checkPermissions() {
+            if (!navigator.permissions) {
+                log('❌ Permissions API no disponible');
+                return;
+            }
+            
+            try {
+                log('Verificando permisos de cámara...');
+                const permission = await navigator.permissions.query({ name: 'camera' });
+                log(`Estado de permisos: ${permission.state}`);
+                
+                if (permission.state === 'denied') {
+                    log('⚠️ Permisos denegados - El usuario debe permitir manualmente');
+                } else if (permission.state === 'granted') {
+                    log('✅ Permisos concedidos');
+                } else {
+                    log('⏳ Permisos pendientes - Se solicitarán al usar la cámara');
+                }
+                
+            } catch (error) {
+                log(`Error verificando permisos: ${error.message}`);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('test-camera-btn').onclick = testCamera;
+        document.getElementById('check-permissions-btn').onclick = checkPermissions;
+
+        // Inicializar cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Iniciando verificación de capacidades...');
+            checkBrowserCapabilities();
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,18 @@
+{
+  "id": "multimonitor",
+  "name": "Multi-Monitor WorkSpace",
+  "version": "1.0.0",
+  "description": "Permite abrir WorkSpace en un monitor secundario detectado, manteniendo el dashboard activo en el monitor principal. El enlace a WorkSpace se oculta del sidebar mientras la ventana secundaria está abierta y se restaura al cerrarla.",
+  "requires_core": ">=2025.06",
+  "install_url": "/modules/multimonitor/install.php",
+  "permissions_url": "/modules/multimonitor/install-permissions.php",
+  "uninstall_url": "/modules/multimonitor/uninstall.php",
+  "sidebar": [],
+  "tables": [],
+  "alters_core_tables": [],
+  "links_core_tables": [],
+  "integrates_with": ["dashboard-unified", "workspace"],
+  "notes": "Módulo 100% frontend. No crea tablas en BD. Solo registra el permiso feature_multimonitor en system_permissions y carga assets/js/multimonitor-manager.js condicionalmente en dashboard-unified.html.",
+  "status": "stable",
+  "phase": 1
+}

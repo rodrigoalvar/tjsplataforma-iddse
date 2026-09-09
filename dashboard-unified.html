@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+        });
+
+        // Function to load logo from configuration
+        async function loadWelcomeLogo() {
+            try {
+                const logoElement = document.getElementById('welcomeLogo');
+                if (!logoElement) return;
+                
+                const configResponse = await fetch('api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.logo) {
+                    logoElement.src = configData.logo;
+                    logoElement.style.display = 'block';
+                } else {
+                    // Si no hay logo configurado, ocultar el elemento
+                    logoElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando logo de configuración:', error);
+                // En caso de error, ocultar el logo
+                const logoElement = document.getElementById('welcomeLogo');
+                if (logoElement) {
+                    logoElement.style.display = 'none';
+                }
+            }
+        }
+
+        // Function to update welcome message with user name and especialidad
+        async function updateWelcomeMessage() {
+            try {
+                // Wait a bit for auth middleware to be fully initialized
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        // Actualizar título de bienvenida con nombre y apellido
+                        const welcomeTitle = document.getElementById('welcomeTitle');
+                        if (welcomeTitle) {
+                            const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                            welcomeTitle.textContent = `Bienvenido, ${fullName}`;
+                        }
+                        
+                        // Actualizar subtítulo con especialidad
+                        const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+                        if (welcomeSubtitle && user.especialidad) {
+                            welcomeSubtitle.textContent = user.especialidad;
+                        } else if (welcomeSubtitle && !user.especialidad) {
+                            welcomeSubtitle.textContent = 'Sistema de Gestión de Estudios Médicos';
+                        }
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Médico';
+                        }
+                    }
+                } else {
+                    // If getCurrentUser is not available, try again after a delay
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                // Try again after a delay
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+
+        // Función para actualizar el estado del enlace de Informes según URLESTUDIO
+        function updateInformesNavState() {
+            const informesLink = document.getElementById('informesNavLink');
+            if (!informesLink) return;
+
+            // Verificar si hay un estudio activo en URLESTUDIO
+            const hasActiveStudy = window.urlStudyManager && window.urlStudyManager.hasActiveStudy();
+            
+            if (hasActiveStudy) {
+                // Cuando hay informe en curso, redirigir al editor con datos persistentes
+                informesLink.href = window.urlStudyManager.getEditorURL();
+                informesLink.setAttribute('title', 'Continuar informe en curso');
+                
+                // Remover cualquier event listener previo
+                const newLink = informesLink.cloneNode(true);
+                informesLink.parentNode.replaceChild(newLink, informesLink);
+            } else {
+                // Cuando no hay informe en curso, abrir editor.html
+                informesLink.href = 'components/editor.html';
+                informesLink.style.cursor = 'pointer';
+                informesLink.setAttribute('title', 'Crear nuevo informe');
+                
+                // Remover cualquier event listener previo
+                const newLink = informesLink.cloneNode(true);
+                informesLink.parentNode.replaceChild(newLink, informesLink);
+            }
+        }
+
+        // Función para mostrar modal de advertencia de cambio de estudio
+        async function showStudyChangeWarning(activeStudy, newStudy) {
+            return new Promise((resolve) => {
+                // Crear el modal dinámicamente
+                const modalId = 'studyChangeWarningModal';
+                
+                // Remover modal existente si existe
+                const existingModal = document.getElementById(modalId);
+                if (existingModal) {
+                    existingModal.remove();
+                }
+
+                const modalHTML = `
+                    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header bg-warning text-dark">
+                                    <h5 class="modal-title" id="${modalId}Label">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        Informe en Progreso
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="alert alert-info mb-3">
+                                        <h6 class="alert-heading mb-2">
+                                            <i class="fas fa-file-medical me-2"></i>
+                                            Informe Actual en Progreso:
+                                        </h6>
+                                        <p class="mb-1"><strong>Paciente:</strong> ${activeStudy.patientName}</p>
+                                        <p class="mb-1"><strong>ID Paciente:</strong> ${activeStudy.patientId}</p>
+                                        <p class="mb-0"><strong>Estudio:</strong> ${activeStudy.studyDescription || 'N/A'}</p>
+                                    </div>
+                                    
+                                    <div class="alert alert-secondary mb-3">
+                                        <h6 class="alert-heading mb-2">
+                                            <i class="fas fa-file-plus me-2"></i>
+                                            Nuevo Estudio Seleccionado:
+                                        </h6>
+                                        <p class="mb-1"><strong>Paciente:</strong> ${newStudy.patientName}</p>
+                                        <p class="mb-1"><strong>ID Paciente:</strong> ${newStudy.patientId}</p>
+                                        <p class="mb-0"><strong>Estudio:</strong> ${newStudy.studyDescription || 'N/A'}</p>
+                                    </div>
+                                    
+                                    <p class="text-muted">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        ¿Qué deseas hacer con el informe actual?
+                                    </p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                        <i class="fas fa-times me-2"></i>
+                                        Cancelar
+                                    </button>
+                                    <button type="button" class="btn btn-success" id="continueCurrentBtn">
+                                        <i class="fas fa-edit me-2"></i>
+                                        Continuar Informe Actual
+                                    </button>
+                                    <button type="button" class="btn btn-warning" id="discardCurrentBtn">
+                                        <i class="fas fa-trash-alt me-2"></i>
+                                        Descartar y Comenzar Nuevo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Agregar modal al DOM
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                const modal = document.getElementById(modalId);
+                const bsModal = new bootstrap.Modal(modal);
+                
+                // Configurar eventos de los botones
+                document.getElementById('continueCurrentBtn').addEventListener('click', () => {
+                    console.log('Continuando con informe anterior');
+                    bsModal.hide();
+                    window.location.href = window.urlStudyManager.getEditorURL();
+                    resolve('continue');
+                });
+                
+                document.getElementById('discardCurrentBtn').addEventListener('click', async () => {
+                    console.log('Informe anterior descartado, iniciando nuevo informe');
+                    
+                    // Usar la misma lógica que el logout para garantizar la eliminación
+                    if (window.TempAudioManager) {
+                        console.log('Descartando archivos temporales usando TempAudioManager...');
+                        await window.TempAudioManager.discardReport();
+                    } else if (window.urlStudyManager) {
+                        console.log('TempAudioManager no disponible, usando urlStudyManager...');
+                        window.urlStudyManager.clearActiveStudy();
+                    }
+                    
+                    bsModal.hide();
+                    
+                    // Establecer el nuevo estudio activo
+                    if (window.urlStudyManager) {
+                        window.urlStudyManager.setActiveStudy({
+                            patientId: newStudy.patientId,
+                            patientName: newStudy.patientName,
+                            modality: newStudy.modality,
+                            studyDescription: newStudy.studyDescription,
+                            studyId: newStudy.studyId,
+                            studyInstanceUID: newStudy.studyInstanceUID || '',
+                            studyDate: newStudy.studyDate || ''
+                        });
+                        
+                        // Navegar al editor
+                        window.location.href = window.urlStudyManager.getEditorURL();
+                    }
+                    
+                    resolve('discard');
+                });
+                
+                // Limpiar modal cuando se cierre
+                modal.addEventListener('hidden.bs.modal', () => {
+                    modal.remove();
+                });
+                
+                // Mostrar modal
+                bsModal.show();
+            });
+        }
+    </script>
+
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <!-- Botón para cerrar sidebar en móvil -->
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <!-- Botón para ocultar sidebar en desktop -->
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="container-fluid px-3 py-4">
+                <!-- Content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Shared Content Template -->
+    <div id="sharedContent" style="display: none;">
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="welcome-card">
+                    <div class="row align-items-center">
+                        <div class="col-lg-8">
+                            <h2 class="welcome-title" id="welcomeTitle">Bienvenido, Usuario</h2>
+                            <p class="welcome-subtitle" id="welcomeSubtitle">Sistema de Gestión de Estudios Médicos</p>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="welcome-stats d-flex justify-content-end align-items-center gap-4">
+                                <div class="stat-item text-center">
+                                    <div class="stat-number" id="estudiosHoy">0</div>
+                                    <div class="stat-label">ESTUDIOS HOY</div>
+                                </div>
+                                <div class="stat-item text-center">
+                                    <div class="stat-number" id="totalPeriodo">0</div>
+                                    <div class="stat-label">TOTAL PERIODO</div>
+                                </div>
+                                <div class="stat-item text-center position-relative">
+                                    <div class="stat-number text-warning" id="estudiosUrgentes">0</div>
+                                    <div class="stat-label">URGENTES</div>
+                                    <span id="urgentesBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none; font-size: 0.65rem; padding: 0.25rem 0.4rem; min-width: 1.2rem; z-index: 10;">
+                                        0
+                                    </span>
+                                </div>
+                                <div class="stat-item text-center">
+                                    <div class="stat-number text-danger" id="estudiosIncompletos">0</div>
+                                    <div class="stat-label">INCOMPLETOS</div>
+                                </div>
+                                <div class="stat-item text-center position-relative" id="paraFirmarStat" title="Informes transcriptos pendientes de firma" style="cursor:pointer;">
+                                    <div class="stat-number text-info" id="informesParaFirmar">0</div>
+                                    <div class="stat-label">PARA FIRMAR</div>
+                                </div>
+                                <div class="welcome-logo-container">
+                                    <img id="welcomeLogo" src="logo.svg" alt="Logo" class="welcome-logo" style="display: none;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Search Filters -->
+        <div class="search-filters mb-4">
+            <h6 class="filter-title mb-2"><i class="fas fa-search me-2"></i>Filtros de Búsqueda</h6>
+            <!-- Fila 1: fechas, ID paciente, atajos, Buscar (mismo orden conceptual que antes) -->
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-lg-2 filter-date-from">
+                    <input type="date" class="form-control" id="dateFrom" title="Fecha Inicio">
+                    <small class="text-muted">Fecha Inicio</small>
+                </div>
+                <div class="col-6 col-lg-2 filter-date-to">
+                    <input type="date" class="form-control" id="dateTo" title="Fecha Fin">
+                    <small class="text-muted">Fecha Fin</small>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-2 filter-patient-id">
+                    <input type="text" class="form-control" placeholder="ID Paciente" id="patientId" title="ID Paciente">
+                    <small class="text-muted">ID Paciente</small>
+                </div>
+                <div class="col-12 col-sm-6 col-lg-4 filter-quick-dates">
+                    <div class="d-flex flex-wrap align-items-center gap-1">
+                        <span class="text-muted small text-nowrap mb-0">Atajos</span>
+                        <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Rango de fechas rápido" title="Mismas reglas que «Buscar» según tu cuenta (PACS o asignados)">
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateToday" title="Estudios del día actual (local)">Hoy</button>
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateYesterday" title="Estudios de ayer">Ayer</button>
+                            <button type="button" class="btn btn-outline-secondary" id="quickDateLast7" title="Desde hace 7 días hasta hoy (inclusive)">Últimos 7 días</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-2 filter-search-btn">
+                    <button class="btn btn-search w-100" id="searchButton" type="button">
+                        <i class="fas fa-search me-2"></i>Buscar
+                    </button>
+                </div>
+                <!-- Fila 2: origen PACS (switch) + búsqueda local + institución + informe -->
+                <div class="col-12 filter-search-institution-row">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-12 col-md-6 col-lg-2 d-none" id="assignmentSourceFilterWrap">
+                            <div class="form-check form-switch mb-0 ps-0 assignment-source-switch">
+                                <input class="form-check-input ms-0 mt-0" type="checkbox" id="assignmentSourceOnlyAssigned" role="switch" title="Mostrar solo estudios asignados a tu cuenta en el resultado PACS">
+                                <label class="form-check-label small ms-2" for="assignmentSourceOnlyAssigned">Solo asignados</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-2" id="pinWorkspaceOnTopWrap">
+                            <div class="form-check form-switch mb-0 ps-0 pin-workspace-switch">
+                                <input class="form-check-input ms-0 mt-0" type="checkbox" id="pinWorkspaceOnTop" role="switch" title="Si está activo, el estudio abierto en WorkSpace siempre aparece primero en la lista. Si se desactiva, conserva su orden natural por columna/prioridad.">
+                                <label class="form-check-label small ms-2" for="pinWorkspaceOnTop">WS on Top</label>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-4 filter-search-field">
+                            <input type="text" class="form-control" id="searchFilter" placeholder="Buscar en estudios..." title="Buscar por paciente, ID, modalidad o estudio">
+                            <small class="text-muted">Búsqueda general</small>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 filter-institution">
+                            <select class="form-control form-select" id="institutionFilter">
+                                <option value="">Todas las Instituciones</option>
+                            </select>
+                            <small class="text-muted">Institución</small>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-3 filter-report-status">
+                            <select class="form-control form-select" id="reportStatusFilter">
+                                <option value="">Todos los informes</option>
+                                <option value="informed">Informados</option>
+                                <option value="informed_pending_pacs">Informados (pendiente PACS)</option>
+                                <option value="published_pacs">Publicados en PACS</option>
+                                <option value="pending_sign">Para firmar (transcripto)</option>
+                                <option value="signed">Firmados</option>
+                                <option value="none">Sin informe</option>
+                            </select>
+                            <small class="text-muted">Estado informe</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modality Filters -->
+        <div class="modality-filters mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="filter-label mb-0">Filtrar por Modalidad: <span id="modalityCounter" class="badge bg-secondary ms-2" style="display: none;"></span></h6>
+                <small id="cacheStatus" class="text-muted">
+                    <i class="fas fa-database me-1"></i>Usando caché local
+                </small>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn modality-btn active" data-modality="all">
+                    Todas
+                </button>
+                <button class="btn modality-btn" data-modality="RX">
+                    RX
+                </button>
+                <button class="btn modality-btn" data-modality="DX">
+                    DX
+                </button>
+                <button class="btn modality-btn" data-modality="CT">
+                    CT
+                </button>
+                <button class="btn modality-btn" data-modality="MR">
+                    MR
+                </button>
+                <button class="btn modality-btn" data-modality="US">
+                    US
+                </button>
+                <button class="btn modality-btn" data-modality="MG">
+                    MG
+                </button>
+                <button class="btn modality-btn" data-modality="OT">
+                    OT
+                </button>
+                <button class="btn modality-btn" data-modality="XA">
+                    XA
+                </button>
+                <button class="btn modality-btn" data-modality="NM">
+                    NM
+                </button>
+                <button class="btn modality-btn" data-modality="PT">
+                    PT
+                </button>
+                <button class="btn modality-btn" data-modality="RF">
+                    RF
+                </button>
+            </div>
+        </div>
+
+        <!-- Studies Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Lista de Estudios
+                        </h5>
+                        <span class="badge bg-primary">24 estudios</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover studies-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="sortable" data-column="date">
+                                            Fecha <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="d-none d-md-table-cell sortable" data-column="time">
+                                            Hora <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="sortable" data-column="patient_name">
+                                            Paciente <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="d-none d-lg-table-cell sortable" data-column="patient_id">
+                                            ID <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="d-none d-sm-table-cell sortable" data-column="modality">
+                                            Modalidad <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="d-none d-xl-table-cell sortable" data-column="study_description">
+                                            Estudio <i class="fas fa-sort sort-icon"></i>
+                                        </th>
+                                        <th class="d-none d-lg-table-cell">Estado</th>
+                                        <th class="d-none d-md-table-cell">Antecedentes</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Los estudios se cargarán dinámicamente desde Orthanc -->
+                                    <tr>
+                                        <td colspan="9" class="text-center py-4">
+                                            <div class="spinner-border text-primary" role="status">
+                                                <span class="visually-hidden">Cargando estudios...</span>
+                                            </div>
+                                            <div class="mt-2">Consultando estudios desde CLOUD PACS...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Controles de paginación -->
+                        <div class="card-footer bg-white border-top">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <label for="perPageSelect" class="mb-0 text-muted small">Mostrar:</label>
+                                        <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;" onchange="dashboardWithPermissions.changePerPage(this.value)">
+                                            <option value="10">10</option>
+                                            <option value="25" selected>25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                        <span id="paginationInfo" class="text-muted small ms-2">Mostrando 0 - 0 de 0 estudios</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="paginationContainer" class="d-flex justify-content-end">
+                                        <!-- La paginación se renderizará aquí dinámicamente -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Informes pendientes de firma -->
+    <div class="modal fade" id="pendingSignModal" tabindex="-1" aria-labelledby="pendingSignModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="pendingSignModalLabel">
+                        <i class="fas fa-signature me-2"></i>Informes para firmar
+                        <span class="badge bg-info ms-2" id="pendingSignModalCount">0</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Firmar aprueba el informe (estado <strong>Firmado</strong>). Luego el transcriptor lo pasa a Finalizado y lo publica en PACS.
+                    </p>
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-auto">
+                            <label class="form-label small mb-0" for="pendingSignFechaInicio">Desde</label>
+                            <input type="date" class="form-control form-control-sm" id="pendingSignFechaInicio">
+                        </div>
+                        <div class="col-auto">
+                            <label class="form-label small mb-0" for="pendingSignFechaFin">Hasta</label>
+                            <input type="date" class="form-control form-control-sm" id="pendingSignFechaFin">
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-sm btn-primary" id="pendingSignFilterBtn">
+                                <i class="fas fa-filter me-1"></i>Filtrar
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="pendingSignClearBtn">Limpiar</button>
+                        </div>
+                    </div>
+                    <div id="pendingSignLoading" class="text-center py-4 d-none">
+                        <div class="spinner-border text-info" role="status"></div>
+                        <p class="mt-2 mb-0 text-muted">Cargando…</p>
+                    </div>
+                    <div id="pendingSignEmpty" class="alert alert-light border d-none">No hay informes transcriptos pendientes de firma.</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0" id="pendingSignTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Paciente</th>
+                                    <th>Modalidad</th>
+                                    <th>Título</th>
+                                    <th>Origen</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendingSignTbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-outline-primary" id="pendingSignRefreshBtn">
+                        <i class="fas fa-sync-alt me-1"></i>Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Persistence Module -->
+    <script src="assets/js/persistence.js?v=202606251200"></script>
+    
+    <!-- Global State Manager -->
+    <script src="assets/js/global-state-manager.js?v=202606251200"></script>
+    
+    <!-- URL Study Manager -->
+    <script src="assets/js/url-study-manager.js?v=202606251200"></script>
+    
+    <!-- Microphone Coordinator -->
+    <script src="assets/js/microphone-coordinator.js?v=202606251200"></script>
+
+    <!-- File Viewer Module -->
+    <script src="assets/js/FileViewer.js?v=202606251200"></script>
+
+    <!-- Dashboard with permissions -->
+    <script src="assets/js/app-version.js?v=202606262000"></script>
+    <script src="assets/js/workspace-study-queue.js?v=202606261800"></script>
+    <script src="assets/js/dashboard-with-permissions.js?v=202609030030"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    
+    <!-- Dashboard JavaScript -->
+    <script>
+        // Función para verificar permisos desde JavaScript
+        async function checkUserPermission(permission) {
+            try {
+                const response = await fetch('api/users/check-permission-simple.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ permission: permission })
+                });
+                
+                const result = await response.json();
+                return result.success && result.hasPermission;
+            } catch (error) {
+                console.error('Error verificando permisos:', error);
+                return false;
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load shared content into sidebar layout
+            const sharedContent = document.getElementById('sharedContent').innerHTML;
+            const mainContent = document.querySelector('#sidebarLayout .main-content .container-fluid');
+            mainContent.innerHTML = sharedContent;
+
+            // Verificar si es una nueva sesión y limpiar persistencia si es necesario
+            if (window.PersistenceModule && window.PersistenceModule.isNewSession()) {
+                console.log('Nueva sesión detectada, limpiando persistencia...');
+                window.PersistenceModule.clearAllPersistence();
+            }
+
+            // Update welcome message with user name
+            updateWelcomeMessage();
+            
+            // Cargar logo desde configuración
+            loadWelcomeLogo();
+
+            // Verificar estado de URLESTUDIO para habilitar/deshabilitar Informes
+            // Esperar un poco para asegurar que URLStudyManager esté inicializado
+            setTimeout(() => {
+                updateInformesNavState();
+            }, 100);
+            
+            // Escuchar cambios en URLESTUDIO para actualizar el enlace de Informes
+            window.addEventListener('urlestudio-changed', function(event) {
+                updateInformesNavState();
+            });
+
+            // Orthanc Dashboard is automatically initialized by dashboard-orthanc.js
+
+            // Sidebar functionality
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+    const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebarLayout = document.getElementById('sidebarLayout');
+
+    // Función para cerrar sidebar en móvil
+    function closeMobileSidebar() {
+        if (sidebar) {
+            sidebar.classList.remove('show');
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.remove('show');
+        }
+    }
+
+    // Función para abrir sidebar en móvil
+    function openMobileSidebar() {
+        if (sidebar) {
+            sidebar.classList.add('show');
+        }
+        if (sidebarOverlay) {
+            sidebarOverlay.classList.add('show');
+        }
+    }
+
+    // Mobile sidebar toggle - alternar mostrar/ocultar
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            // Alternar: si está abierto, cerrar; si está cerrado, abrir
+            if (sidebar && sidebar.classList.contains('show')) {
+                closeMobileSidebar();
+            } else {
+                openMobileSidebar();
+            }
+        });
+    }
+
+    // Mobile sidebar toggle - cerrar desde botón dentro del sidebar
+    if (sidebarCloseMobile) {
+        sidebarCloseMobile.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeMobileSidebar();
+        });
+    }
+
+    // Desktop sidebar toggle
+    const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+    
+    if (sidebarToggleDesktop) {
+        sidebarToggleDesktop.addEventListener('click', () => {
+            sidebarLayout.classList.add('sidebar-hidden');
+        });
+    }
+    
+    if (sidebarToggleShow) {
+        sidebarToggleShow.addEventListener('click', () => {
+            sidebarLayout.classList.remove('sidebar-hidden');
+        });
+    }
+
+    // Cerrar sidebar al hacer clic en overlay
+    if (sidebarOverlay) {
+        sidebarOverlay.addEventListener('click', () => {
+            closeMobileSidebar();
+        });
+    }
+
+    // Close sidebar on nav link click (mobile) and handle state preservation
+    document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Preservar estado antes de navegar
+            if (window.globalStateManager) {
+                window.globalStateManager.syncWithPersistence();
+                console.log('Estado sincronizado antes de navegación del sidebar');
+            }
+            
+            // Cerrar sidebar en móvil
+            if (window.innerWidth < 992) {
+                closeMobileSidebar();
+            }
+        });
+    });
+
+            // Handle active navigation state
+            function setActiveNavLink() {
+                const currentPage = window.location.pathname.split('/').pop() || 'dashboard-unified.html';
+                const navLinks = document.querySelectorAll('.sidebar .nav-link');
+                
+                navLinks.forEach(link => {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href');
+                    if (href && (href === currentPage || href.endsWith(currentPage))) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            // Set active nav link on page load
+            setActiveNavLink();
+
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Configurar botones de logout manualmente para asegurar que funcionen correctamente
+            // Esto es necesario porque el DOMContentLoaded de auth-middleware puede dispararse 
+            // antes de que los botones de logout se agreguen al DOM
+            if (window.authManager && typeof window.authManager.setupLogoutButtons === 'function') {
+                window.authManager.setupLogoutButtons();
+            } else if (window.auth && typeof window.auth.setupLogoutButtons === 'function') {
+                window.auth.setupLogoutButtons();
+            }
+            
+        });
+
+        // Function to generate report for a patient
+        async function generateReport(patientId, patientName, modality, studyDescription, studyId, studyInstanceUID, studyDate) {
+            // Verificar si hay otro estudio en progreso
+            if (window.urlStudyManager && window.urlStudyManager.hasActiveStudy()) {
+                const activeStudy = window.urlStudyManager.getActiveStudy();
+                
+                // Si es el mismo estudio, continuar
+                if (activeStudy.studyId === studyId) {
+                    console.log('Continuando con el mismo estudio:', studyId);
+                    window.location.href = window.urlStudyManager.getEditorURL();
+                    return;
+                }
+                
+                // Si es un estudio diferente, mostrar advertencia con modal profesional
+                await showStudyChangeWarning(activeStudy, {
+                    patientId,
+                    patientName,
+                    modality,
+                    studyDescription,
+                    studyId,
+                    studyInstanceUID,
+                    studyDate
+                });
+                return; // La función showStudyChangeWarning maneja la navegación
+            }
+            
+            // Establecer el nuevo estudio activo en URLESTUDIO
+            if (window.urlStudyManager) {
+                window.urlStudyManager.setActiveStudy({
+                    patientId,
+                    patientName,
+                    modality,
+                    studyDescription,
+                    studyId,
+                    studyInstanceUID,
+                    studyDate: studyDate || ''
+                });
+                
+                // Actualizar estado del enlace de Informes
+                updateInformesNavState();
+                
+                // Navegar usando la URL generada por el manager
+                window.location.href = window.urlStudyManager.getEditorURL();
+            } else {
+                // Fallback: usar el método anterior
+                const reportUrl = `components/editor.html?patientId=${encodeURIComponent(patientId)}&patientName=${encodeURIComponent(patientName)}&modality=${encodeURIComponent(modality)}&studyDescription=${encodeURIComponent(studyDescription)}&studyId=${encodeURIComponent(studyId)}&studyInstanceUID=${encodeURIComponent(studyInstanceUID)}${studyDate ? '&studyDate=' + encodeURIComponent(studyDate) : ''}`;
+                window.location.href = reportUrl;
+            }
+            
+            // Registrar también en el estado global (compatibilidad)
+            if (window.globalStateManager) {
+                window.globalStateManager.setActiveReport(studyId, {
+                    patientId,
+                    patientName,
+                    modality,
+                    studyDescription,
+                    studyInstanceUID,
+                    studyDate,
+                    startedAt: Date.now()
+                });
+            }
+        }
+    </script>
+
+    <style>
+        /* Styles for report button */
+        .btn-report {
+            background-color: #28a745;
+            border-color: #28a745;
+            color: white;
+        }
+        
+        .btn-report:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+            color: white;
+        }
+        
+        .btn-report:focus {
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        
+        /* Sticky header para welcome section */
+        .main-content .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Asegurar que el welcome-card tenga el fondo correcto */
+        .main-content .container-fluid > .row:first-child .welcome-card {
+            margin-bottom: 0;
+        }
+        
+        /* Estilos para el logo en el header de bienvenida */
+        .welcome-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+        }
+        
+        .welcome-logo {
+            max-height: 80px;
+            max-width: 120px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+            /* El logo se mostrará con sus colores originales, pero si necesita ser blanco,
+               se puede agregar: filter: brightness(0) invert(1); */
+        }
+        
+        /* Estilos para contadores de urgentes e incompletos */
+        .stat-item.position-relative {
+            min-width: 80px;
+        }
+        
+        #estudiosUrgentes.text-warning {
+            color: #ffc107 !important;
+            font-weight: 700;
+        }
+        
+        #estudiosIncompletos.text-danger {
+            color: #dc3545 !important;
+            font-weight: 700;
+        }
+        
+        #urgentesBadge {
+            box-shadow: 0 0 0 2px rgba(139, 13, 50, 0.3);
+        }
+        
+        /* Ajuste para móvil */
+        @media (max-width: 991.98px) {
+            .welcome-logo {
+                max-height: 50px;
+                max-width: 80px;
+            }
+            
+            .stat-item.position-relative {
+                min-width: 70px;
+            }
+        }
+        
+        @media (max-width: 767.98px) {
+            .welcome-logo {
+                max-height: 40px;
+                max-width: 60px;
+            }
+            
+            .welcome-logo-container {
+                margin-left: 0.5rem;
+            }
+            
+            .stat-item.position-relative {
+                min-width: 60px;
+            }
+            
+            #estudiosUrgentes,
+            #estudiosIncompletos {
+                font-size: 1rem !important;
+            }
+            
+            .stat-item.position-relative .stat-label {
+                font-size: 0.65rem !important;
+            }
+        }
+        
+        /* Styles for context menu */
+        .context-menu {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            user-select: none;
+        }
+        
+        .context-menu-item {
+            transition: background-color 0.15s ease;
+        }
+        
+        .context-menu-item:hover {
+            background-color: #f0f0f0 !important;
+        }
+        
+        .context-menu-item i {
+            width: 18px;
+            text-align: center;
+            color: #495057;
+        }
+
+        /* ============================================
+           MOBILE RESPONSIVE STYLES - DASHBOARD UNIFIED
+           ============================================ */
+        
+        @media (max-width: 991.98px) {
+            /* Asegurar que el layout-container no tenga márgenes */
+            .layout-container {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            /* Asegurar que el main-content ocupe todo el ancho en móvil */
+            .layout-container .main-content {
+                margin-left: 0 !important;
+                width: 100% !important;
+                padding-top: 0 !important;
+                position: relative;
+            }
+            
+            /* Asegurar que el contenedor principal no tenga espacios en blanco */
+            .main-content .container-fluid {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding-left: 0.75rem !important;
+                padding-right: 0.75rem !important;
+                padding-top: 0.5rem !important;
+                padding-bottom: 1rem !important;
+                margin: 0 !important;
+            }
+            
+            /* Mobile header debe estar siempre visible y fijo */
+            .mobile-header {
+                position: fixed !important;
+                top: 0;
+                left: 0;
+                right: 0;
+                z-index: 1001;
+                background: white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                height: 56px;
+            }
+            
+            /* Ajustar padding del contenido para el header móvil - más espacio para que no tape el banner */
+            .main-content {
+                padding-top: 65px !important;
+            }
+            
+            /* Asegurar que el contenido dentro del container-fluid tenga espacio suficiente */
+            .main-content .container-fluid {
+                padding-top: 0.75rem !important;
+            }
+            
+            /* Asegurar que el banner/welcome-card no quede tapado */
+            .welcome-card {
+                margin-top: 0.5rem !important;
+            }
+            
+            /* Sticky header para welcome section en móvil - debajo del mobile-header */
+            .main-content .container-fluid > .row:first-child {
+                top: 56px; /* Debajo del mobile-header */
+                z-index: 99; /* Debajo del mobile-header (z-index 1001) */
+            }
+            
+            /* Asegurar que el sidebar overlay esté correctamente posicionado */
+            .sidebar-overlay {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                bottom: 0 !important;
+                z-index: 999 !important;
+            }
+            
+            /* Asegurar que el sidebar esté por encima del overlay */
+            .sidebar {
+                z-index: 1000 !important;
+            }
+            
+            /* Asegurar que el botón del sidebar sea visible y funcional */
+            #sidebarToggle {
+                z-index: 1002;
+                position: relative;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            /* Sección de bienvenida - más compacta */
+            .welcome-card {
+                padding: 1rem !important;
+                margin-bottom: 0.75rem !important;
+                border-radius: 0.5rem !important;
+            }
+            
+            .welcome-title {
+                font-size: 1.1rem !important;
+                margin-bottom: 0.25rem !important;
+            }
+            
+            .welcome-subtitle {
+                font-size: 0.8rem !important;
+                margin-bottom: 0.5rem !important;
+            }
+            
+            .welcome-stats {
+                flex-direction: row !important;
+                gap: 1rem !important;
+                margin-top: 0.5rem !important;
+                justify-content: flex-start !important;
+            }
+            
+            .stat-item {
+                padding: 0.5rem !important;
+            }
+            
+            .stat-number {
+                font-size: 1.1rem !important;
+            }
+            
+            .stat-label {
+                font-size: 0.7rem !important;
+            }
+
+            /* FILTROS DE BÚSQUEDA - Prioridad visual y reorganización móvil */
+            .search-filters {
+                background: white;
+                padding: 0.75rem;
+                border-radius: 0.5rem;
+                margin-bottom: 0.5rem !important;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                border: 1px solid #e9ecef;
+            }
+            
+            .filter-title {
+                font-size: 0.95rem !important;
+                font-weight: 600;
+                margin-bottom: 0.5rem !important;
+                color: #495057;
+            }
+            
+            .search-filters .row {
+                margin: 0 !important;
+            }
+            
+            /* En móvil: reorganizar orden y layout */
+            .search-filters .col-md-6,
+            .search-filters .col-md-3,
+            .search-filters .col-lg-3,
+            .search-filters .col-lg-2 {
+                padding-left: 0.25rem !important;
+                padding-right: 0.25rem !important;
+                margin-bottom: 0.35rem;
+            }
+            
+            /* Fechas en la misma línea en móvil */
+            .search-filters .col-md-3:has(#dateFrom),
+            .search-filters .col-md-3:has(#dateTo) {
+                flex: 0 0 48% !important;
+                max-width: 48% !important;
+            }
+            
+            .search-filters input {
+                font-size: 0.85rem !important;
+                padding: 0.45rem 0.6rem !important;
+                border: 1px solid #ced4da;
+            }
+
+            .search-filters select {
+                font-size: 0.85rem !important;
+                padding: 0.45rem 2rem 0.45rem 0.6rem !important;
+                border: 1px solid #ced4da;
+            }
+            
+            .search-filters button {
+                font-size: 0.85rem !important;
+                padding: 0.5rem 0.85rem !important;
+                font-weight: 500;
+            }
+            
+            .search-filters small {
+                font-size: 0.66rem !important;
+                display: block;
+                margin-top: 0.15rem;
+                line-height: 1.15;
+                color: #6c757d;
+            }
+            
+            /* Búsqueda general siempre visible al final */
+            .mobile-search-field {
+                order: 5; /* Último en el orden */
+            }
+            
+            /* Fechas en la misma línea en móvil (48% cada una) */
+            .filter-date-from,
+            .filter-date-to {
+                flex: 0 0 48% !important;
+                max-width: 48% !important;
+                order: 1; /* Primero */
+            }
+            
+            /* ID paciente tras fechas */
+            .filter-patient-id {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                order: 2;
+            }
+            
+            /* Atajos tras ID */
+            .filter-quick-dates {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                order: 3;
+            }
+            
+            /* Botón buscar */
+            .filter-search-btn {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                order: 4;
+            }
+            
+            /* Búsqueda general, institución, informe, switch PACS */
+            .filter-search-institution-row {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                order: 5;
+            }
+
+            #assignmentSourceFilterWrap .form-check-input {
+                width: 2.25rem;
+                height: 1.1rem;
+                margin-top: 0.15rem;
+            }
+            
+            /* Asegurar que el row use flexbox para el orden */
+            .search-filters .row {
+                display: flex !important;
+                flex-wrap: wrap !important;
+            }
+            
+            /* Ajustar gap entre elementos en móvil */
+            .search-filters .row.g-2,
+            .search-filters .row.g-3 {
+                gap: 0.35rem !important;
+            }
+            
+            /* En móvil, búsqueda e institución en columna (una debajo de otra) */
+            .filter-search-institution-row .row {
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
+            .filter-search-institution-row .filter-search-field,
+            .filter-search-institution-row .filter-institution,
+            .filter-search-institution-row .filter-report-status,
+            .filter-search-institution-row #assignmentSourceFilterWrap {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+            }
+            
+            @media (min-width: 768px) {
+                .filter-search-institution-row .row {
+                    flex-direction: row !important;
+                }
+                
+                .filter-search-institution-row .filter-search-field {
+                    flex: 0 0 33.333% !important;
+                    max-width: 33.333% !important;
+                }
+                
+                .filter-search-institution-row .filter-institution {
+                    flex: 0 0 33.333% !important;
+                    max-width: 33.333% !important;
+                }
+
+                .filter-search-institution-row .filter-report-status {
+                    flex: 0 0 33.333% !important;
+                    max-width: 33.333% !important;
+                }
+
+                .filter-search-institution-row #assignmentSourceFilterWrap {
+                    flex: 0 0 auto !important;
+                    max-width: 100% !important;
+                }
+
+                .filter-quick-dates small,
+                .filter-search-field small,
+                .filter-institution small,
+                .filter-report-status small {
+                    display: none;
+                }
+            }
+
+            /* FILTROS DE MODALIDAD - Scroll horizontal */
+            .modality-filters {
+                margin-bottom: 0.75rem !important;
+                padding: 0.75rem;
+                background: white;
+                border-radius: 0.5rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                border: 1px solid #e9ecef;
+            }
+            
+            .modality-filters > div:first-child {
+                margin-bottom: 0.5rem;
+            }
+            
+            .modality-filters .d-flex.flex-wrap {
+                flex-wrap: nowrap !important;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 0.5rem;
+                margin: 0 -0.5rem;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+            
+            .modality-filters .d-flex.flex-wrap::-webkit-scrollbar {
+                height: 3px;
+            }
+            
+            .modality-filters .d-flex.flex-wrap::-webkit-scrollbar-thumb {
+                background: #ced4da;
+                border-radius: 2px;
+            }
+            
+            .modality-btn {
+                flex-shrink: 0;
+                padding: 0.5rem 0.9rem !important;
+                font-size: 0.85rem !important;
+                white-space: nowrap;
+                margin-right: 0.5rem;
+            }
+            
+            .filter-label {
+                font-size: 0.85rem !important;
+                font-weight: 600;
+                color: #495057;
+            }
+
+            /* TABLA DE ESTUDIOS - Diseño de tarjetas */
+            .card {
+                border: none;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                border-radius: 0.5rem;
+                overflow: hidden;
+            }
+            
+            .card-header {
+                padding: 0.75rem 1rem !important;
+                background: white;
+                border-bottom: 1px solid #e9ecef;
+            }
+            
+            .card-title {
+                font-size: 0.95rem !important;
+                font-weight: 600;
+                margin: 0;
+            }
+            
+            .card-body {
+                padding: 0 !important;
+            }
+            
+            .table-responsive {
+                border-radius: 0;
+            }
+            
+            .studies-table {
+                font-size: 0.85rem !important;
+                margin: 0;
+            }
+            
+            /* Estilos para indicador de estudio abierto en workspace */
+            .study-open-in-workspace {
+                background-color: #e7f3ff !important;
+                border-left: 3px solid #0d6efd !important;
+            }
+            
+            .workspace-indicator {
+                animation: pulse 2s infinite;
+                display: inline-block;
+            }
+            
+            @keyframes pulse {
+                0%, 100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.7;
+                }
+            }
+            
+            .studies-table tbody tr.study-open-in-workspace:hover {
+                background-color: #d0e7ff !important;
+            }
+            
+            /* Asegurar que la columna Estado tenga espacio para el indicador en segunda línea */
+            .studies-table tbody td[data-label="Estado"] {
+                vertical-align: top;
+            }
+            
+            .studies-table tbody td[data-label="Estado"] > div:first-child {
+                line-height: 1.4;
+            }
+            
+            .studies-table thead {
+                display: none !important;
+            }
+            
+            .studies-table tbody {
+                display: block;
+            }
+            
+            .studies-table tbody tr {
+                display: block !important;
+                border: 1px solid #e9ecef;
+                border-radius: 0.5rem;
+                margin: 0.75rem;
+                padding: 0.75rem;
+                background: white;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            }
+            
+            /* Diseño compacto y profesional para móvil */
+            .studies-table tbody tr {
+                display: flex !important;
+                flex-direction: column !important;
+                padding: 0.75rem !important;
+            }
+            
+            .studies-table tbody td {
+                display: block !important;
+                padding: 0 !important;
+                border: none !important;
+                width: 100% !important;
+            }
+            
+            /* Ocultar etiquetas data-label en móvil */
+            .studies-table tbody td::before {
+                display: none !important;
+            }
+            
+            /* Primera sección: Nombre del paciente e ID */
+            .studies-table tbody tr > td[data-label="Paciente"] {
+                padding: 0 0 0.5rem 0 !important;
+                margin-bottom: 0.5rem;
+                border-bottom: 1px solid #e9ecef !important;
+                order: 1;
+            }
+            
+            .studies-table tbody tr > td[data-label="Paciente"] .fw-semibold {
+                font-size: 1rem;
+                font-weight: 600;
+                color: #212529;
+                margin-bottom: 0.25rem;
+                line-height: 1.3;
+            }
+            
+            .studies-table tbody tr > td[data-label="Paciente"] small {
+                display: block !important;
+                font-size: 0.8rem;
+                color: #6c757d;
+                font-weight: normal;
+            }
+            
+            /* Segunda sección: Modalidad, Descripción, Estado en línea */
+            .studies-table tbody tr > td[data-label="Modalidad"],
+            .studies-table tbody tr > td[data-label="Estudio"],
+            .studies-table tbody tr > td[data-label="Estado"] {
+                display: inline-block !important;
+                padding: 0.35rem 0 !important;
+                vertical-align: middle;
+                order: 2;
+                margin-bottom: 0.5rem;
+            }
+            
+            .studies-table tbody tr > td[data-label="Modalidad"] {
+                margin-right: 0.5rem;
+            }
+            
+            .studies-table tbody tr > td[data-label="Estudio"] {
+                max-width: calc(100% - 180px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 0.85rem;
+                color: #495057;
+                margin-right: 0.5rem;
+            }
+            
+            .studies-table tbody tr > td[data-label="Estado"] {
+                float: right;
+                clear: none;
+            }
+            
+            /* Tercera sección: Botones de acción */
+            .studies-table tbody tr > td[data-label="Acciones"] {
+                padding: 0.5rem 0 0 0 !important;
+                border-top: 1px solid #e9ecef !important;
+                margin-top: 0.5rem;
+                order: 3;
+                clear: both;
+            }
+            
+            .studies-table tbody tr > td[data-label="Acciones"] .d-flex {
+                display: flex !important;
+                justify-content: flex-start !important;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            
+            /* Ocultar campos que no se usan en móvil */
+            .studies-table tbody tr > td[data-label="ID"],
+            .studies-table tbody tr > td[data-label="Fecha"],
+            .studies-table tbody tr > td[data-label="Hora"],
+            .studies-table tbody tr > td[data-label="Antecedentes"],
+            .studies-table tbody tr > td.d-none {
+                display: none !important;
+            }
+            
+            /* Ajustar badges y elementos inline */
+            .studies-table tbody tr > td[data-label="Modalidad"] .badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+            
+            .studies-table tbody tr > td[data-label="Estado"] .badge {
+                font-size: 0.75rem;
+                padding: 0.25rem 0.5rem;
+            }
+            
+            /* Botones más compactos pero táctiles */
+            .studies-table .btn {
+                padding: 0.4rem 0.7rem !important;
+                font-size: 0.8rem !important;
+                min-height: 36px;
+            }
+            
+            /* Asegurar que no haya espacios en blanco */
+            .row {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
+            
+            .row > * {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+        }
+
+        /* Tablet styles (768px - 991px) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .welcome-stats {
+                gap: 1.5rem !important;
+            }
+            
+            .search-filters .col-md-6,
+            .search-filters .col-md-3 {
+                margin-bottom: 0.75rem;
+            }
+        }
+        
+        /* Botón flotante para volver al inicio */
+        .scroll-to-top-btn {
+            position: fixed !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 99999 !important;
+            transition: opacity 0.3s ease, transform 0.3s ease !important;
+            font-size: 20px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .scroll-to-top-btn:hover {
+            background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+        }
+        
+        .scroll-to-top-btn:active {
+            transform: translateY(-1px) !important;
+        }
+        
+        .scroll-to-top-btn.show {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        
+        /* Ajuste para móvil */
+        @media (max-width: 767.98px) {
+            .scroll-to-top-btn {
+                bottom: 20px;
+                right: 20px;
+                width: 45px;
+                height: 45px;
+                font-size: 18px;
+            }
+        }
+    </style>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            // Esperar a que el DOM esté listo
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    // Si el botón no existe, intentar de nuevo después de un breve delay
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid');
+                
+                // Función para obtener la posición del scroll
+                function getScrollPosition() {
+                    // Intentar obtener scroll del window primero (más común)
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    
+                    // Si hay un contenedor con scroll, también verificar
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    
+                    // Retornar el mayor de los dos
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                // Función para mostrar/ocultar el botón según el scroll
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    
+                    // Mostrar el botón si se ha hecho scroll más de 200px
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                // Forzar visibilidad inicial para testing (comentar después)
+                // setTimeout(() => scrollToTopBtn.classList.add('show'), 2000);
+                
+                // Función para hacer scroll al inicio
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Hacer scroll en todos los contenedores posibles
+                    const scrollOptions = {
+                        top: 0,
+                        behavior: 'smooth'
+                    };
+                    
+                    // Scroll en window
+                    window.scrollTo(scrollOptions);
+                    
+                    // Scroll en document.documentElement
+                    if (document.documentElement) {
+                        document.documentElement.scrollTo(scrollOptions);
+                    }
+                    
+                    // Scroll en document.body
+                    if (document.body) {
+                        document.body.scrollTo(scrollOptions);
+                    }
+                    
+                    // Scroll en contenedores específicos
+                    if (mainContent) {
+                        mainContent.scrollTo(scrollOptions);
+                    }
+                    if (containerFluid) {
+                        containerFluid.scrollTo(scrollOptions);
+                    }
+                }
+                
+                // Escuchar eventos de scroll en múltiples elementos
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                
+                if (mainContent) {
+                    mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                }
+                if (containerFluid) {
+                    containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                }
+                
+                // Click en el botón
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                
+                // Verificar posición inicial después de un breve delay
+                setTimeout(toggleScrollButton, 500);
+                
+                // También verificar periódicamente (por si hay cambios dinámicos)
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            // Inicializar cuando el DOM esté listo
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+    <script src="modules/audit-manager/assets/js/audit-connectivity.js?v=202606251200"></script>
+
+    <!-- Módulo Multi-Monitor: carga condicional según permiso feature_multimonitor -->
+    <script>
+        (async function initMultiMonitorModule() {
+            try {
+                const res = await fetch('api/auth/validate-session-simple.php');
+                const data = await res.json();
+                if (!data.success || !data.user) return;
+
+                const permisos = data.user.permisos || [];
+                const isRoot   = data.user.nivel === 'root';
+                const hasPermission = isRoot
+                    || permisos.includes('all')
+                    || permisos.includes('feature_multimonitor');
+
+                if (!hasPermission) return;
+
+                const script  = document.createElement('script');
+                script.src    = 'modules/multimonitor/assets/js/multimonitor-manager.js';
+                script.onload = () => {
+                    if (window.MultiMonitorManager) {
+                        window.MultiMonitorManager.init();
+                    }
+                };
+                document.body.appendChild(script);
+            } catch (_) {}
+        })();
+    </script>
+</body>
+</html>

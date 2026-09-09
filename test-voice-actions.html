@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Comandos de Acción de Voz</title>
+    <script src="js/auth-middleware.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .status.listening {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .commands {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .commands h3 {
+            margin-top: 0;
+        }
+        .command-example {
+            background: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+        });
+    </script>
+    <h1>🎤 Prueba de Comandos de Acción de Voz</h1>
+    
+    <div class="container">
+        <h2>Control de Voz</h2>
+        <button id="startBtn">🎤 Iniciar Reconocimiento</button>
+        <button id="stopBtn" disabled>⏹️ Detener</button>
+        <div id="status" class="status">Listo para comenzar</div>
+    </div>
+
+    <div class="container">
+        <h2>Editor de Texto</h2>
+        <textarea id="transcription" placeholder="El texto reconocido aparecerá aquí..."></textarea>
+    </div>
+
+    <div class="commands">
+        <h3>📋 Comandos de Plantillas Disponibles</h3>
+        <div class="command-example">"insertar modelo historia_clinica"</div>
+        <div class="command-example">"insertar modelo nota_evolucion"</div>
+        <div class="command-example">"insertar modelo receta_medica"</div>
+        <div class="command-example">"insertar modelo informe_radiologico"</div>
+        <div class="command-example">"insertar modelo epicrisis"</div>
+        
+        <h3>⚡ Otros Comandos de Acción</h3>
+        <div class="command-example">"guardar documento"</div>
+        <div class="command-example">"nuevo párrafo"</div>
+        <div class="command-example">"seleccionar todo"</div>
+        <div class="command-example">"copiar texto"</div>
+        <div class="command-example">"pegar texto"</div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Pruebas Manuales</h2>
+        <button onclick="testInsertTemplate()">Probar Insertar Historia Clínica</button>
+        <button onclick="testInsertRadiology()">Probar Insertar Informe Radiológico</button>
+        <button onclick="showAvailableTemplates()">Mostrar Plantillas Disponibles</button>
+    </div>
+
+    <!-- Scripts necesarios -->
+    <script src="assets/js/voice-commands-config.js"></script>
+    <script src="assets/js/voice-actions.js"></script>
+    <script src="assets/js/speech.js"></script>
+
+    <script>
+        // Variables globales
+        let isListening = false;
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+
+        // Inicializar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Inicializando sistema de voz...');
+            
+            // Verificar que todos los módulos estén cargados
+            if (typeof VoiceCommandsConfig === 'undefined') {
+                console.error('VoiceCommandsConfig no está cargado');
+                updateStatus('Error: VoiceCommandsConfig no disponible', 'error');
+                return;
+            }
+            
+            if (typeof VoiceActions === 'undefined') {
+                console.error('VoiceActions no está cargado');
+                updateStatus('Error: VoiceActions no disponible', 'error');
+                return;
+            }
+            
+            if (typeof SpeechModule === 'undefined') {
+                console.error('SpeechModule no está cargado');
+                updateStatus('Error: SpeechModule no disponible', 'error');
+                return;
+            }
+
+            // Inicializar reconocimiento de voz
+            if (SpeechModule.initRecognition()) {
+                updateStatus('Sistema de voz inicializado correctamente');
+            } else {
+                updateStatus('Error al inicializar el sistema de voz', 'error');
+            }
+        });
+
+        // Event listeners para botones
+        startBtn.addEventListener('click', function() {
+            if (SpeechModule.startListening()) {
+                isListening = true;
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                updateStatus('🎤 Escuchando... Di un comando', 'listening');
+            } else {
+                updateStatus('Error al iniciar el reconocimiento', 'error');
+            }
+        });
+
+        stopBtn.addEventListener('click', function() {
+            SpeechModule.stopListening();
+            isListening = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            updateStatus('Reconocimiento detenido');
+        });
+
+        // Función para actualizar el estado
+        function updateStatus(message, type = '') {
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+
+        // Funciones de prueba manual
+        function testInsertTemplate() {
+            console.log('Probando insertar historia clínica...');
+            const result = VoiceActions.executeAction('insertTemplate', ['historia_clinica']);
+            updateStatus(result ? 'Historia clínica insertada' : 'Error al insertar historia clínica', result ? '' : 'error');
+        }
+
+        function testInsertRadiology() {
+            console.log('Probando insertar informe radiológico...');
+            const result = VoiceActions.executeAction('insertTemplate', ['informe_radiologico']);
+            updateStatus(result ? 'Informe radiológico insertado' : 'Error al insertar informe radiológico', result ? '' : 'error');
+        }
+
+        function showAvailableTemplates() {
+            VoiceActions.showAvailableTemplates();
+            updateStatus('Revisa la consola para ver las plantillas disponibles');
+        }
+
+        // Override de updateTranscription para esta página de prueba
+        if (typeof SpeechModule !== 'undefined') {
+            SpeechModule.updateTranscription = function(finalTranscript, interimTranscript) {
+                const textarea = document.getElementById('transcription');
+                if (!textarea) return;
+
+                if (finalTranscript) {
+                    console.log('Texto final recibido:', finalTranscript);
+                    // Procesar comandos de puntuación antes de insertar
+                    const processedText = this.processPunctuationCommands(finalTranscript);
+                    console.log('Texto procesado:', processedText);
+                    
+                    // Insertar texto procesado en la posición del cursor
+                    const cursorPos = textarea.selectionStart || 0;
+                    const textBefore = textarea.value.substring(0, cursorPos);
+                    const textAfter = textarea.value.substring(textarea.selectionEnd || cursorPos);
+                    
+                    textarea.value = textBefore + processedText + textAfter;
+                    textarea.selectionStart = textarea.selectionEnd = cursorPos + processedText.length;
+                }
+
+                // Mostrar texto intermedio
+                if (interimTranscript) {
+                    updateStatus('🎤 Escuchando: ' + interimTranscript, 'listening');
+                }
+            };
+        }
+    </script>
+</body>
+</html>

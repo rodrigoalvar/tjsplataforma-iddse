@@ -1,0 +1,48 @@
+# --- Datos y runtime (no versionar) ---
+/uploads/
+/logs/
+*.log
+*.tmp
+*.temp
+
+# HL7 / workers runtime
+modules/hl7-worklist/logs/
+modules/hl7-worklist/runtime/*.heartbeat
+modules/hl7-worklist/runtime/config.json
+modules/*/logs/
+modules/cloud-storage/logs/
+modules/cloud-storage/temp/
+modules/email/logs/
+
+# Dependencias (restaurar con composer/npm)
+/vendor/
+node_modules/
+
+# Entorno y secretos locales
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+
+# IDE / OS / Cursor
+.idea/
+.vscode/
+.cursor/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Caches / builds
+/cache/
+/tmp/
+opcache/
+*.cache
+
+# Backups y dumps
+*.sql.gz
+*.sqlite
+*.bak
+*_backup*

@@ -1,0 +1,135 @@
+<!-- Modal de Confirmación Bootstrap -->
+<div class="modal fade" id="confirmationModal" tabindex="-1" aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalLabel">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    Confirmar Eliminación
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-trash-alt text-danger" style="font-size: 2rem;"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <p class="mb-1" id="confirmationMessage">
+                            ¿Está seguro de que desea eliminar este elemento?
+                        </p>
+                        <small class="text-muted" id="confirmationDetails">
+                            Esta acción no se puede deshacer.
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Lista de archivos a eliminar (para múltiples) -->
+                <div id="filesList" class="d-none">
+                    <h6 class="text-muted mb-2">Archivos a eliminar:</h6>
+                    <div class="border rounded p-2 bg-light" style="max-height: 200px; overflow-y: auto;">
+                        <ul id="filesListContent" class="list-unstyled mb-0">
+                            <!-- Se llenará dinámicamente -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash me-1"></i>Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * Clase para manejar el modal de confirmación
+ */
+class ConfirmationModal {
+    constructor() {
+        this.modal = null;
+        this.confirmCallback = null;
+        this.init();
+    }
+
+    init() {
+        // Crear el modal si no existe
+        if (!document.getElementById('confirmationModal')) {
+            document.body.insertAdjacentHTML('beforeend', this.getModalHTML());
+        }
+        
+        this.modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        const confirmBtn = document.getElementById('confirmDeleteBtn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                if (this.confirmCallback) {
+                    this.confirmCallback();
+                }
+                this.modal.hide();
+            });
+        }
+    }
+
+    /**
+     * Muestra el modal de confirmación para un archivo individual
+     */
+    showSingleFileConfirmation(fileName, callback) {
+        const messageEl = document.getElementById('confirmationMessage');
+        const detailsEl = document.getElementById('confirmationDetails');
+        const filesListEl = document.getElementById('filesList');
+
+        messageEl.textContent = `¿Está seguro de que desea eliminar el archivo "${fileName}"?`;
+        detailsEl.textContent = 'Esta acción eliminará tanto el archivo físico como su referencia en la base de datos.';
+        filesListEl.classList.add('d-none');
+
+        this.confirmCallback = callback;
+        this.modal.show();
+    }
+
+    /**
+     * Muestra el modal de confirmación para múltiples archivos
+     */
+    showMultipleFilesConfirmation(files, callback) {
+        const messageEl = document.getElementById('confirmationMessage');
+        const detailsEl = document.getElementById('confirmationDetails');
+        const filesListEl = document.getElementById('filesList');
+        const filesListContentEl = document.getElementById('filesListContent');
+
+        messageEl.textContent = `¿Está seguro de que desea eliminar ${files.length} archivo(s)?`;
+        detailsEl.textContent = 'Esta acción eliminará tanto los archivos físicos como sus referencias en la base de datos.';
+        
+        // Mostrar lista de archivos
+        filesListEl.classList.remove('d-none');
+        filesListContentEl.innerHTML = files.map(file => 
+            `<li class="d-flex align-items-center mb-1">
+                <i class="fas fa-file text-muted me-2"></i>
+                <span class="text-truncate">${file.name || file.file_name || 'Archivo sin nombre'}</span>
+            </li>`
+        ).join('');
+
+        this.confirmCallback = callback;
+        this.modal.show();
+    }
+
+    /**
+     * Oculta el modal
+     */
+    hide() {
+        if (this.modal) {
+            this.modal.hide();
+        }
+    }
+}
+
+// Instancia global del modal de confirmación
+window.confirmationModal = new ConfirmationModal();
+</script>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test list.php</title>
+</head>
+<body>
+    <h1>Test API list.php</h1>
+    <button onclick="testListAPI()">Test con página 1</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testListAPI() {
+            try {
+                // Obtener el token de sesión
+                const token = document.cookie.split('; ')
+                    .find(row => row.startsWith('session_token='))
+                    ?.split('=')[1];
+                
+                console.log('Token encontrado:', token ? 'SÍ' : 'NO');
+                
+                const url = 'api/informes/list.php?page=1';
+                console.log('Fetching:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', [...response.headers.entries()]);
+                
+                const text = await response.text();
+                console.log('Response text length:', text.length);
+                console.log('Response text:', text.substring(0, 500));
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                    console.log('Parsed data:', data);
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    data = { error: 'No es JSON válido', text: text.substring(0, 500) };
+                }
+                
+                document.getElementById('result').innerHTML = 
+                    '<h2>Resultado:</h2>' +
+                    '<p><strong>Status:</strong> ' + response.status + '</p>' +
+                    '<p><strong>Token encontrado:</strong> ' + (token ? 'SÍ' : 'NO') + '</p>' +
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                    
+            } catch (error) {
+                console.error('Fetch error:', error);
+                document.getElementById('result').innerHTML = 
+                    '<h2>Error:</h2>' +
+                    '<pre>' + error.message + '</pre>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Modal Z-Index</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        .modal-hierarchy {
+            z-index: 1055;
+        }
+        .modal-edit {
+            z-index: 1060;
+        }
+        .backdrop-hierarchy {
+            z-index: 1054;
+        }
+        .backdrop-edit {
+            z-index: 1059;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="bi bi-layers"></i> Test Modal Z-Index
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Problema Original:</h5>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Modal de edición aparece por debajo del modal de jerarquía
+                        </div>
+                        
+                        <h5>Solución Implementada:</h5>
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Z-index dinámico basado en contexto
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Z-Index de Bootstrap:</h5>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between">
+                                Modal por defecto
+                                <span class="badge bg-secondary">1055</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                Modal de jerarquía
+                                <span class="badge bg-info">1055</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between">
+                                Modal de edición (corregido)
+                                <span class="badge bg-success">1060</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Pruebas del Z-Index:</h5>
+                    <div class="d-grid gap-2">
+                        <button onclick="testModalStacking()" class="btn btn-primary">
+                            <i class="bi bi-test-tube"></i> Probar Apilamiento de Modales
+                        </button>
+                        <button onclick="testZIndexDetection()" class="btn btn-info">
+                            <i class="bi bi-search"></i> Verificar Detección de Z-Index
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Log de Pruebas:</h5>
+                    <div id="testLog" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                        <small class="text-muted">Los logs aparecerán aquí...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Jerarquía (Simulado) -->
+    <div class="modal fade modal-hierarchy" id="hierarchyModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-diagram-3 me-2"></i>
+                        Modal de Jerarquía
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Este es el modal de jerarquía (z-index: 1055)</p>
+                    <p>Desde aquí puedes abrir el modal de edición.</p>
+                    <button onclick="openEditModal()" class="btn btn-primary">
+                        <i class="bi bi-pencil me-1"></i>Abrir Modal de Edición
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Edición -->
+    <div class="modal fade modal-edit" id="userModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil me-2"></i>
+                        Modal de Edición
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Este es el modal de edición</p>
+                    <p>Debería aparecer por encima del modal de jerarquía (z-index: 1060)</p>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Si ves este modal por encima del de jerarquía, la corrección funciona.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function testModalStacking() {
+            logTest('🧪 Probando apilamiento de modales...');
+            
+            // Abrir modal de jerarquía primero
+            const hierarchyModal = new bootstrap.Modal(document.getElementById('hierarchyModal'));
+            hierarchyModal.show();
+            
+            logTest('✓ Modal de jerarquía abierto (z-index: 1055)');
+            
+            // Simular la lógica de detección
+            setTimeout(() => {
+                const hierarchyElement = document.getElementById('hierarchyModal');
+                const isHierarchyModalOpen = hierarchyElement && hierarchyElement.classList.contains('show');
+                
+                if (isHierarchyModalOpen) {
+                    logTest('✓ Modal de jerarquía detectado como abierto');
+                    logTest('ℹ️ Al abrir modal de edición, se aplicará z-index: 1060');
+                } else {
+                    logTest('✗ Modal de jerarquía no detectado');
+                }
+            }, 500);
+        }
+        
+        function openEditModal() {
+            logTest('📝 Abriendo modal de edición...');
+            
+            // Simular la lógica de la función editUser
+            const hierarchyModal = document.getElementById('hierarchyModal');
+            const isHierarchyModalOpen = hierarchyModal && hierarchyModal.classList.contains('show');
+            
+            const editModal = new bootstrap.Modal(document.getElementById('userModal'));
+            editModal.show();
+            
+            if (isHierarchyModalOpen) {
+                const userModalElement = document.getElementById('userModal');
+                userModalElement.style.zIndex = '1060';
+                
+                const backdrop = document.querySelector('.modal-backdrop:last-of-type');
+                if (backdrop) {
+                    backdrop.style.zIndex = '1059';
+                }
+                
+                logTest('✅ Z-index aplicado: Modal de edición = 1060, Backdrop = 1059');
+                logTest('✅ Modal de edición debería aparecer por encima del de jerarquía');
+            } else {
+                logTest('ℹ️ Modal de jerarquía no detectado, usando z-index por defecto');
+            }
+        }
+        
+        function testZIndexDetection() {
+            logTest('🔍 Verificando detección de z-index...');
+            
+            const hierarchyModal = document.getElementById('hierarchyModal');
+            const isHierarchyModalOpen = hierarchyModal && hierarchyModal.classList.contains('show');
+            
+            logTest(`Modal de jerarquía abierto: ${isHierarchyModalOpen}`);
+            
+            if (isHierarchyModalOpen) {
+                logTest('✓ Lógica de detección funciona correctamente');
+                logTest('✓ Se aplicará z-index dinámico al modal de edición');
+            } else {
+                logTest('ℹ️ Modal de jerarquía cerrado, no se aplicará z-index especial');
+            }
+            
+            // Verificar z-index actual
+            const userModal = document.getElementById('userModal');
+            const currentZIndex = window.getComputedStyle(userModal).zIndex;
+            logTest(`Z-index actual del modal de edición: ${currentZIndex}`);
+        }
+        
+        function logTest(message) {
+            const log = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div><small class="text-muted">[${timestamp}]</small> ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        // Event listeners para limpiar z-index
+        document.getElementById('userModal').addEventListener('hidden.bs.modal', function() {
+            logTest('🧹 Limpiando z-index del modal de edición...');
+            this.style.zIndex = '';
+            const backdrop = document.querySelector('.modal-backdrop:last-of-type');
+            if (backdrop) {
+                backdrop.style.zIndex = '';
+            }
+            logTest('✅ Z-index limpiado');
+        });
+    </script>
+</body>
+</html>
+

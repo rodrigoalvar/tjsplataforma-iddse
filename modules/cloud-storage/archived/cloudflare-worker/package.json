@@ -1,0 +1,22 @@
+{
+  "name": "r2-zip-extractor",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker para extraer ZIPs de R2",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "cloudflare",
+    "worker",
+    "r2",
+    "zip"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Final - Descarte de Archivos Temporales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Prueba Final - Descarte de Archivos Temporales</h1>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>1. Estado Inicial</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-info" onclick="checkTempFiles()">Verificar Archivos Temporales</button>
+                        <div id="tempFilesStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>2. Configurar Estudio Activo</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary" onclick="setupActiveStudy()">Configurar URLESTUDIO</button>
+                        <div id="studyStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>3. Probar Descarte (Lógica del Logout)</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-danger" onclick="testDiscardLogout()">Descartar con Lógica de Logout</button>
+                        <div id="discardStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>4. Verificar Resultado</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-success" onclick="verifyDeletion()">Verificar Eliminación</button>
+                        <div id="verificationStatus" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts necesarios -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/url-study-manager.js"></script>
+    <script src="assets/js/temp-audio-manager.js"></script>
+    
+    <script>
+        // Función para verificar archivos temporales
+        async function checkTempFiles() {
+            const statusDiv = document.getElementById('tempFilesStatus');
+            statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Verificando...';
+            
+            try {
+                const response = await fetch('components/temp-audio.php?studyId=a7c86587-0521ee82-d84cf4e2-b7dd30c9-8071af26&patientId=4169.809449218');
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            <strong>Archivos encontrados:</strong> ${result.data.length}<br>
+                            ${result.data.map(file => `• ${file.fileName}`).join('<br>')}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-warning">No se encontraron archivos temporales</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Función para configurar estudio activo
+        function setupActiveStudy() {
+            const statusDiv = document.getElementById('studyStatus');
+            
+            try {
+                // Configurar URLESTUDIO como lo hace el dashboard
+                if (window.urlStudyManager) {
+                    window.urlStudyManager.setActiveStudy({
+                        patientId: '4169.809449218',
+                        patientName: 'Paciente Test',
+                        modality: 'CT',
+                        studyDescription: 'Test Study',
+                        studyId: 'a7c86587-0521ee82-d84cf4e2-b7dd30c9-8071af26',
+                        studyInstanceUID: 'test-uid'
+                    });
+                    
+                    const activeStudy = window.urlStudyManager.getActiveStudy();
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <strong>URLESTUDIO configurado:</strong><br>
+                            • Study ID: ${activeStudy.studyId}<br>
+                            • Patient ID: ${activeStudy.patientId}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-danger">urlStudyManager no disponible</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Función para probar descarte con lógica de logout
+        async function testDiscardLogout() {
+            const statusDiv = document.getElementById('discardStatus');
+            statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Descartando...';
+            
+            try {
+                console.log('=== INICIANDO DESCARTE CON LÓGICA DE LOGOUT ===');
+                
+                // Usar exactamente la misma lógica que auth-middleware.js
+                if (window.TempAudioManager) {
+                    console.log('TempAudioManager disponible, llamando discardReport()...');
+                    await window.TempAudioManager.discardReport();
+                    statusDiv.innerHTML = '<div class="alert alert-success">Descarte completado con TempAudioManager</div>';
+                } else if (window.urlStudyManager) {
+                    console.log('Solo urlStudyManager disponible, limpiando estudio activo...');
+                    window.urlStudyManager.clearActiveStudy();
+                    statusDiv.innerHTML = '<div class="alert alert-warning">Descarte completado solo con urlStudyManager</div>';
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-danger">Ningún manager disponible</div>';
+                }
+                
+                console.log('=== DESCARTE COMPLETADO ===');
+            } catch (error) {
+                console.error('Error durante el descarte:', error);
+                statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Función para verificar eliminación
+        async function verifyDeletion() {
+            const statusDiv = document.getElementById('verificationStatus');
+            statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Verificando...';
+            
+            try {
+                const response = await fetch('components/temp-audio.php?studyId=a7c86587-0521ee82-d84cf4e2-b7dd30c9-8071af26&patientId=4169.809449218');
+                const result = await response.json();
+                
+                if (result.success && result.data.length === 0) {
+                    statusDiv.innerHTML = '<div class="alert alert-success"><strong>✅ ÉXITO:</strong> Todos los archivos temporales fueron eliminados correctamente</div>';
+                } else if (result.success && result.data.length > 0) {
+                    statusDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <strong>❌ FALLO:</strong> Aún quedan ${result.data.length} archivo(s):<br>
+                            ${result.data.map(file => `• ${file.fileName}`).join('<br>')}
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-warning">No se pudo verificar el estado</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página de prueba cargada');
+            console.log('TempAudioManager disponible:', !!window.TempAudioManager);
+            console.log('urlStudyManager disponible:', !!window.urlStudyManager);
+        });
+    </script>
+</body>
+</html>

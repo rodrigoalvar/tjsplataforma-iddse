@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tu informe está listo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #667eea;
+            margin: 0;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .info-box {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+        }
+        .info-row {
+            margin: 10px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #667eea;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{app_name}}</h1>
+        </div>
+        
+        <div class="content">
+            <h2>Tu informe está listo</h2>
+            
+            <p>Estimado/a <strong>{{nombre_paciente}}</strong>,</p>
+            
+            <p>Le informamos que su informe médico ha sido completado y está disponible para su consulta.</p>
+            
+            <div class="info-box">
+                <div class="info-row">
+                    <span class="info-label">Paciente:</span> {{nombre_paciente}}
+                </div>
+                {{#if informe_id}}
+                <div class="info-row">
+                    <span class="info-label">ID de Informe:</span> {{informe_id}}
+                </div>
+                {{/if}}
+                {{#if fecha_completado}}
+                <div class="info-row">
+                    <span class="info-label">Fecha de Completado:</span> {{fecha_completado}}
+                </div>
+                {{/if}}
+                {{#if medico}}
+                <div class="info-row">
+                    <span class="info-label">Médico Informante:</span> {{medico}}
+                </div>
+                {{/if}}
+            </div>
+            
+            <p>Puede acceder a su informe ingresando al portal del sistema.</p>
+            
+            <div style="text-align: center;">
+                <a href="{{app_url}}/dashboard-unified.html" class="button">
+                    Ver mi informe
+                </a>
+            </div>
+            
+            <p>Si tiene alguna consulta, no dude en contactarnos.</p>
+        </div>
+        
+        <div class="footer">
+            <p>Este es un email automático, por favor no respondas a este mensaje.</p>
+            <!-- Footer inyectado automáticamente desde config/branding.php -->
+        </div>
+    </div>
+</body>
+</html>
+

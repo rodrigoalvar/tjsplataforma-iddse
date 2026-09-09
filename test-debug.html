@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Voice Commands</title>
+    <script src="js/auth-middleware.js"></script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+        });
+    </script>
+    <h1>Debug Voice Commands</h1>
+    <div id="output"></div>
+    <button onclick="testCommand()">Test Command</button>
+    
+    <script src="assets/js/voice-commands-config.js"></script>
+    <script src="assets/js/voice-actions.js"></script>
+    <script src="assets/js/speech.js"></script>
+    
+    <script>
+        function testCommand() {
+            const text = "insertar modelo resonancia magnética";
+            console.log('Testing command:', text);
+            
+            // Test processActionCommand
+            const actionResult = VoiceCommandsConfig.processActionCommand(text);
+            console.log('Action result:', actionResult);
+            
+            if (actionResult) {
+                // Test executeAction
+                const success = VoiceActions.executeAction(actionResult.action, actionResult.parameters);
+                console.log('Execute result:', success);
+            }
+            
+            // Test processPunctuationCommands
+            const processedText = SpeechModule.processPunctuationCommands(text);
+            console.log('Processed text:', processedText);
+            console.log('Type of processed text:', typeof processedText);
+            
+            document.getElementById('output').innerHTML = `
+                <p>Original text: ${text}</p>
+                <p>Action result: ${JSON.stringify(actionResult)}</p>
+                <p>Processed text: "${processedText}"</p>
+                <p>Type: ${typeof processedText}</p>
+            `;
+        }
+    </script>
+</body>
+</html>

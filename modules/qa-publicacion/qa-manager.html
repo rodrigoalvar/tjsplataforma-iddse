@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QA / Control de Calidad — TJSMEDICAL</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="../../styles.css?v=202607090200" rel="stylesheet">
+    <style>
+        #qaQueueTable thead th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+        #qaQueueTable thead th.sortable .sort-icon { opacity: 0.45; font-size: 0.72rem; margin-left: 0.2rem; }
+        #qaQueueTable thead th.sortable:hover .sort-icon { opacity: 1; }
+    </style>
+    <script src="../../js/auth-middleware.js?v=202607090100"></script>
+    <script src="../../assets/js/iframe-detector.js?v=202607090100"></script>
+    <script src="../../assets/js/simple-permission-manager.js?v=202607090100"></script>
+    <script src="../../assets/js/sidebar-gui-manager.js?v=202607090100"></script>
+    <script>
+        (function () {
+            var style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            var ok = await requireAuth();
+            if (!ok) return;
+            var has = await requirePermissionSimple('gui_qa_publicacion', 'QA / Control de Calidad', {
+                title: 'Acceso denegado',
+                message: 'No tenés permiso para <strong>QA / Control de Calidad</strong>.',
+                redirectUrl: '../../dashboard-unified.html',
+                showLogoutButton: true
+            });
+            if (!has) return;
+            setupSidebarFunctionality();
+            updateSidebarUserInfo();
+        });
+
+        function setupSidebarFunctionality() {
+            var sidebarToggle = document.getElementById('sidebarToggle');
+            var sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            var sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            var sidebar = document.getElementById('sidebar');
+            var sidebarOverlay = document.getElementById('sidebarOverlay');
+            var sidebarLayout = document.getElementById('sidebarLayout');
+            var sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) closeMobileSidebar();
+                    else openMobileSidebar();
+                });
+            }
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeMobileSidebar();
+                });
+            }
+            if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeMobileSidebar);
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', function () {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', function () {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+        }
+
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(function (r) { setTimeout(r, 100); });
+                if (window.getCurrentUser) {
+                    var user = window.getCurrentUser();
+                    if (user && user.nombre) {
+                        var fullName = user.apellido ? (user.nombre + ' ' + user.apellido) : user.nombre;
+                        var sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) sidebarUserName.textContent = fullName;
+                        var sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) sidebarUserRole.textContent = user.especialidad || 'Usuario';
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (e) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+    </script>
+
+    <div id="sidebarLayout" class="layout-container">
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle"><i class="fas fa-bars fa-lg"></i></button>
+                    <img src="../../logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown"><i class="fas fa-user-circle fa-lg"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="../../profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="../../logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú"><i class="fas fa-times fa-lg"></i></button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar"><i class="fas fa-angle-double-left"></i></button>
+                </div>
+            </div>
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link" href="../../dashboard-unified.html?v=202606251200"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../paciente.html?v=202606251200"><i class="fas fa-file-medical"></i><span>Portal Paciente</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../components/editor.html?v=202606251200" id="informesNavLink"><i class="fas fa-file-alt"></i><span>Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../components/informes-manager.html?v=202606251200"><i class="fas fa-search"></i><span>Gestión Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../estudios-manager.html?v=202606251200"><i class="fas fa-share-alt"></i><span>Gestión Estudios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../pacientes-manager.html?v=202606251200"><i class="fas fa-user-injured"></i><span>Gestión Pacientes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../app-container.html?section=workspace&v=202606251200" data-section="workspace"><i class="fas fa-th-large"></i><span>WorkSpace</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../components/audio-recorder.html?v=202606251200"><i class="fas fa-microphone"></i><span>Grabación</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../components/viewer.html?v=202606251200"><i class="fas fa-eye"></i><span>Visor DICOM</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../user-management.html?v=202606251200"><i class="fas fa-users"></i><span>Gestión Usuarios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../pacs-manager.html?v=202606251200"><i class="fas fa-database"></i><span>PACS Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../pacs-nodes-manager.html?v=202606251200"><i class="fas fa-network-wired"></i><span>PACS Nodes Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../study-history-manager.html?v=202606251200"><i class="fas fa-history"></i><span>Historial estudios</span></a></li>
+                    <li class="nav-item"><a class="nav-link active" href="qa-manager.html?v=202607090100"><i class="fas fa-shield-alt"></i><span>QA Control de Calidad</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../cloud-storage.html?v=202606251200"><i class="fas fa-cloud"></i><span>Cloud Storage</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../audit-manager.html?v=202606251200"><i class="fas fa-clipboard-list"></i><span>Auditoría</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../worklist.html?v=202606251200"><i class="fas fa-list-alt"></i><span>Worklist</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../ai-informes.html?v=202606251200"><i class="fas fa-robot"></i><span>AI Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../modules/email/admin.php" id="linkGestionMensajes"><i class="fas fa-envelope"></i><span>Gestión Mensajes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="../../configuracion.html?v=202606251200"><i class="fas fa-cog"></i><span>Configuración</span></a></li>
+                </ul>
+            </div>
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a>
+            </div>
+        </div>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar"><i class="fas fa-chevron-right"></i></button>
+            <div class="container-fluid px-3 py-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="h3 mb-0"><i class="fas fa-shield-alt text-danger me-2"></i>QA / Control de Calidad</h1>
+                        <p class="text-muted mb-0">Autorizar o bloquear estudios e informes en el portal del paciente</p>
+                    </div>
+                    <div class="d-flex flex-wrap gap-1 justify-content-end align-items-center" id="qaStatusBadges">
+                        <span id="qaEnabledBadge" class="badge bg-secondary">—</span>
+                        <span id="qaModeBadge" class="badge bg-primary d-none">—</span>
+                        <span id="qaHybridInformeBadge" class="badge bg-info text-dark d-none">—</span>
+                        <span id="qaHybridMixedBadge" class="badge bg-warning text-dark d-none">—</span>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-4 d-none" id="qaConfigSection">
+                        <div class="card shadow-sm">
+                            <div class="card-header fw-semibold">Configuración</div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">QA habilitado</label>
+                                    <select id="cfgEnabled" class="form-select form-select-sm">
+                                        <option value="0">No (portal sin filtro QA)</option>
+                                        <option value="1">Sí (aplica reglas y bloqueos en portal)</option>
+                                    </select>
+                                    <div class="form-text">Con «No», el portal muestra todos los estudios. Los bloqueos quedan guardados y aplican al activar QA.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Modo</label>
+                                    <select id="cfgMode" class="form-select form-select-sm">
+                                        <option value="lista_negra">Lista negra (publicar todo, bloquear excepciones)</option>
+                                        <option value="lista_blanca">Lista blanca (solo lo aprobado)</option>
+                                        <option value="hibrido">Híbrido (auto + revisión manual)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Híbrido: exigir informe finalizado</label>
+                                    <select id="cfgHybridInforme" class="form-select form-select-sm">
+                                        <option value="0">No</option>
+                                        <option value="1">Sí</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Híbrido: bloquear si hay mezcla de pacientes</label>
+                                    <select id="cfgHybridMixed" class="form-select form-select-sm">
+                                        <option value="1">Sí</option>
+                                        <option value="0">No</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm w-100" id="qaSaveConfigBtn">Guardar configuración</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-8" id="qaQueueSection">
+                        <div class="card shadow-sm mb-3">
+                            <div class="card-header">
+                                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-2">
+                                    <span class="fw-semibold">Cola de revisión</span>
+                                    <span class="badge bg-primary" id="qaQueueCount">0</span>
+                                </div>
+                                <div class="d-flex flex-wrap gap-2 align-items-end">
+                                    <div>
+                                        <label class="form-label small mb-0" for="qaDateFrom">Desde</label>
+                                        <input type="date" id="qaDateFrom" class="form-control form-control-sm" style="width:150px">
+                                    </div>
+                                    <div>
+                                        <label class="form-label small mb-0" for="qaDateTo">Hasta</label>
+                                        <input type="date" id="qaDateTo" class="form-control form-control-sm" style="width:150px">
+                                    </div>
+                                    <div>
+                                        <label class="form-label small mb-0" for="qaSearch">Buscar</label>
+                                        <input type="text" id="qaSearch" class="form-control form-control-sm" placeholder="Paciente, accession…" style="width:160px">
+                                    </div>
+                                    <div>
+                                        <label class="form-label small mb-0" for="qaEstadoFilter">Estado QA</label>
+                                        <select id="qaEstadoFilter" class="form-select form-select-sm" style="width:130px">
+                                            <option value="">Todos</option>
+                                            <option value="pendiente">Pendiente</option>
+                                            <option value="publicado">Publicado</option>
+                                            <option value="bloqueado">Bloqueado</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="form-label small mb-0" for="qaInformeFilter">Informe</label>
+                                        <select id="qaInformeFilter" class="form-select form-select-sm" style="width:120px">
+                                            <option value="">Todos</option>
+                                            <option value="si">Con informe</option>
+                                            <option value="no">Sin informe</option>
+                                        </select>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary" id="qaSearchBtn">Buscar</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="qaRefreshBtn" title="Actualizar cola"><i class="fas fa-sync"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-dark d-none" id="qaAuditLogBtn" title="Registro de auditoría">
+                                        <i class="fas fa-clipboard-list me-1"></i>Auditoría
+                                    </button>
+                                </div>
+                                <p class="small text-muted mb-0 mt-2">Incluye estudios del PACS con o sin informe. Si bloqueás el estudio, su informe tampoco se publica en el portal.</p>
+                            </div>
+                            <div class="card-body p-0 table-responsive">
+                                <table class="table table-sm table-hover mb-0" id="qaQueueTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="sortable" data-column="study_date">Fecha estudio <i class="fas fa-sort sort-icon"></i></th>
+                                            <th class="sortable" data-column="patient_name">Paciente <i class="fas fa-sort sort-icon"></i></th>
+                                            <th class="sortable" data-column="modality">Estudio <i class="fas fa-sort sort-icon"></i></th>
+                                            <th class="sortable" data-column="qa_estudio">Imágenes <i class="fas fa-sort sort-icon"></i></th>
+                                            <th class="sortable" data-column="qa_informe">Informe <i class="fas fa-sort sort-icon"></i></th>
+                                            <th class="sortable" data-column="informe_id">ID <i class="fas fa-sort sort-icon"></i></th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="qaQueueBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="qaAuditLogModal" tabindex="-1" aria-labelledby="qaAuditLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qaAuditLogModalLabel">
+                        <i class="fas fa-clipboard-list me-2"></i>Registro de auditoría QA
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="qaLogRefreshBtn" title="Actualizar registro">
+                        <i class="fas fa-sync"></i>
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Acción</th>
+                                    <th>Paciente / ID</th>
+                                    <th>Estudio</th>
+                                    <th>Mod.</th>
+                                    <th>F. estudio</th>
+                                    <th>Motivo</th>
+                                    <th>Usuario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="qaLogBody">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer py-2">
+                    <small class="text-muted me-auto">Últimas 30 acciones registradas en QA</small>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="qaConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qaConfirmModalTitle">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="qaConfirmModalBody"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="qaConfirmModalBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="qaMotivoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="qaMotivoModalTitle">Motivo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="qaMotivoModalDesc" class="text-muted small"></p>
+                    <div class="mb-3">
+                        <label class="form-label" for="qaMotivoSelect">Motivo</label>
+                        <select class="form-select" id="qaMotivoSelect">
+                            <option value="series_otro_paciente">Series de otro paciente</option>
+                            <option value="demograficos_incorrectos">Demográficos incorrectos</option>
+                            <option value="calidad_imagen">Calidad de imagen</option>
+                            <option value="informe_erroneo">Informe erróneo</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label" for="qaMotivoDetalle">Detalle (opcional)</label>
+                        <textarea class="form-control" id="qaMotivoDetalle" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning" id="qaMotivoModalBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="qaToastContainer" style="z-index: 10050"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/qa-manager.js?v=202607091420"></script>
+</body>
+</html>

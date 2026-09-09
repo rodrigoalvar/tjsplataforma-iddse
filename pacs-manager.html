@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PACS Manager - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <style>
+        /* Estilos para filtros de modalidad */
+        .modality-filters {
+            margin-bottom: 0.75rem !important;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+        }
+        
+        .modality-filters > div:first-child {
+            margin-bottom: 0.5rem;
+        }
+        
+        .modality-filters .d-flex.flex-wrap {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 0.5rem;
+            margin: 0 -0.5rem;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+        
+        .modality-filters .d-flex.flex-wrap::-webkit-scrollbar {
+            height: 3px;
+        }
+        
+        .modality-filters .d-flex.flex-wrap::-webkit-scrollbar-thumb {
+            background: #ced4da;
+            border-radius: 2px;
+        }
+        
+        .modality-btn {
+            flex-shrink: 0;
+            padding: 0.5rem 0.9rem !important;
+            font-size: 0.85rem !important;
+            white-space: nowrap;
+            margin-right: 0.5rem;
+            border: 1px solid #dee2e6;
+            background-color: #fff;
+            color: #495057;
+            transition: all 0.2s ease;
+        }
+        
+        .modality-btn:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+        }
+        
+        .modality-btn.active {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        
+        .filter-label {
+            font-size: 0.85rem !important;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        /* Sticky header para welcome section */
+        .main-content .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .main-content .container-fluid > .row:first-child .welcome-card {
+            margin-bottom: 0;
+        }
+        
+        /* Botón flotante para volver al inicio */
+        .scroll-to-top-btn {
+            position: fixed !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 99999 !important;
+            transition: opacity 0.3s ease, transform 0.3s ease !important;
+            font-size: 20px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .scroll-to-top-btn:hover {
+            background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+        }
+        
+        .scroll-to-top-btn:active {
+            transform: translateY(-1px) !important;
+        }
+        
+        .scroll-to-top-btn.show {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        
+        @media (max-width: 767.98px) {
+            .scroll-to-top-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 18px !important;
+            }
+            
+            .main-content .container-fluid > .row:first-child {
+                top: 56px;
+                z-index: 99;
+            }
+        }
+        
+        /* Estilos para el logo en el header de bienvenida */
+        .welcome-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 1rem;
+        }
+        
+        .welcome-logo {
+            max-height: 80px;
+            max-width: 120px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+        }
+        
+        @media (max-width: 991.98px) {
+            .welcome-logo {
+                max-height: 50px;
+                max-width: 80px;
+            }
+        }
+        
+        @media (max-width: 767.98px) {
+            .welcome-logo {
+                max-height: 40px;
+                max-width: 60px;
+            }
+            
+            .welcome-logo-container {
+                margin-left: 0.5rem;
+            }
+        }
+        
+        /* Estilos para tabla de estudios con filas intercaladas y selección */
+        #studiesTable.table-striped > tbody > tr:nth-of-type(odd) > td {
+            background-color: #ffffff;
+        }
+        
+        #studiesTable.table-striped > tbody > tr:nth-of-type(even) > td {
+            background-color: #f8f9fa;
+        }
+        
+        /* Reducir padding de las filas para hacerlas más compactas */
+        #studiesTable tbody tr td {
+            padding: 0.5rem 0.75rem;
+            vertical-align: middle;
+        }
+        
+        #studiesTable tbody tr {
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out;
+        }
+        
+        /* Efecto hover para filas blancas (impares) - tono azul suave profesional */
+        #studiesTable tbody tr:nth-of-type(odd):hover > td {
+            background-color: #e7f3ff !important;
+        }
+        
+        /* Efecto hover para filas grises (pares) - gris más oscuro pero distinguible */
+        #studiesTable tbody tr:nth-of-type(even):hover > td {
+            background-color: #dee2e6 !important;
+        }
+        
+        /* Fila seleccionada - color distintivo */
+        #studiesTable tbody tr.selected {
+            background-color: #cfe2ff !important;
+            position: relative;
+        }
+        
+        /* Borde izquierdo usando box-shadow para no afectar el layout */
+        #studiesTable tbody tr.selected {
+            box-shadow: inset 3px 0 0 #0d6efd;
+        }
+        
+        /* Eliminar todos los bordes de las celdas en fila seleccionada */
+        #studiesTable tbody tr.selected > td {
+            background-color: transparent !important;
+            border-top: none !important;
+            border-bottom: none !important;
+            border-left: none !important;
+            border-right: none !important;
+        }
+        
+        /* Hover sobre fila seleccionada */
+        #studiesTable tbody tr.selected:hover {
+            background-color: #b6d4fe !important;
+        }
+        
+        #studiesTable tbody tr.selected:hover > td {
+            background-color: transparent !important;
+        }
+    </style>
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            // Verificar permisos específicos para PACS Manager
+            const hasAccess = await requirePermissionSimple('pacs_manager', 'PACS Manager', {
+                title: 'Acceso Denegado - PACS Manager',
+                message: 'No tienes permisos para acceder a <strong>PACS Manager</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            if (!hasAccess) {
+                return;
+            }
+        });
+
+        // Function to update welcome message with user name
+        async function updateWelcomeMessage() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                        
+                        // Actualizar título de bienvenida
+                        const welcomeTitle = document.getElementById('welcomeTitle');
+                        if (welcomeTitle) {
+                            welcomeTitle.textContent = `PACS Manager - ${fullName}`;
+                        }
+                        
+                        // Actualizar subtítulo con especialidad
+                        const welcomeSubtitle = document.getElementById('welcomeSubtitle');
+                        if (welcomeSubtitle && user.especialidad) {
+                            welcomeSubtitle.textContent = user.especialidad;
+                        } else if (welcomeSubtitle && !user.especialidad) {
+                            welcomeSubtitle.textContent = 'Administración de Estudios en PACS (Orthanc)';
+                        }
+                        
+                        // Actualizar información del usuario en el sidebar
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            sidebarUserName.textContent = fullName;
+                        }
+                        
+                        // Actualizar rol/especialidad en el sidebar
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) {
+                            sidebarUserRole.textContent = user.especialidad || 'Administrador PACS';
+                        }
+                    }
+                } else {
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú">
+                        <i class="fas fa-times fa-lg"></i>
+                    </button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html?v=202606251200">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html?v=202606251200">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Portal Paciente</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html?v=202606251200">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html?v=202606251200">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacientes-manager.html?v=202606251200">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html?v=202606251200">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html?v=202606251200">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html?v=202606251200">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="pacs-manager.html?v=202606251200">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-nodes-manager.html?v=202606251200">
+                            <i class="fas fa-network-wired"></i>
+                            <span>PACS Nodes Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="study-history-manager.html?v=202606251200">
+                            <i class="fas fa-history"></i>
+                            <span>Historial estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>QA Control de Calidad</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="cloud-storage.html?v=202606251200">
+                            <i class="fas fa-cloud"></i>
+                            <span>Cloud Storage</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="audit-manager.html?v=202606251200">
+                            <i class="fas fa-clipboard-list"></i>
+                            <span>Auditoría</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="worklist.html?v=202606251200">
+                            <i class="fas fa-list-alt"></i>
+                            <span>Worklist</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="ai-informes.html?v=202606251200">
+                            <i class="fas fa-robot"></i>
+                            <span>AI Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes">
+                            <i class="fas fa-envelope"></i>
+                            <span>Gestión Mensajes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html?v=202606251200">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            <div class="container-fluid px-3 py-4">
+                <!-- Welcome Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="welcome-card">
+                            <div class="row align-items-center">
+                                <div class="col-lg-8">
+                                    <h2 class="welcome-title" id="welcomeTitle">PACS Manager</h2>
+                                    <p class="welcome-subtitle" id="welcomeSubtitle">Administración de Estudios en PACS (Orthanc)</p>
+                                </div>
+                                <div class="col-lg-4">
+                                    <div class="welcome-stats d-flex justify-content-end align-items-center gap-4">
+                                        <!-- Contador de trabajos -->
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number d-flex align-items-center justify-content-center gap-2" style="font-size: 1.5rem;">
+                                                <span id="jobsRunning" class="badge bg-warning" style="font-size: 0.9rem; display: none;">0</span>
+                                                <span class="text-muted" id="jobsSeparator" style="display: none;">/</span>
+                                                <span id="jobsCompleted" class="badge bg-success" style="font-size: 0.9rem;">0</span>
+                                            </div>
+                                            <div class="stat-label">TRABAJOS</div>
+                                            <small class="text-muted" style="font-size: 0.7rem;">En curso / Completados</small>
+                                        </div>
+                                        
+                                        <!-- Botón para ver logs -->
+                                        <button class="btn btn-outline-primary btn-sm" id="jobsLogButton" title="Ver logs de trabajos" style="white-space: nowrap;">
+                                            <i class="fas fa-tasks me-1"></i>
+                                            <span class="d-none d-md-inline">Logs</span>
+                                        </button>
+                                        
+                                        <!-- Contador de estudios (existente) -->
+                                        <div class="stat-item text-center">
+                                            <div class="stat-number" id="totalEstudios">0</div>
+                                            <div class="stat-label">TOTAL ESTUDIOS</div>
+                                        </div>
+                                        <div class="welcome-logo-container">
+                                            <img id="welcomeLogo" src="logo.svg" alt="Logo" class="welcome-logo" style="display: none;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="headerModalityCountsWrap" class="row mt-2 pt-2 mx-0 border-top d-none">
+                                <div class="col-12 px-0">
+                                    <div class="small text-muted mb-1"><i class="fas fa-layer-group me-1"></i>Modalidades en la consulta al PACS</div>
+                                    <div class="d-flex flex-wrap align-items-center gap-2" id="headerModalityCounts" role="list" aria-label="Conteo por modalidad"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs mb-3" id="pacsManagerMainTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-studies-btn" data-bs-toggle="tab" data-bs-target="#tab-studies-pane" type="button" role="tab">
+                            <i class="fas fa-list me-1"></i>Estudios
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-audit-btn" data-bs-toggle="tab" data-bs-target="#tab-audit-pane" type="button" role="tab">
+                            <i class="fas fa-clipboard-list me-1"></i>Auditoría
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="pacsManagerTabContent">
+                <div class="tab-pane fade show active" id="tab-studies-pane" role="tabpanel">
+
+                <!-- Search Filters -->
+                <div class="search-filters mb-4">
+                    <h6 class="filter-title mb-3"><i class="fas fa-search me-2"></i>Filtros de Búsqueda</h6>
+                    <div class="row g-3">
+                        <div class="col-md-3 col-lg-2">
+                            <input type="date" class="form-control" id="dateFrom" title="Fecha Inicio">
+                            <small class="text-muted">Fecha Inicio</small>
+                        </div>
+                        <div class="col-md-3 col-lg-2">
+                            <input type="date" class="form-control" id="dateTo" title="Fecha Fin">
+                            <small class="text-muted">Fecha Fin</small>
+                        </div>
+                        <div class="col-12 col-md-6 col-lg-auto filter-quick-dates">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="text-muted small text-nowrap mb-0">Atajos</span>
+                                <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Rango de fechas rápido">
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateToday" title="Estudios del día actual (local)">Hoy</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateYesterday" title="Estudios de ayer">Ayer</button>
+                                    <button type="button" class="btn btn-outline-secondary" id="quickDateLast7" title="Desde hace 7 días hasta hoy (inclusive)">Últimos 7 días</button>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">Aplica fechas y consulta al PACS (mismo flujo que «Buscar»)</small>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <input type="text" class="form-control" placeholder="ID Paciente" id="patientId">
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <button class="btn btn-search w-100" id="searchButton">
+                                <i class="fas fa-search me-2"></i>Buscar
+                            </button>
+                        </div>
+                        <div class="col-md-6 col-lg-2">
+                            <button class="btn btn-success w-100" id="uploadButton">
+                                <i class="fas fa-upload me-2"></i>Subir Estudios
+                            </button>
+                        </div>
+                        <div class="col-12 col-md-7">
+                            <input type="text" class="form-control" id="searchFilter" placeholder="Buscar en estudios...">
+                            <small class="text-muted">Búsqueda general</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modality Filters -->
+                <div class="modality-filters mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="filter-label mb-0">Filtrar por Modalidad: <span id="modalityCounter" class="badge bg-secondary ms-2" style="display: none;"></span></h6>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2" id="modalityButtonsContainer">
+                        <button type="button" class="btn modality-btn active" data-modality="all">
+                            <span class="modality-label">Todas</span><sup class="modality-count-sub ms-1 text-body-secondary fw-normal"></sup>
+                        </button>
+                        <!-- Los botones de modalidad se agregarán dinámicamente aquí -->
+                    </div>
+                </div>
+
+                <!-- Studies Table -->
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-list me-2"></i>
+                                    Lista de Estudios
+                                </h5>
+                                <span class="badge bg-primary" id="studiesCount">0 estudios</span>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped studies-table mb-0" id="studiesTable">
+                                        <thead>
+                                            <tr>
+                                                <th class="sortable" data-column="date">
+                                                    Fecha <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="d-none d-md-table-cell sortable" data-column="time">
+                                                    Hora <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="sortable" data-column="patient_name">
+                                                    Paciente <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="d-none d-lg-table-cell sortable" data-column="patient_id">
+                                                    ID <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="d-none d-sm-table-cell sortable" data-column="modality">
+                                                    Modalidad <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="d-none d-xl-table-cell sortable" data-column="study_description">
+                                                    Estudio <i class="fas fa-sort sort-icon"></i>
+                                                </th>
+                                                <th class="text-center text-nowrap" title="Copia en almacenamiento cloud (R2)">
+                                                    <i class="fas fa-cloud me-1"></i>R2
+                                                </th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="studiesTableBody">
+                                            <tr>
+                                                <td colspan="8" class="text-center py-4">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="visually-hidden">Cargando estudios...</span>
+                                                    </div>
+                                                    <div class="mt-2">Consultando estudios desde PACS...</div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+                </div><!-- /tab-studies-pane -->
+
+                <div class="tab-pane fade" id="tab-audit-pane" role="tabpanel">
+                    <div class="card shadow-sm">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span><i class="fas fa-history me-2"></i>Historial de modificaciones de estudios</span>
+                            <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <input type="date" class="form-control form-control-sm" id="auditFilterDateFrom" title="Desde" style="max-width: 150px;">
+                                <input type="date" class="form-control form-control-sm" id="auditFilterDateTo" title="Hasta" style="max-width: 150px;">
+                                <select class="form-select form-select-sm" id="auditFilterStatus" style="max-width: 180px;">
+                                    <option value="all">Todos los estados</option>
+                                    <option value="success">Éxito</option>
+                                    <option value="partial">Parcial</option>
+                                    <option value="failed">Fallido</option>
+                                    <option value="orthanc_running">En Orthanc</option>
+                                    <option value="reconciling">Reconciliando</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="auditFilterTodayBtn" title="Filtrar hoy">Hoy</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="auditRefreshBtn">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Usuario</th>
+                                            <th>Paciente</th>
+                                            <th>Estado</th>
+                                            <th>Reconcile</th>
+                                            <th>Original PACS</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="auditTableBody">
+                                        <tr><td colspan="7" class="text-center py-4 text-muted">Abra esta pestaña para cargar registros.</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                </div><!-- /tab-content -->
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal detalle auditoría -->
+    <div class="modal fade" id="auditDetailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalle de modificación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="auditDetailBody">
+                    <p class="text-muted">Cargando...</p>
+                </div>
+                <div class="modal-footer flex-wrap gap-2">
+                    <!-- Panel asignación manual (solo cuando failed sin new_orthanc_study_id) -->
+                    <div id="auditSetNewStudyWrap" style="display:none;" class="w-100 border rounded p-2 bg-light mb-1">
+                        <p class="small text-warning mb-1">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            No se pudo detectar el estudio nuevo automáticamente.
+                            Buscá el UUID del estudio ya modificado en pacs-manager y pegalo aquí:
+                        </p>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="auditNewStudyIdInput" class="form-control font-monospace"
+                                placeholder="xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx-xxxxxxxx"
+                                autocomplete="off" spellcheck="false">
+                            <button type="button" class="btn btn-primary" id="auditSetNewStudyBtn">
+                                <i class="fas fa-check me-1"></i>Asignar UUID
+                            </button>
+                        </div>
+                        <div id="auditSetNewStudyFeedback" class="small mt-1"></div>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary" id="auditSyncBdBtn" style="display:none;"
+                        title="Propaga nombre, ID paciente y demás metadatos a informes-manager y tablas vinculadas, sin modificar Orthanc">
+                        <i class="fas fa-database me-1"></i>Sincronizar BD
+                    </button>
+                    <button type="button" class="btn btn-outline-info" id="auditRelinkDocBtn" style="display:none;"
+                        title="Re-vincula pacs_series_id / pacs_instance_id desde la serie DOC en Orthanc">
+                        <i class="fas fa-file-medical me-1"></i>Re-vincular DOC
+                    </button>
+                    <button type="button" class="btn btn-warning" id="auditRetryReconcileBtn" style="display:none;"
+                        title="Reintenta migración de UIDs y metadatos en BD">
+                        <i class="fas fa-link me-1"></i>Reintentar reconciliación
+                    </button>
+                    <div class="form-check me-auto align-self-center" id="auditDeleteOriginalWrap" style="display:none;">
+                        <input class="form-check-input" type="checkbox" id="auditAttemptDeleteOriginal">
+                        <label class="form-check-label small" for="auditAttemptDeleteOriginal">
+                            Intentar eliminar copia original en PACS
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Estudio -->
+    <div class="modal fade" id="editStudyModal" tabindex="-1" aria-labelledby="editStudyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editStudyModalLabel">
+                        <i class="fas fa-edit me-2"></i>
+                        Editar Estudio
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editStudyForm">
+                        <input type="hidden" id="editStudyId">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="editPatientName" class="form-label">Nombre del Paciente</label>
+                                <input type="text" class="form-control" id="editPatientName" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editPatientID" class="form-label">ID Paciente</label>
+                                <input type="text" class="form-control" id="editPatientID" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editStudyDescription" class="form-label">Descripción del Estudio</label>
+                                <input type="text" class="form-control" id="editStudyDescription" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editStudyDate" class="form-label">Fecha del Estudio</label>
+                                <input type="date" class="form-control" id="editStudyDate" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editAccessionNumber" class="form-label">Número de Acceso</label>
+                                <input type="text" class="form-control" id="editAccessionNumber">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="editInstitutionName" class="form-label">Institución</label>
+                                <input type="text" class="form-control" id="editInstitutionName">
+                            </div>
+                            <div class="col-12">
+                                <label for="editReferringPhysician" class="form-label">Médico Solicitante</label>
+                                <input type="text" class="form-control" id="editReferringPhysician">
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" id="editDeleteOriginalStudy" checked>
+                                    <label class="form-check-label" for="editDeleteOriginalStudy">
+                                        Eliminar copia anterior en PACS tras completar (recomendado)
+                                    </label>
+                                </div>
+                                <small class="text-muted">
+                                    La plataforma se alinea siempre al estudio nuevo. Si desactiva esta opción, conservará ambas copias en Orthanc.
+                                </small>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="saveStudyBtn">
+                        <i class="fas fa-save me-2"></i>Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminación -->
+    <div class="modal fade" id="deleteStudyModal" tabindex="-1" aria-labelledby="deleteStudyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="deleteStudyModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-3">
+                        <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                    </div>
+                    <p class="text-center mb-3">
+                        ¿Estás seguro de que deseas eliminar el estudio del paciente:
+                    </p>
+                    <div class="alert alert-warning text-center" role="alert">
+                        <strong id="deletePatientName">N/A</strong>
+                    </div>
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        <strong>¡Advertencia!</strong> Esta acción es permanente y no se puede deshacer. 
+                        Se eliminarán todas las series e instancias asociadas al estudio en Orthanc.
+                    </div>
+                    <div id="deleteImpactPanel" class="d-none">
+                        <div id="deleteImpactLoading" class="text-center text-muted py-2">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Analizando informes y audios vinculados…
+                        </div>
+                        <div id="deleteImpactContent" class="d-none"></div>
+                    </div>
+                    <div id="deleteImpactAckWrap" class="form-check mt-3 d-none">
+                        <input class="form-check-input" type="checkbox" id="deleteImpactAcknowledge">
+                        <label class="form-check-label" for="deleteImpactAcknowledge">
+                            Entiendo que los informes y audios permanecerán en la plataforma sin imágenes en PACS
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                        <i class="fas fa-trash me-2"></i>Eliminar Estudio
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Subir Estudios -->
+    <div class="modal fade" id="uploadStudyModal" tabindex="-1" aria-labelledby="uploadStudyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="uploadStudyModalLabel">
+                        <i class="fas fa-upload me-2"></i>
+                        Subir Estudios DICOM
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Información:</strong> Puedes subir archivos DICOM individuales (.dcm, .dicom) o un archivo ZIP con múltiples estudios. 
+                        Tamaño máximo por archivo: 500MB.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="uploadFilesInput" class="form-label">
+                            <i class="fas fa-file me-2"></i>
+                            Seleccionar Archivos
+                        </label>
+                        <input type="file" class="form-control" id="uploadFilesInput" 
+                               accept=".dcm,.dicom,.zip" multiple>
+                        <small class="text-muted">Formatos permitidos: .dcm, .dicom, .zip</small>
+                    </div>
+                    
+                    <div id="uploadFilesList" class="mb-3" style="display: none;">
+                        <h6>Archivos seleccionados:</h6>
+                        <ul id="uploadFilesListItems" class="list-group"></ul>
+                    </div>
+                    
+                    <div id="uploadProgress" style="display: none;">
+                        <div class="progress mb-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" id="uploadProgressBar">
+                                0%
+                            </div>
+                        </div>
+                        <div id="uploadStatus" class="text-center"></div>
+                    </div>
+                    
+                    <div id="uploadResults" style="display: none;">
+                        <h6>Resultados:</h6>
+                        <div id="uploadResultsContent"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="uploadCancelBtn">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="uploadSubmitBtn" disabled>
+                        <i class="fas fa-upload me-2"></i>Subir Archivos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Logs de Trabajos -->
+    <div class="modal fade" id="jobsLogModal" tabindex="-1" aria-labelledby="jobsLogModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="jobsLogModalLabel">
+                        <i class="fas fa-tasks me-2"></i>Logs de Trabajos PACS
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Filtros del modal -->
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-3">
+                            <label class="form-label small">Tipo de trabajo</label>
+                            <select class="form-select form-select-sm" id="jobsLogFilterType">
+                                <option value="all">Todos los tipos</option>
+                                <option value="edit">Ediciones</option>
+                                <option value="delete">Eliminaciones</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Estado</label>
+                            <select class="form-select form-select-sm" id="jobsLogFilterStatus">
+                                <option value="all">Todos los estados</option>
+                                <option value="running">En curso</option>
+                                <option value="success">Completados</option>
+                                <option value="error">Con error</option>
+                                <option value="pending">Pendientes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Desde</label>
+                            <input type="date" class="form-control form-control-sm" id="jobsLogFilterDateFrom">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Hasta</label>
+                            <input type="date" class="form-control form-control-sm" id="jobsLogFilterDateTo">
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-3 align-items-end">
+                        <div class="col-md-8 d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="jobsLogFilterTodayBtn">Hoy</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="jobsLogFilterWeekBtn">Últimos 7 días</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="jobsLogFilterClearDatesBtn">Quitar fechas</button>
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-outline-danger btn-sm w-100" id="clearJobsLogButton">
+                                <i class="fas fa-trash me-1"></i>Limpiar Logs
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de trabajos -->
+                    <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 12%;">Fecha</th>
+                                    <th style="width: 8%;">Tipo</th>
+                                    <th style="width: 20%;">Paciente</th>
+                                    <th style="width: 20%;">Estudio</th>
+                                    <th style="width: 10%;">Estado</th>
+                                    <th style="width: 12%;">Progreso</th>
+                                    <th style="width: 8%;">Duración</th>
+                                    <th style="width: 10%;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobsLogTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                                        <div>Cargando trabajos...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="me-auto">
+                        <small class="text-muted">
+                            Mostrando: <span id="jobsLogTotal">0</span>
+                            <span id="jobsLogTotalHint"></span>
+                        </small>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/pacs-uploader.js?v=202606251200"></script>
+    <script src="assets/js/pacs-manager.js?v=202607090045"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    
+    <script>
+        // Function to load logo from configuration
+        async function loadWelcomeLogo() {
+            try {
+                const logoElement = document.getElementById('welcomeLogo');
+                if (!logoElement) return;
+                
+                const configResponse = await fetch('api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.logo) {
+                    logoElement.src = configData.logo;
+                    logoElement.style.display = 'block';
+                } else {
+                    logoElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando logo de configuración:', error);
+                const logoElement = document.getElementById('welcomeLogo');
+                if (logoElement) {
+                    logoElement.style.display = 'none';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateWelcomeMessage();
+            
+            // Cargar logo desde configuración
+            loadWelcomeLogo();
+
+            // Sidebar functionality
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) {
+                        closeMobileSidebar();
+                    } else {
+                        openMobileSidebar();
+                    }
+                });
+            }
+
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closeMobileSidebar();
+                });
+            }
+
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', () => {
+                    sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', () => {
+                    sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', () => {
+                    closeMobileSidebar();
+                });
+            }
+
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.addEventListener('click', () => {
+                    if (window.innerWidth < 992) {
+                        closeMobileSidebar();
+                    }
+                });
+            });
+
+            // Configurar botones de logout usando el modal de confirmación
+            if (window.authManager && typeof window.authManager.setupLogoutButtons === 'function') {
+                window.authManager.setupLogoutButtons();
+            } else if (window.auth && typeof window.auth.setupLogoutButtons === 'function') {
+                window.auth.setupLogoutButtons();
+            }
+        });
+    </script>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid');
+                
+                function getScrollPosition() {
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const scrollOptions = { top: 0, behavior: 'smooth' };
+                    window.scrollTo(scrollOptions);
+                    if (document.documentElement) document.documentElement.scrollTo(scrollOptions);
+                    if (document.body) document.body.scrollTo(scrollOptions);
+                    if (mainContent) mainContent.scrollTo(scrollOptions);
+                    if (containerFluid) containerFluid.scrollTo(scrollOptions);
+                }
+                
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (mainContent) mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (containerFluid) containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                setTimeout(toggleScrollButton, 500);
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+</body>
+</html>
+

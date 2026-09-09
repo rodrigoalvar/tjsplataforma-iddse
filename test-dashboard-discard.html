@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Dashboard Discard Flow</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Test Dashboard Discard Flow</h1>
+        
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Simulación del Flujo de Descarte del Dashboard</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <h6>Paso 1: Configurar Estudio Actual</h6>
+                            <button class="btn btn-primary" onclick="setupCurrentStudy()">Configurar Estudio Actual</button>
+                            <div id="currentStudyInfo" class="mt-2"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Paso 2: Verificar Archivos Temporales</h6>
+                            <button class="btn btn-info" onclick="checkTempFiles()">Verificar Archivos</button>
+                            <div id="tempFilesInfo" class="mt-2"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Paso 3: Simular Descarte (como en dashboard)</h6>
+                            <button class="btn btn-danger" onclick="simulateDiscardFlow()">Descartar y Comenzar Nuevo</button>
+                            <div id="discardResult" class="mt-2"></div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6>Paso 4: Verificar Eliminación</h6>
+                            <button class="btn btn-success" onclick="verifyDeletion()">Verificar Eliminación</button>
+                            <div id="verificationResult" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Log de Consola</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="consoleLog" style="background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-family: monospace; white-space: pre-wrap; max-height: 300px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/url-study-manager.js"></script>
+    <script src="assets/js/temp-audio-manager.js"></script>
+    
+    <script>
+        // Interceptar console.log para mostrar en la página
+        const originalLog = console.log;
+        const logContainer = document.getElementById('consoleLog');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const message = args.map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg).join(' ');
+            logContainer.textContent += new Date().toLocaleTimeString() + ': ' + message + '\n';
+            logContainer.scrollTop = logContainer.scrollHeight;
+        };
+        
+        const testStudy = {
+            studyId: 'ae09efb2-3b595e90-b4bc3156-d3721dd6-267e9ed5',
+            patientId: '14279359',
+            patientName: 'Test Patient',
+            modality: 'DX',
+            studyDescription: 'Test Study'
+        };
+        
+        function setupCurrentStudy() {
+            try {
+                if (window.urlStudyManager) {
+                    window.urlStudyManager.setActiveStudy(testStudy);
+                    console.log('Estudio actual configurado:', testStudy);
+                    
+                    const info = document.getElementById('currentStudyInfo');
+                    info.innerHTML = `<div class="alert alert-success">Estudio configurado: ${testStudy.studyId} - ${testStudy.patientId}</div>`;
+                } else {
+                    throw new Error('urlStudyManager no disponible');
+                }
+            } catch (error) {
+                console.error('Error al configurar estudio:', error);
+                document.getElementById('currentStudyInfo').innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function checkTempFiles() {
+            try {
+                const response = await fetch(`components/temp-audio.php?studyId=${testStudy.studyId}&patientId=${testStudy.patientId}`);
+                const data = await response.json();
+                
+                console.log('Archivos temporales encontrados:', data);
+                
+                const info = document.getElementById('tempFilesInfo');
+                if (data.success && data.files && data.files.length > 0) {
+                    info.innerHTML = `<div class="alert alert-info">Encontrados ${data.files.length} archivos temporales</div>`;
+                } else {
+                    info.innerHTML = `<div class="alert alert-warning">No se encontraron archivos temporales</div>`;
+                }
+            } catch (error) {
+                console.error('Error al verificar archivos:', error);
+                document.getElementById('tempFilesInfo').innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function simulateDiscardFlow() {
+            try {
+                console.log('=== INICIANDO SIMULACIÓN DE DESCARTE ===');
+                
+                // Simular exactamente el flujo del dashboard
+                console.log('Informe anterior descartado, iniciando nuevo informe');
+                
+                // Capturar información del estudio actual antes de descartarlo
+                const currentStudy = window.urlStudyManager ? window.urlStudyManager.getActiveStudy() : null;
+                console.log('Estudio actual capturado:', currentStudy);
+                
+                const resultDiv = document.getElementById('discardResult');
+                resultDiv.innerHTML = '<div class="alert alert-info">Procesando descarte...</div>';
+                
+                // Descartar informe completo (limpiar URLESTUDIO y eliminar audios temporales)
+                if (window.TempAudioManager && currentStudy) {
+                    console.log('Descartando estudio:', currentStudy.studyId, currentStudy.patientId);
+                    const success = await window.TempAudioManager.discardReport(currentStudy.studyId, currentStudy.patientId);
+                    console.log('Resultado del descarte:', success);
+                    
+                    if (success) {
+                        resultDiv.innerHTML = '<div class="alert alert-success">Descarte completado exitosamente</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="alert alert-warning">Descarte completado con advertencias</div>';
+                    }
+                } else if (window.TempAudioManager) {
+                    console.log('Intentando descarte sin parámetros específicos');
+                    const success = await window.TempAudioManager.discardReport();
+                    console.log('Resultado del descarte:', success);
+                    resultDiv.innerHTML = '<div class="alert alert-info">Descarte realizado sin parámetros específicos</div>';
+                } else {
+                    console.log('TempAudioManager no disponible, usando fallback');
+                    window.urlStudyManager.clearActiveStudy();
+                    resultDiv.innerHTML = '<div class="alert alert-warning">Solo se limpió URLESTUDIO (fallback)</div>';
+                }
+                
+                console.log('=== DESCARTE COMPLETADO ===');
+                
+            } catch (error) {
+                console.error('Error en simulación de descarte:', error);
+                document.getElementById('discardResult').innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function verifyDeletion() {
+            try {
+                const response = await fetch(`components/temp-audio.php?studyId=${testStudy.studyId}&patientId=${testStudy.patientId}`);
+                const data = await response.json();
+                
+                console.log('Verificación post-descarte:', data);
+                
+                const info = document.getElementById('verificationResult');
+                if (data.success && data.files && data.files.length > 0) {
+                    info.innerHTML = `<div class="alert alert-danger">¡PROBLEMA! Aún existen ${data.files.length} archivos temporales</div>`;
+                } else {
+                    info.innerHTML = `<div class="alert alert-success">✓ Archivos eliminados correctamente</div>`;
+                }
+            } catch (error) {
+                console.error('Error en verificación:', error);
+                document.getElementById('verificationResult').innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

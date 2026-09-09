@@ -1,0 +1,337 @@
+/* Estilos para la sección SYNC en el editor */
+
+/* Contenedor principal de SYNC */
+.sync-controls-panel {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.sync-transcription-panel {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    min-height: 300px;
+}
+
+/* Botón principal de SYNC */
+#sync-button {
+    min-width: 180px;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#sync-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#sync-button.btn-success {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+}
+
+#sync-button.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #fd7e14);
+    border: none;
+}
+
+/* Timer y status */
+#sync-timer {
+    font-size: 1.2rem;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #007bff, #6610f2);
+}
+
+#sync-status {
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Contenedor de transcripción */
+.sync-transcription-container {
+    min-height: 200px;
+    max-height: 400px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+}
+
+/* Transcripción clickeable */
+.clickable-transcription {
+    font-size: 1rem;
+    line-height: 1.8;
+}
+
+.sync-word {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    display: inline-block;
+    margin: 1px;
+}
+
+.sync-word:hover {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    transform: scale(1.05);
+}
+
+.sync-word.current-word {
+    background-color: #ffeb3b;
+    color: #f57f17;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(255, 235, 59, 0.4);
+}
+
+/* Transcripción clickeable - solo palabras finales */
+.clickable-transcription .sync-word {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    display: inline-block;
+    margin: 1px;
+    background-color: transparent;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.clickable-transcription .sync-word:hover {
+    background-color: #f0f0f0;
+    color: #000;
+    transform: scale(1.05);
+    border-color: #999;
+}
+
+/* Texto intermedio */
+.interim-text {
+    color: #6c757d;
+    font-style: italic;
+    background-color: #f1f3f4;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Botón de modo de reproducción */
+.play-mode-button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.play-mode-button.continuous {
+    background-color: #28a745;
+    color: white;
+}
+
+.play-mode-button.continuous:hover {
+    background-color: #218838;
+    transform: translateY(-1px);
+}
+
+.play-mode-button.individual {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.play-mode-button.individual:hover {
+    background-color: #e8690b;
+    transform: translateY(-1px);
+}
+
+/* Contenedor de audio */
+.sync-audio-container {
+    margin-top: 15px;
+    padding: 10px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+#sync-audio-player {
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Panel de debug */
+.sync-debug-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 350px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    border-radius: 8px;
+    padding: 0;
+    z-index: 1050;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.debug-header {
+    background: linear-gradient(135deg, #6c757d, #495057);
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.debug-header h6 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.debug-content {
+    padding: 15px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#debug-info {
+    line-height: 1.4;
+}
+
+/* Información de ayuda */
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    border: 1px solid #b6d4da;
+    color: #0c5460;
+}
+
+.alert-info .alert-heading {
+    color: #0a4c57;
+    font-weight: 600;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .sync-controls-panel,
+    .sync-transcription-panel {
+        margin-bottom: 20px;
+    }
+    
+    #sync-button {
+        min-width: 150px;
+        font-size: 0.9rem;
+    }
+    
+    .sync-debug-panel {
+        width: 90%;
+        right: 5%;
+        left: 5%;
+    }
+    
+    .sync-transcription-container {
+        min-height: 150px;
+        max-height: 250px;
+    }
+    
+    .play-mode-button {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .sync-controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .card-header .d-flex {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .sync-transcription-container {
+        font-size: 0.9rem;
+    }
+}
+
+/* Animaciones */
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.sync-word.current-word {
+    animation: pulse 1s infinite;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.clickable-transcription {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Estados de carga */
+.sync-loading {
+    position: relative;
+}
+
+.sync-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estilos para funcionalidad de colapso */
+.card-header[data-bs-toggle="collapse"] {
+    transition: background-color 0.3s ease;
+}
+
+.card-header[data-bs-toggle="collapse"]:hover {
+    background-color: #f8f9fa;
+}
+
+.collapse-icon {
+    transition: transform 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.card-header[aria-expanded="false"] .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+.card-header[aria-expanded="true"] .collapse-icon {
+    transform: rotate(0deg);
+}

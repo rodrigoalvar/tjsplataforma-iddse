@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificación</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #667eea;
+            margin: 0;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{app_name}}</h1>
+        </div>
+        
+        <div class="content">
+            <h2>{{titulo|Notificación}}</h2>
+            
+            {{#if nombre_usuario}}
+            <p>Estimado/a <strong>{{nombre_usuario}}</strong>,</p>
+            {{/if}}
+            
+            <div>
+                {{mensaje|Este es un mensaje de notificación del sistema.}}
+            </div>
+            
+            {{#if url_accion}}
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{{url_accion}}" style="display: inline-block; padding: 12px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px;">
+                    {{texto_accion|Acceder}}
+                </a>
+            </div>
+            {{/if}}
+        </div>
+        
+        <div class="footer">
+            <p>Este es un email automático, por favor no respondas a este mensaje.</p>
+            <!-- Footer inyectado automáticamente desde config/branding.php -->
+            <p>Fecha: {{current_datetime}}</p>
+        </div>
+    </div>
+</body>
+</html>
+

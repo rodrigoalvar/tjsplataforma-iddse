@@ -1,0 +1,986 @@
+/**
+ * PACS NODES MANAGER - Estilos CSS
+ * Sistema TJSMEDICAL - Portal de Estudios Médicos
+ * 
+ * @version 1.0.0
+ */
+
+/* Estilos generales */
+.pacs-nodes-manager {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Tabla de nodos */
+#nodesTable {
+    font-size: 0.9rem;
+}
+
+#nodesTable th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#nodesTable td {
+    vertical-align: middle;
+}
+
+/* Badges de status */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.35em 0.65em;
+}
+
+/* Formulario de nodo */
+#nodeModal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+#dimseConfig,
+#dicomwebConfig {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Tabla de resultados */
+#resultsTable {
+    font-size: 0.9rem;
+}
+
+/* Filas intercaladas con colores suaves */
+#resultsTable.table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: #ffffff;
+}
+
+#resultsTable.table-striped > tbody > tr:nth-of-type(even) > td {
+    background-color: #d1d5db;
+}
+
+/* Reducir padding de las filas para hacerlas más compactas */
+#resultsTable tbody tr td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+}
+
+#resultsTable thead th {
+    padding: 0.75rem 0.75rem;
+    font-weight: 600;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+#resultsTable tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+}
+
+/* Efecto hover para filas blancas (impares) - tono azul suave profesional */
+#resultsTable tbody tr:nth-of-type(odd):hover > td {
+    background-color: #e7f3ff !important;
+}
+
+/* Efecto hover para filas grises (pares) - gris más oscuro pero distinguible */
+#resultsTable tbody tr:nth-of-type(even):hover > td {
+    background-color: #adb5bd !important;
+}
+
+/* Fila seleccionada - color distintivo */
+#resultsTable tbody tr.selected {
+    background-color: #cfe2ff !important;
+    position: relative;
+}
+
+/* Borde izquierdo usando box-shadow para no afectar el layout */
+#resultsTable tbody tr.selected {
+    box-shadow: inset 3px 0 0 #0d6efd;
+}
+
+/* Eliminar todos los bordes de las celdas en fila seleccionada */
+#resultsTable tbody tr.selected > td {
+    background-color: transparent !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+}
+
+/* Hover sobre fila seleccionada */
+#resultsTable tbody tr.selected:hover {
+    background-color: #b6d4fe !important;
+}
+
+#resultsTable tbody tr.selected:hover > td {
+    background-color: transparent !important;
+}
+
+/* Botón más pequeño para recuperar */
+.btn-xs {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    border-radius: 0.25rem;
+}
+
+.btn-xs .fas {
+    font-size: 0.7rem;
+    margin-right: 0.25rem;
+}
+
+/* Headers ordenables */
+#resultsTable thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 2rem;
+    transition: background-color 0.2s;
+}
+
+#resultsTable thead th.sortable:hover {
+    background-color: #f8f9fa;
+}
+
+#resultsTable thead th.sortable .sort-icon {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 0.75rem;
+    transition: color 0.2s;
+}
+
+#resultsTable thead th.sortable:hover .sort-icon {
+    color: #0d6efd;
+}
+
+#resultsTable thead th.sortable .sort-icon.fa-sort-up,
+#resultsTable thead th.sortable .sort-icon.fa-sort-down {
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+/* Tabla de jobs */
+#jobsTable {
+    font-size: 0.9rem;
+}
+
+.progress {
+    min-width: 100px;
+}
+
+/* Dashboard */
+.card.text-center {
+    transition: transform 0.2s;
+}
+
+.card.text-center:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Estilos para filtros de modalidad */
+.modality-filters {
+    margin-bottom: 0.75rem !important;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+}
+
+.modality-filters > div:first-child {
+    margin-bottom: 0.5rem;
+}
+
+.modality-filters .d-flex.flex-wrap {
+    flex-wrap: wrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+    margin: 0 -0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.modality-filters .d-flex.flex-wrap::-webkit-scrollbar {
+    height: 3px;
+}
+
+.modality-filters .d-flex.flex-wrap::-webkit-scrollbar-thumb {
+    background: #ced4da;
+    border-radius: 2px;
+}
+
+.modality-btn {
+    flex-shrink: 0;
+    padding: 0.5rem 0.9rem !important;
+    font-size: 0.85rem !important;
+    white-space: nowrap;
+    margin-right: 0.5rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+    color: #495057;
+    transition: all 0.2s ease;
+}
+
+.modality-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.modality-btn.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
+}
+
+.filter-label {
+    font-size: 0.85rem !important;
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Botón flotante para volver al inicio */
+.scroll-to-top-btn {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 30px !important;
+    width: 50px !important;
+    height: 50px !important;
+    background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 50% !important;
+    box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+    cursor: pointer !important;
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
+    font-size: 20px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.scroll-to-top-btn:hover {
+    background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+}
+
+.scroll-to-top-btn:active {
+    transform: translateY(-1px) !important;
+}
+
+.scroll-to-top-btn.show {
+    display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+    
+    .scroll-to-top-btn {
+        bottom: 20px !important;
+        right: 20px !important;
+        width: 45px !important;
+        height: 45px !important;
+        font-size: 18px !important;
+    }
+    
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Animaciones */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tab-pane {
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* Spinner personalizado */
+.spinner-border {
+    width: 2rem;
+    height: 2rem;
+    border-width: 0.2em;
+}
+
+/* Alertas toast */
+.alert {
+    min-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Estilos para tabs */
+.nav-tabs .nav-link {
+    color: #495057;
+    border: none;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: #dee2e6;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    border-bottom-color: #0d6efd;
+    background-color: transparent;
+}
+
+/* Estilos para formularios */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Estilos para cards */
+.card {
+    border: 1px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Estilos para botones */
+.btn {
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Estilos para badges de tipo de nodo */
+.badge.bg-info,
+.badge.bg-primary,
+.badge.bg-secondary,
+.badge.bg-success {
+    font-size: 0.7rem;
+    padding: 0.4em 0.6em;
+}
+
+/* Estilos para la tabla de estadísticas */
+#nodesStatsContainer {
+    min-height: 200px;
+}
+
+/* Estilos para el header */
+h1.h3 {
+    font-weight: 600;
+    color: #212529;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Estilos para paginación */
+.pagination {
+    margin-bottom: 0;
+}
+
+.pagination .page-link {
+    color: #0d6efd;
+    border-color: #dee2e6;
+    padding: 0.5rem 0.75rem;
+    transition: all 0.2s;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+    color: #0a58ca;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+    font-weight: 600;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    pointer-events: none;
+    background-color: #fff;
+    border-color: #dee2e6;
+    opacity: 0.5;
+}
+
+/* Controles de paginación en el footer */
+.card-footer {
+    padding: 1rem;
+}
+
+.card-footer .form-select-sm {
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.card-footer .text-muted.small {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Header de página sticky */
+.page-header-sticky {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 100;
+    padding-top: 1rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* Filtros de búsqueda sticky */
+.search-filters-sticky {
+    align-self: flex-start;
+    max-height: calc(100vh - 20px);
+    z-index: 10;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+}
+
+/* Hacer sticky solo cuando se hace scroll, pero alineado con resultados */
+@media (min-width: 768px) {
+    .search-filters-sticky {
+        position: sticky;
+        top: 0; /* Alineado con el header de resultados */
+    }
+}
+
+/* Scrollbar personalizado para filtros sticky */
+.search-filters-sticky::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-filters-sticky::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.search-filters-sticky::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.search-filters-sticky::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Asegurar que el card-body tenga scroll si es necesario */
+.search-filters-sticky .card-body {
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+    padding-right: 0.5rem;
+}
+
+/* Mejorar el scrollbar del card-body */
+.search-filters-sticky .card-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.search-filters-sticky .card-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.search-filters-sticky .card-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.search-filters-sticky .card-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive para paginación */
+@media (max-width: 768px) {
+    .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .card-footer .row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .card-footer .col-md-6 {
+        width: 100%;
+    }
+    
+    .card-footer #resultsPaginationContainer {
+        justify-content: center !important;
+    }
+    
+    /* En móviles, header y filtros no son sticky */
+    .page-header-sticky {
+        position: relative;
+        top: 0;
+        box-shadow: none;
+        border-bottom: none;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-bottom: 1rem;
+    }
+    
+    .search-filters-sticky {
+        position: relative;
+        top: 0;
+        max-height: none;
+    }
+    
+    .search-filters-sticky .card-body {
+        max-height: none;
+        overflow-y: visible;
+        padding-right: 1rem;
+    }
+}
+
+/* Ajustes para tablets */
+@media (min-width: 769px) and (max-width: 991px) {
+    .page-header-sticky {
+        padding-top: 0.75rem;
+        padding-bottom: 0.25rem;
+    }
+    
+    .search-filters-sticky {
+        top: 0; /* Alineado con el header de resultados */
+        max-height: calc(100vh - 20px);
+    }
+    
+    .search-filters-sticky .card-body {
+        max-height: calc(100vh - 200px);
+    }
+}
+
+/* Ajustes para pantallas grandes */
+@media (min-width: 1200px) {
+    .search-filters-sticky {
+        top: 0; /* Alineado con el header de resultados */
+        max-height: calc(100vh - 20px);
+    }
+}
+
+/* Estilos para filtros colapsados - ocultar columna completa con transición suave */
+#searchRow {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: auto;
+}
+
+#filtersColumn {
+    transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                flex 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    will-change: max-width, opacity, flex;
+    position: relative;
+}
+
+#filtersColumn .search-filters-sticky {
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#resultsColumn {
+    transition: flex 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: flex, max-width;
+}
+
+#resultsColumn .card {
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#searchRow.filters-collapsed #filtersColumn {
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+    margin-right: 0;
+    opacity: 0;
+    overflow: hidden;
+    flex: 0 0 0;
+    visibility: hidden;
+    position: relative;
+}
+
+#searchRow.filters-collapsed #filtersColumn .search-filters-sticky {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#searchRow.filters-collapsed #resultsColumn {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+#searchRow:not(.filters-collapsed) #filtersColumn {
+    max-width: 33.333333%;
+    min-width: auto;
+    opacity: 1;
+    flex: 0 0 33.333333%;
+    padding-left: 0;
+    padding-right: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    visibility: visible;
+    position: relative;
+}
+
+#searchRow:not(.filters-collapsed) #filtersColumn .search-filters-sticky {
+    opacity: 1;
+    pointer-events: auto;
+    position: sticky;
+}
+
+#searchRow:not(.filters-collapsed) #resultsColumn {
+    flex: 0 0 66.666667%;
+    max-width: 66.666667%;
+}
+
+/* Cross Sync: misma interacción que Buscar (columna de filtros colapsable) */
+#crossSyncRow {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: auto;
+}
+
+#crossSyncFiltersColumn {
+    transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                margin 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                flex 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    will-change: max-width, opacity, flex;
+    position: relative;
+}
+
+#crossSyncFiltersColumn .search-filters-sticky {
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#crossSyncResultsColumn {
+    transition: flex 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: flex, max-width;
+}
+
+#crossSyncRow.filters-collapsed #crossSyncFiltersColumn {
+    max-width: 0;
+    min-width: 0;
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: 0;
+    margin-right: 0;
+    opacity: 0;
+    overflow: hidden;
+    flex: 0 0 0;
+    visibility: hidden;
+    position: relative;
+}
+
+#crossSyncRow.filters-collapsed #crossSyncFiltersColumn .search-filters-sticky {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#crossSyncRow.filters-collapsed #crossSyncResultsColumn {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+#crossSyncRow:not(.filters-collapsed) #crossSyncFiltersColumn {
+    max-width: 33.333333%;
+    min-width: auto;
+    opacity: 1;
+    flex: 0 0 33.333333%;
+    padding-left: 0;
+    padding-right: 1rem;
+    margin-left: 0;
+    margin-right: 0;
+    visibility: visible;
+    position: relative;
+}
+
+#crossSyncRow:not(.filters-collapsed) #crossSyncFiltersColumn .search-filters-sticky {
+    opacity: 1;
+    pointer-events: auto;
+    position: sticky;
+}
+
+#crossSyncRow:not(.filters-collapsed) #crossSyncResultsColumn {
+    flex: 0 0 66.666667%;
+    max-width: 66.666667%;
+}
+
+#crossSyncRow.filters-collapsed #showCrossSyncFilters {
+    display: flex !important;
+    animation: fadeInButton 0.3s ease-in-out 0.2s both;
+}
+
+#crossSyncRow:not(.filters-collapsed) #showCrossSyncFilters {
+    display: none !important;
+}
+
+#toggleCrossSyncFilters {
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#toggleCrossSyncFilters:hover {
+    color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-radius: 4px;
+}
+
+#showCrossSyncFilters {
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#showCrossSyncFilters:hover {
+    color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-radius: 4px;
+}
+
+/* Botón para mostrar filtros cuando están ocultos */
+#showSearchFilters {
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#showSearchFilters:hover {
+    color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-radius: 4px;
+}
+
+#searchRow.filters-collapsed #showSearchFilters {
+    display: flex !important;
+    animation: fadeInButton 0.3s ease-in-out 0.2s both;
+}
+
+#searchRow:not(.filters-collapsed) #showSearchFilters {
+    display: none !important;
+}
+
+@keyframes fadeInButton {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Botón para ocultar filtros */
+#toggleSearchFilters {
+    min-width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#toggleSearchFilters:hover {
+    color: #0d6efd !important;
+    background-color: rgba(13, 110, 253, 0.1);
+    border-radius: 4px;
+}
+
+/* Pestañas de resultados por nodo (búsqueda) */
+#nodeResultTabsNav .nav-link {
+    border: 1px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#nodeResultTabsNav .nav-link.active {
+    background-color: #fff;
+    border-color: #dee2e6 #dee2e6 #fff;
+    color: #0d6efd;
+}
+
+#nodeResultTabsNav [data-node-close-tab] {
+    flex-shrink: 0;
+}
+
+/* Cross Sync: comparación multi-nodo */
+.cross-sync-table-wrap {
+    max-height: min(70vh, 900px);
+    overflow: auto;
+    position: relative;
+    z-index: 0;
+}
+.cross-sync-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bs-body-bg, #fff);
+    box-shadow: inset 0 -1px 0 #dee2e6;
+}
+.cross-sync-table th.cross-sync-node-col,
+.cross-sync-table td.cross-sync-node-col {
+    min-width: 6.5rem;
+    vertical-align: middle;
+    text-align: center;
+    font-size: 0.85rem;
+}
+.cross-sync-table code.cross-sync-uid {
+    font-size: 0.75rem;
+}
+
+/* Cross Sync: chips de modalidad (lista filtrada) + fila con job activo */
+.cross-sync-modality-filters {
+    margin-bottom: 0 !important;
+}
+.cross-sync-modality-filters .modality-btn {
+    margin-bottom: 0.25rem;
+}
+.cross-sync-row-job-busy {
+    --bs-table-bg: rgba(13, 110, 253, 0.06);
+}
+.cross-sync-row-local-modify {
+    --bs-table-bg: rgba(13, 202, 240, 0.06);
+}
+.cross-sync-modify-badge {
+    font-size: 0.7rem;
+    vertical-align: middle;
+}
+.cross-sync-modify-local-hint {
+    line-height: 1.2;
+    margin-top: 0.1rem;
+}
+
+/* Cross Sync: acciones compactas + menú contextual */
+.cross-sync-actions .btn-group .btn {
+    line-height: 1.2;
+}
+.cross-sync-col-actions {
+    width: 1%;
+    white-space: nowrap;
+}
+.context-menu.cross-sync-context-menu {
+    position: fixed;
+    background: var(--bs-body-bg, #fff);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 200px;
+    font-size: 0.875rem;
+    overflow: hidden;
+}
+.context-menu.cross-sync-context-menu .context-menu-item {
+    padding: 8px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    color: var(--bs-body-color, #333);
+    user-select: none;
+}
+.context-menu.cross-sync-context-menu .context-menu-item:hover {
+    background-color: var(--bs-secondary-bg, #f0f0f0);
+}
+.context-menu.cross-sync-context-menu .context-menu-item i {
+    width: 1.25rem;
+    text-align: center;
+    color: var(--bs-secondary, #666);
+}
+
+/* Banner medición Cross Sync */
+.cross-sync-watch-banner {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Ordenamiento Cross Sync (mismo espíritu que #resultsTable) */
+#crossSyncResultsTable thead th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-right: 1.5rem;
+    white-space: nowrap;
+}
+#crossSyncResultsTable thead th.sortable:hover {
+    background-color: #f8f9fa;
+}
+#crossSyncResultsTable thead th.sortable .sort-icon {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    font-size: 0.72rem;
+}
+#crossSyncResultsTable thead th.sortable .sort-icon.fa-sort-up,
+#crossSyncResultsTable thead th.sortable .sort-icon.fa-sort-down {
+    color: #0d6efd;
+}

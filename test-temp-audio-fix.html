@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Corrección TempAudioManager</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #results { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Test - Corrección de Ruta TempAudioManager</h1>
+    
+    <div class="test-section info">
+        <h3>Información del Test</h3>
+        <p>Este test verifica que el TempAudioManager puede cargar archivos de audio temporales sin el error 404.</p>
+        <p><strong>StudyId:</strong> a7c86587-0521ee82-d84cf4e2-b7dd30c9-8071af26</p>
+        <p><strong>PatientId:</strong> 4169.809449218</p>
+    </div>
+
+    <div class="test-section">
+        <h3>Controles de Test</h3>
+        <button onclick="setupURLESTUDIO()">1. Configurar URLESTUDIO</button>
+        <button onclick="testGetAudioFiles()">2. Probar Carga de Archivos</button>
+        <button onclick="testDiscardReport()">3. Probar Descarte</button>
+        <button onclick="clearResults()">Limpiar Resultados</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script src="assets/js/temp-audio-manager.js"></script>
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            results.appendChild(div);
+            console.log(message);
+        }
+
+        function setupURLESTUDIO() {
+            window.URLESTUDIO = {
+                studyId: 'a7c86587-0521ee82-d84cf4e2-b7dd30c9-8071af26',
+                patientId: '4169.809449218',
+                patientName: 'HERNANDEZ^KEVIN',
+                modality: 'MR',
+                studyDescription: '',
+                studyInstanceUID: '1.3.76.2.1.1.4.1.2.4169.809449209'
+            };
+            log('URLESTUDIO configurado correctamente', 'success');
+        }
+
+        async function testGetAudioFiles() {
+            try {
+                log('Iniciando prueba de carga de archivos de audio...', 'info');
+                
+                if (!window.URLESTUDIO) {
+                    log('Error: URLESTUDIO no está configurado. Ejecuta el paso 1 primero.', 'error');
+                    return;
+                }
+
+                const audioFiles = await window.TempAudioManager.getAudioFiles();
+                
+                if (audioFiles && audioFiles.length > 0) {
+                    log(`✅ Éxito: Se encontraron ${audioFiles.length} archivo(s) de audio temporal(es)`, 'success');
+                    log(`Archivos: ${JSON.stringify(audioFiles, null, 2)}`, 'info');
+                } else {
+                    log('ℹ️ No se encontraron archivos de audio temporales (esto es normal si no hay archivos)', 'info');
+                }
+            } catch (error) {
+                log(`❌ Error al cargar archivos de audio: ${error.message}`, 'error');
+                console.error('Error completo:', error);
+            }
+        }
+
+        async function testDiscardReport() {
+            try {
+                log('Iniciando prueba de descarte de informe...', 'info');
+                
+                if (!window.URLESTUDIO) {
+                    log('Error: URLESTUDIO no está configurado. Ejecuta el paso 1 primero.', 'error');
+                    return;
+                }
+
+                await window.TempAudioManager.discardReport();
+                log('✅ Descarte de informe ejecutado correctamente', 'success');
+            } catch (error) {
+                log(`❌ Error al descartar informe: ${error.message}`, 'error');
+                console.error('Error completo:', error);
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Configurar automáticamente al cargar
+        window.addEventListener('load', () => {
+            log('Página cargada. TempAudioManager inicializado.', 'info');
+            setupURLESTUDIO();
+        });
+    </script>
+</body>
+</html>

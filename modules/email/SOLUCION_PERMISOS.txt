@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════════════════
+  SOLUCIÓN: Permisos para Guardar Plantillas
+═══════════════════════════════════════════════════════════════
+
+PROBLEMA:
+El directorio de plantillas no tiene permisos de escritura.
+
+SOLUCIÓN:
+Ejecuta estos comandos en tu terminal (CLI):
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 1: Cambiar ownership a tu usuario (RECOMENDADO)
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chown -R $(whoami):$(id -gn) modules/email/templates
+sudo chmod -R 775 modules/email/templates
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 2: Cambiar ownership a www-data (servidor web)
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chown -R www-data:www-data modules/email/templates
+sudo chmod -R 775 modules/email/templates
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 3: Cambiar ownership a tu usuario Y agregarte al grupo www-data
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chown -R $(whoami):www-data modules/email/templates
+sudo chmod -R 775 modules/email/templates
+sudo usermod -a -G www-data $(whoami)
+
+# Después de agregarte al grupo, cierra sesión y vuelve a iniciar sesión
+# para que los cambios surtan efecto.
+
+───────────────────────────────────────────────────────────────
+VERIFICACIÓN:
+───────────────────────────────────────────────────────────────
+
+Después de ejecutar los comandos, verifica con:
+
+ls -la modules/email/templates/
+
+Los archivos deberían mostrar tu usuario o www-data como owner,
+NO "root".
+
+═══════════════════════════════════════════════════════════════
+
+
+
+
+

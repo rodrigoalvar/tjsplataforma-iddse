@@ -1,0 +1,9 @@
+Estimado/a {{paciente_nombre}},
+
+Sus estudios se encuentran disponibles para su acceso y visualización en el link:
+
+https://plataforma.iddse.com.ar/paciente.html
+
+Haga click o toque aquí: {{url_portal_con_acceso}}
+
+Su código de acceso es: {{id_interno}}

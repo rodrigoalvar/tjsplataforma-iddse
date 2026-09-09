@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historial de estudios — TJSMEDICAL</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <link rel="stylesheet" href="modules/study-history-manager/assets/css/study-history-manager.css?v=202606251200">
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script>
+        (function () {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body class="shm-page">
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            const ok = await requireAuth();
+            if (!ok) return;
+            const has = await requirePermissionSimple('study_history_manager', 'Historial de estudios', {
+                title: 'Acceso denegado',
+                message: 'No tenés permiso para <strong>Historial de estudios</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            if (!has) return;
+        });
+
+        async function updateWelcomeMessage() {
+            try {
+                await new Promise(function (r) { setTimeout(r, 100); });
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    if (user && user.nombre) {
+                        const fullName = user.apellido ? (user.nombre + ' ' + user.apellido) : user.nombre;
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) sidebarUserName.textContent = fullName;
+                        const sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) sidebarUserRole.textContent = user.especialidad || 'Usuario';
+                    }
+                } else {
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (e) {
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+    </script>
+
+    <div id="sidebarLayout" class="layout-container">
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle"><i class="fas fa-bars fa-lg"></i></button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown"><i class="fas fa-user-circle fa-lg"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="configuracion.html?v=202606251200">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar menú"><i class="fas fa-times fa-lg"></i></button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar sidebar"><i class="fas fa-angle-double-left"></i></button>
+                </div>
+            </div>
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Médico</div>
+                </div>
+            </div>
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link" href="dashboard-unified.html?v=202606251200"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="paciente.html?v=202606251200"><i class="fas fa-file-medical"></i><span>Portal Paciente</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink"><i class="fas fa-file-alt"></i><span>Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/informes-manager.html?v=202606251200"><i class="fas fa-search"></i><span>Gestión Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="estudios-manager.html?v=202606251200"><i class="fas fa-share-alt"></i><span>Gestión Estudios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacientes-manager.html?v=202606251200"><i class="fas fa-user-injured"></i><span>Gestión Pacientes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace"><i class="fas fa-th-large"></i><span>WorkSpace</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/audio-recorder.html?v=202606251200"><i class="fas fa-microphone"></i><span>Grabación</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/viewer.html?v=202606251200"><i class="fas fa-eye"></i><span>Visor DICOM</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="user-management.html?v=202606251200"><i class="fas fa-users"></i><span>Gestión Usuarios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacs-manager.html?v=202606251200"><i class="fas fa-database"></i><span>PACS Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacs-nodes-manager.html?v=202606251200"><i class="fas fa-network-wired"></i><span>PACS Nodes Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link active" href="study-history-manager.html?v=202606251200"><i class="fas fa-history"></i><span>Historial estudios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330"><i class="fas fa-shield-alt"></i><span>QA Control de Calidad</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="cloud-storage.html?v=202606251200"><i class="fas fa-cloud"></i><span>Cloud Storage</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="audit-manager.html?v=202606251200"><i class="fas fa-clipboard-list"></i><span>Auditoría</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="worklist.html?v=202606251200"><i class="fas fa-list-alt"></i><span>Worklist</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="ai-informes.html?v=202606251200"><i class="fas fa-robot"></i><span>AI Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes"><i class="fas fa-envelope"></i><span>Gestión Mensajes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="configuracion.html?v=202606251200"><i class="fas fa-cog"></i><span>Configuración</span></a></li>
+                </ul>
+            </div>
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a>
+            </div>
+        </div>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar sidebar"><i class="fas fa-chevron-right"></i></button>
+            <div class="container-fluid px-3 py-4">
+                <div class="page-header-sticky">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <h1 class="h3 mb-0"><i class="fas fa-history text-primary"></i> Historial de estudios</h1>
+                            <p class="text-muted mb-0 small">Búsqueda por Patient ID en nodos PACS (DIMSE vía Orthanc). Enlaces según visor del usuario y PACS local o remoto.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="shmAlert" class="alert d-none" role="alert"></div>
+
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <label class="form-label" for="shmPatientId">Patient ID (idpaciente / DICOM PatientID)</label>
+                        <div class="input-group flex-wrap gap-2">
+                            <input type="text" class="form-control" id="shmPatientId" placeholder="Ej. 12345678" autocomplete="off" style="max-width: 320px;">
+                            <button type="button" class="btn btn-primary" id="shmSearchBtn"><i class="fas fa-search me-1"></i> Buscar en nodos</button>
+                        </div>
+                        <p class="text-muted small mt-2 mb-0" id="shmMeta"></p>
+                    </div>
+                </div>
+
+                <div id="shmErrors" class="alert alert-warning d-none small"></div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Resultados</span>
+                        <span class="badge bg-secondary">Agrupado por StudyInstanceUID · selector si hay varios nodos</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0" id="shmResultsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="sortable user-select-none" data-shm-sort="study_uid" title="Ordenar">Study UID <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="patient_name" title="Ordenar">Paciente <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="study_date" title="Ordenar">Fecha <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="modalities" title="Ordenar">Mod. <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="study_description" title="Ordenar">Descripción <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none text-nowrap" data-shm-sort="series_instances" title="Series / instancias">Ser. / Inst. <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="source_node" title="Ordenar">Nodo <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th class="sortable user-select-none" data-shm-sort="origin" title="Ordenar">Origen <i class="fas fa-sort shm-sort-icon text-muted" aria-hidden="true"></i></th>
+                                        <th>Nota</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shmResultsBody">
+                                    <tr><td colspan="10" class="text-muted text-center py-4">Ingrese Patient ID y busque</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3 small mb-0">
+                    <strong>Nodos remotos (UDV / Stone):</strong> en <a href="configuracion.html?v=202606251200">Configuración</a> → pestaña <strong>Visores nodos PACS</strong> cargá <code>wado_uri_base</code> y/o <code>dicomweb_proxy_base</code> por nodo (requiere migración SQL la primera vez: <code>modules/study-history-manager/database/migration_add_node_viewer_bases.sql</code>). Para Stone con proxy DICOMweb (p. ej. knopkem), puede definirse también el <strong>Gateway DICOMweb</strong> global en Configuración → PACS si todos los nodos comparten la misma URL <code>…/rs</code>.
+                    <br><strong>Permisos:</strong> <a href="modules/study-history-manager/install-permissions.php">install-permissions.php</a> y asignación en Gestión de usuarios.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script src="modules/study-history-manager/assets/js/study-history-manager.js?v=202606251200"></script>
+    <script>
+        updateWelcomeMessage();
+    </script>
+</body>
+</html>

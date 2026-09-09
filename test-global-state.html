@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Global State Manager</title>
+</head>
+<body>
+    <h1>Test Global State Manager</h1>
+    <div id="output"></div>
+    <button onclick="testGlobalState()">Test Global State</button>
+    <button onclick="addTestReport()">Add Test Report</button>
+    <button onclick="clearState()">Clear State</button>
+
+    <script src="assets/js/global-state-manager.js"></script>
+    <script>
+        function testGlobalState() {
+            const output = document.getElementById('output');
+            let html = '<h3>Global State Test Results:</h3>';
+            
+            // Test if global state manager exists
+            if (window.globalStateManager) {
+                html += '<p>✅ Global State Manager loaded</p>';
+                
+                // Get current state
+                const state = window.globalStateManager.getState();
+                html += '<p><strong>Current State:</strong></p>';
+                html += '<pre>' + JSON.stringify(state, null, 2) + '</pre>';
+                
+                // Test active reports
+                const activeReports = window.globalStateManager.getActiveReports();
+                html += '<p><strong>Active Reports:</strong></p>';
+                html += '<pre>' + JSON.stringify(activeReports, null, 2) + '</pre>';
+                
+            } else {
+                html += '<p>❌ Global State Manager NOT loaded</p>';
+            }
+            
+            output.innerHTML = html;
+        }
+        
+        function addTestReport() {
+            if (window.globalStateManager) {
+                window.globalStateManager.setActiveReport('test-study-123', {
+                    patientId: 'P001',
+                    patientName: 'Test Patient',
+                    modality: 'CT',
+                    studyDescription: 'Test Study',
+                    studyInstanceUID: 'test-uid-123',
+                    startedAt: Date.now()
+                });
+                alert('Test report added!');
+            } else {
+                alert('Global State Manager not available');
+            }
+        }
+        
+        function clearState() {
+            if (window.globalStateManager) {
+                sessionStorage.clear();
+                alert('State cleared!');
+            }
+        }
+        
+        // Auto-test on load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(testGlobalState, 1000);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Lista Informes</title>
+</head>
+<body>
+    <h1>Prueba Lista Informes</h1>
+    <button onclick="testListAPI()">Probar Lista de Informes</button>
+    <div id="result"></div>
+
+    <script>
+        async function testListAPI() {
+            try {
+                console.log('Probando list-informes-root.php...');
+                const response = await fetch('list-informes-root.php?page=1');
+                console.log('Respuesta recibida:', response);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Datos recibidos:', data);
+                
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

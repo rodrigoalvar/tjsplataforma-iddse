@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Debug Asignación de Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="fas fa-bug"></i> Debug Asignación de Estudios
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Diagnóstico del Problema:</h5>
+                        <div class="alert alert-warning">
+                            <strong>Problema:</strong> Modal indica "no hay estudio seleccionado" aunque hay estudios marcados con checkbox.
+                        </div>
+                        
+                        <h5>Verificaciones:</h5>
+                        <div class="list-group">
+                            <div class="list-group-item">
+                                <button class="btn btn-sm btn-primary me-2" onclick="checkStudyData()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                Verificar datos de estudios
+                            </div>
+                            <div class="list-group-item">
+                                <button class="btn btn-sm btn-info me-2" onclick="checkCheckboxes()">
+                                    <i class="fas fa-check-square"></i>
+                                </button>
+                                Verificar checkboxes en DOM
+                            </div>
+                            <div class="list-group-item">
+                                <button class="btn btn-sm btn-success me-2" onclick="testSelection()">
+                                    <i class="fas fa-mouse-pointer"></i>
+                                </button>
+                                Probar selección manual
+                            </div>
+                            <div class="list-group-item">
+                                <button class="btn btn-sm btn-warning me-2" onclick="testModal()">
+                                    <i class="fas fa-window-maximize"></i>
+                                </button>
+                                Probar modal de asignación
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Resultados del Diagnóstico:</h5>
+                        <div id="diagnosticResults" class="bg-light p-3 rounded" style="min-height: 200px;">
+                            <small class="text-muted">Los resultados aparecerán aquí...</small>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Acciones:</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-primary" onclick="openEstudiosManager()">
+                                    <i class="fas fa-external-link-alt me-2"></i>Abrir Estudios Manager
+                                </button>
+                                <button class="btn btn-secondary" onclick="clearResults()">
+                                    <i class="fas fa-trash me-2"></i>Limpiar Resultados
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Tabla de Estudios de Prueba:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" id="selectAllDebug" onchange="handleSelectAllDebug()">
+                                    </th>
+                                    <th>ID</th>
+                                    <th>Paciente</th>
+                                    <th>Modalidad</th>
+                                    <th>Fecha</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debugStudiesTable">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div id="debugBulkActions" class="d-none">
+                            <button class="btn btn-primary btn-sm me-2" id="debugAssignBtn" disabled>
+                                <i class="fas fa-share-alt me-1"></i>
+                                Asignar Seleccionados (<span id="debugSelectedCount">0</span>)
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="clearDebugSelection()">
+                                <i class="fas fa-times me-1"></i>
+                                Limpiar Selección
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Datos de prueba con IDs válidos
+        const debugStudies = [
+            {
+                id: 'orthanc-study-001',
+                patient_name: 'Juan Pérez',
+                patient_id: 'P001',
+                modality: 'CT',
+                date: '2024-01-15',
+                study_description: 'Tomografía de tórax'
+            },
+            {
+                id: 'orthanc-study-002',
+                patient_name: 'María García',
+                patient_id: 'P002',
+                modality: 'MR',
+                date: '2024-01-16',
+                study_description: 'Resonancia magnética'
+            },
+            {
+                id: 'orthanc-study-003',
+                patient_name: 'Carlos López',
+                patient_id: 'P003',
+                modality: 'US',
+                date: '2024-01-17',
+                study_description: 'Ecografía abdominal'
+            }
+        ];
+        
+        function renderDebugStudies() {
+            const tbody = document.getElementById('debugStudiesTable');
+            tbody.innerHTML = debugStudies.map(study => `
+                <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input study-checkbox-debug" 
+                               data-study-id="${study.id}" 
+                               onchange="handleDebugSelection()">
+                    </td>
+                    <td><code>${study.id}</code></td>
+                    <td>${study.patient_name}</td>
+                    <td><span class="badge bg-info">${study.modality}</span></td>
+                    <td>${study.date}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="testSingleStudy('${study.id}')">
+                            <i class="fas fa-share-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function handleDebugSelection() {
+            const checkboxes = document.querySelectorAll('.study-checkbox-debug');
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-debug:checked');
+            const bulkActions = document.getElementById('debugBulkActions');
+            const selectedCount = document.getElementById('debugSelectedCount');
+            const assignBtn = document.getElementById('debugAssignBtn');
+            
+            if (selectedCount) {
+                selectedCount.textContent = checkedBoxes.length;
+            }
+            
+            if (checkedBoxes.length > 0) {
+                bulkActions.classList.remove('d-none');
+            } else {
+                bulkActions.classList.add('d-none');
+            }
+            
+            if (assignBtn) {
+                assignBtn.disabled = checkedBoxes.length === 0;
+            }
+            
+            logResult(`Selección actualizada: ${checkedBoxes.length} estudios seleccionados`);
+        }
+        
+        function handleSelectAllDebug() {
+            const selectAllCheckbox = document.getElementById('selectAllDebug');
+            const checkboxes = document.querySelectorAll('.study-checkbox-debug');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            
+            handleDebugSelection();
+        }
+        
+        function clearDebugSelection() {
+            const checkboxes = document.querySelectorAll('.study-checkbox-debug');
+            const selectAllCheckbox = document.getElementById('selectAllDebug');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = false;
+            }
+            
+            handleDebugSelection();
+        }
+        
+        function checkStudyData() {
+            logResult('=== VERIFICACIÓN DE DATOS DE ESTUDIOS ===');
+            logResult(`Total estudios: ${debugStudies.length}`);
+            
+            debugStudies.forEach((study, index) => {
+                logResult(`Estudio ${index + 1}:`);
+                logResult(`  - ID: ${study.id}`);
+                logResult(`  - Paciente: ${study.patient_name}`);
+                logResult(`  - Modalidad: ${study.modality}`);
+                logResult(`  - ID válido: ${study.id ? 'Sí' : 'No'}`);
+            });
+        }
+        
+        function checkCheckboxes() {
+            logResult('=== VERIFICACIÓN DE CHECKBOXES ===');
+            
+            const checkboxes = document.querySelectorAll('.study-checkbox-debug');
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-debug:checked');
+            
+            logResult(`Total checkboxes: ${checkboxes.length}`);
+            logResult(`Checkboxes marcados: ${checkedBoxes.length}`);
+            
+            checkboxes.forEach((checkbox, index) => {
+                const studyId = checkbox.getAttribute('data-study-id');
+                logResult(`Checkbox ${index + 1}:`);
+                logResult(`  - Marcado: ${checkbox.checked ? 'Sí' : 'No'}`);
+                logResult(`  - data-study-id: ${studyId}`);
+                logResult(`  - ID válido: ${studyId ? 'Sí' : 'No'}`);
+            });
+        }
+        
+        function testSelection() {
+            logResult('=== PRUEBA DE SELECCIÓN ===');
+            
+            // Simular la función getSelectedStudyIds del sistema real
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-debug:checked');
+            logResult(`Checkboxes encontrados: ${checkedBoxes.length}`);
+            
+            const selectedIds = Array.from(checkedBoxes).map(checkbox => {
+                const studyId = checkbox.getAttribute('data-study-id');
+                logResult(`Checkbox ID: ${studyId}`);
+                return studyId;
+            }).filter(id => id !== null && id !== undefined);
+            
+            logResult(`IDs seleccionados: ${selectedIds.length}`);
+            logResult(`IDs: ${selectedIds.join(', ')}`);
+            
+            if (selectedIds.length === 0) {
+                logResult('❌ PROBLEMA: No hay estudios seleccionados');
+            } else {
+                logResult('✅ CORRECTO: Estudios seleccionados correctamente');
+            }
+        }
+        
+        function testModal() {
+            logResult('=== PRUEBA DE MODAL ===');
+            
+            const checkedBoxes = document.querySelectorAll('.study-checkbox-debug:checked');
+            if (checkedBoxes.length === 0) {
+                logResult('❌ ERROR: No hay estudios seleccionados para el modal');
+                alert('No hay estudios seleccionados');
+                return;
+            }
+            
+            const selectedIds = Array.from(checkedBoxes).map(checkbox => 
+                checkbox.getAttribute('data-study-id')
+            ).filter(id => id !== null && id !== undefined);
+            
+            logResult(`✅ Modal se abriría con ${selectedIds.length} estudios`);
+            logResult(`Estudios: ${selectedIds.join(', ')}`);
+            
+            // Simular apertura del modal
+            alert(`Modal se abriría con ${selectedIds.length} estudios seleccionados:\n${selectedIds.join('\n')}`);
+        }
+        
+        function testSingleStudy(studyId) {
+            logResult(`=== PRUEBA DE ESTUDIO INDIVIDUAL: ${studyId} ===`);
+            
+            const study = debugStudies.find(s => s.id === studyId);
+            if (study) {
+                logResult(`✅ Estudio encontrado: ${study.patient_name}`);
+                logResult(`✅ ID válido: ${study.id}`);
+                alert(`Asignando estudio individual: ${study.patient_name} (${study.id})`);
+            } else {
+                logResult(`❌ Estudio no encontrado: ${studyId}`);
+            }
+        }
+        
+        function openEstudiosManager() {
+            window.open('estudios-manager.html', '_blank');
+        }
+        
+        function clearResults() {
+            document.getElementById('diagnosticResults').innerHTML = 
+                '<small class="text-muted">Los resultados aparecerán aquí...</small>';
+        }
+        
+        function logResult(message) {
+            const results = document.getElementById('diagnosticResults');
+            const timestamp = new Date().toLocaleTimeString();
+            results.innerHTML += `<div><small class="text-muted">[${timestamp}]</small> ${message}</div>`;
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        // Event listener para el botón de asignación
+        document.addEventListener('DOMContentLoaded', function() {
+            renderDebugStudies();
+            
+            const assignBtn = document.getElementById('debugAssignBtn');
+            if (assignBtn) {
+                assignBtn.addEventListener('click', testModal);
+            }
+            
+            logResult('Sistema de debug inicializado');
+            logResult('Haz clic en los botones de verificación para diagnosticar el problema');
+        });
+    </script>
+</body>
+</html>

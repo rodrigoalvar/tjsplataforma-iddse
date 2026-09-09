@@ -1,0 +1,1240 @@
+/**
+ * Gestor de Pacientes
+ * Maneja el CRUD completo de pacientes del sistema
+ */
+class PacientesManager {
+    constructor() {
+        this.apiBaseUrl = 'api/pacientes/';
+        this.currentPage = 1;
+        this.limit = 20;
+        this.totalPages = 1;
+        this.totalPacientes = 0;
+        this.currentPaciente = null;
+        this.searchTimeout = null;
+    }
+    
+    /**
+     * Inicializa el gestor de pacientes
+     */
+    async init() {
+        try {
+            this.setupEventListeners();
+            await this.loadConfigBusqueda(); // Cargar configuración de búsqueda
+            await this.loadPacientes();
+        } catch (error) {
+            console.error('Error inicializando gestor de pacientes:', error);
+            this.showError('Error inicializando gestor de pacientes');
+        }
+    }
+    
+    /**
+     * Configura los event listeners
+     */
+    setupEventListeners() {
+        // Botón nuevo paciente
+        const btnNuevoPaciente = document.getElementById('btnNuevoPaciente');
+        if (btnNuevoPaciente) {
+            btnNuevoPaciente.addEventListener('click', () => this.openModal());
+        }
+        
+        // Botón guardar paciente
+        const btnGuardarPaciente = document.getElementById('btnGuardarPaciente');
+        if (btnGuardarPaciente) {
+            btnGuardarPaciente.addEventListener('click', () => this.savePaciente());
+        }
+        
+        // Botón buscar por ID PACS
+        const btnBuscarIdPacs = document.getElementById('btnBuscarIdPacs');
+        if (btnBuscarIdPacs) {
+            btnBuscarIdPacs.addEventListener('click', () => this.buscarPorIdPacs());
+        }
+        
+        // Auto-buscar cuando se ingresa ID PACS y se presiona Enter o se pierde el foco
+        const idpacienteInput = document.getElementById('idpaciente');
+        if (idpacienteInput) {
+            idpacienteInput.addEventListener('blur', () => {
+                const idpaciente = idpacienteInput.value.trim();
+                if (idpaciente && !document.getElementById('pacienteId').value) {
+                    // Solo buscar si es creación (no edición)
+                    this.buscarPorIdPacs();
+                }
+            });
+            
+            idpacienteInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.buscarPorIdPacs();
+                }
+            });
+        }
+        
+        // Búsqueda con debounce
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.currentPage = 1;
+                    this.loadPacientes();
+                }, 500);
+            });
+        }
+        
+        // Filtro de estado
+        const filterActivo = document.getElementById('filterActivo');
+        if (filterActivo) {
+            filterActivo.addEventListener('change', () => {
+                this.currentPage = 1;
+                this.loadPacientes();
+            });
+        }
+        
+        // Botón limpiar
+        const btnLimpiar = document.getElementById('btnLimpiar');
+        if (btnLimpiar) {
+            btnLimpiar.addEventListener('click', () => this.clearFilters());
+        }
+        
+        // Botón guardar configuración de búsqueda
+        const btnGuardarConfigBusqueda = document.getElementById('btnGuardarConfigBusqueda');
+        if (btnGuardarConfigBusqueda) {
+            btnGuardarConfigBusqueda.addEventListener('click', () => this.saveConfigBusqueda());
+        }
+        
+        // Modal events
+        const pacienteModal = document.getElementById('pacienteModal');
+        if (pacienteModal) {
+            pacienteModal.addEventListener('hidden.bs.modal', () => {
+                this.resetForm();
+            });
+        }
+    }
+    
+    /**
+     * Carga la configuración de búsqueda desde la API
+     */
+    async loadConfigBusqueda() {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}config-search-type.php`);
+            const result = await response.json();
+            
+            if (result.success && result.search_type) {
+                const searchType = result.search_type;
+                // Seleccionar el radio button correspondiente
+                if (searchType === 'id_interno') {
+                    document.getElementById('globalSearchIdInterno').checked = true;
+                } else {
+                    document.getElementById('globalSearchIdPaciente').checked = true;
+                }
+            }
+        } catch (error) {
+            console.warn('No se pudo cargar configuración de búsqueda:', error);
+            // Usar valor por defecto (idpaciente)
+            document.getElementById('globalSearchIdPaciente').checked = true;
+        }
+    }
+    
+    /**
+     * Guarda la configuración de búsqueda en la BD
+     */
+    async saveConfigBusqueda() {
+        try {
+            const selectedType = document.querySelector('input[name="globalSearchType"]:checked');
+            if (!selectedType) {
+                this.showError('Por favor selecciona un tipo de búsqueda');
+                return;
+            }
+            
+            const searchType = selectedType.value;
+            const messageDiv = document.getElementById('configBusquedaMessage');
+            
+            // Mostrar loading
+            if (messageDiv) {
+                messageDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Guardando configuración...</div>';
+            }
+            
+            const response = await fetch(`${this.apiBaseUrl}config-search-type.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ search_type: searchType })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                if (messageDiv) {
+                    messageDiv.innerHTML = `<div class="alert alert-success"><i class="fas fa-check-circle me-2"></i>${result.message}</div>`;
+                }
+                this.showSuccess('Configuración guardada correctamente');
+            } else {
+                throw new Error(result.message || 'Error al guardar configuración');
+            }
+        } catch (error) {
+            console.error('Error guardando configuración de búsqueda:', error);
+            this.showError('Error al guardar configuración: ' + error.message);
+            const messageDiv = document.getElementById('configBusquedaMessage');
+            if (messageDiv) {
+                messageDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}</div>`;
+            }
+        }
+    }
+    
+    /**
+     * Obtiene el token de autenticación
+     */
+    async getAuthToken() {
+        try {
+            // Intentar obtener el token desde la cookie de sesión
+            const response = await fetch('api/auth/validate-session-simple.php', {
+                credentials: 'include'
+            });
+            const result = await response.json();
+            
+            if (result.success && result.data) {
+                // El token generalmente está en la cookie, pero podemos obtenerlo del response
+                return result.data.token_sesion || null;
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error obteniendo token:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Realiza una petición fetch con autenticación
+     */
+    async fetchWithAuth(url, options = {}) {
+        const token = await this.getAuthToken();
+        
+        const headers = {
+            'Content-Type': 'application/json',
+            ...options.headers
+        };
+        
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        return fetch(url, {
+            ...options,
+            headers,
+            credentials: 'include'
+        });
+    }
+    
+    /**
+     * Carga la lista de pacientes
+     */
+    async loadPacientes() {
+        try {
+            this.showLoading(true);
+            
+            const search = document.getElementById('searchInput')?.value || '';
+            const activo = document.getElementById('filterActivo')?.value || '';
+            
+            const params = new URLSearchParams({
+                page: this.currentPage,
+                limit: this.limit
+            });
+            
+            if (search) {
+                params.append('search', search);
+            }
+            
+            if (activo !== '') {
+                params.append('activo', activo);
+            }
+            
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}list.php?${params}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.totalPacientes = result.meta?.total || 0;
+                this.totalPages = result.meta?.total_pages || 1;
+                this.renderPacientes(result.data || []);
+                this.updatePagination();
+                this.updateTotalPacientes();
+            } else {
+                // Si es error de permisos, no mostrar alert, solo loguear y renderizar error
+                const errorMessage = result.error || 'Error al cargar pacientes';
+                if (errorMessage.includes('permisos') || errorMessage.includes('permiso')) {
+                    console.warn('Error de permisos al cargar pacientes:', errorMessage);
+                    this.renderError();
+                    // No mostrar alert, el modal de permisos ya debería haberse mostrado
+                    return;
+                }
+                throw new Error(errorMessage);
+            }
+        } catch (error) {
+            console.error('Error cargando pacientes:', error);
+            // Si es error de permisos, no mostrar alert
+            if (error.message && (error.message.includes('permisos') || error.message.includes('permiso'))) {
+                console.warn('Error de permisos detectado:', error.message);
+                this.renderError();
+                return;
+            }
+            this.showError('Error al cargar pacientes: ' + error.message);
+            this.renderError();
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Renderiza la tabla de pacientes
+     */
+    renderPacientes(pacientes) {
+        const tbody = document.getElementById('pacientesTableBody');
+        if (!tbody) return;
+        
+        if (pacientes.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No se encontraron pacientes</p>
+                                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = pacientes.map(paciente => {
+            const estadoBadge = paciente.activo 
+                ? '<span class="badge bg-success">Activo</span>' 
+                : '<span class="badge bg-danger">Inactivo</span>';
+            
+            return `
+                <tr>
+                    <td class="d-none d-sm-table-cell">${paciente.paciente_id || paciente.id_interno || '-'}</td>
+                    <td>
+                        <strong>${paciente.nombre || '-'}</strong>
+                        ${paciente.idpaciente ? `<br><small class="text-muted d-lg-none">ID PACS: ${paciente.idpaciente}</small>` : ''}
+                    </td>
+                    <td class="d-none d-lg-table-cell">${paciente.idpaciente || '-'}</td>
+                    <td class="d-none d-md-table-cell">${paciente.telefono || '-'}</td>
+                    <td class="d-none d-xl-table-cell">${paciente.email || '-'}</td>
+                    <td class="d-none d-xl-table-cell">${paciente.direccion || paciente.domicilio || '-'}</td>
+                    <td class="d-none d-sm-table-cell">${estadoBadge}</td>
+                    <td class="text-end table-actions">
+                        <div class="btn-group" role="group">
+                            ${paciente.telefono ? `
+                                <button class="btn btn-sm btn-outline-success" onclick="pacientesManager.sendWhatsApp(${paciente.id}, '${(paciente.telefono || '').replace(/'/g, "\\'")}', '${(paciente.nombre || '').replace(/'/g, "\\'")}', '${(paciente.paciente_id || paciente.id_interno || '').replace(/'/g, "\\'")}')" title="Enviar WhatsApp">
+                                    <i class="fab fa-whatsapp"></i>
+                                </button>
+                            ` : ''}
+                            <button class="btn btn-sm btn-outline-primary" onclick="pacientesManager.editPaciente(${paciente.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-info" onclick="pacientesManager.viewPaciente(${paciente.id})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="pacientesManager.confirmDelete(${paciente.id})" title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    /**
+     * Actualiza la paginación
+     */
+    updatePagination() {
+        const pagination = document.getElementById('pagination');
+        if (!pagination) return;
+        
+        if (this.totalPages <= 1) {
+            pagination.innerHTML = '';
+            return;
+        }
+        
+        let html = '';
+        
+        // Botón anterior
+        html += `
+            <li class="page-item ${this.currentPage === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="pacientesManager.changePage(${this.currentPage - 1}); return false;">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        `;
+        
+        // Páginas
+        const startPage = Math.max(1, this.currentPage - 2);
+        const endPage = Math.min(this.totalPages, this.currentPage + 2);
+        
+        if (startPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="pacientesManager.changePage(1); return false;">1</a></li>`;
+            if (startPage > 2) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `
+                <li class="page-item ${i === this.currentPage ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="pacientesManager.changePage(${i}); return false;">${i}</a>
+                </li>
+            `;
+        }
+        
+        if (endPage < this.totalPages) {
+            if (endPage < this.totalPages - 1) {
+                html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="pacientesManager.changePage(${this.totalPages}); return false;">${this.totalPages}</a></li>`;
+        }
+        
+        // Botón siguiente
+        html += `
+            <li class="page-item ${this.currentPage === this.totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="pacientesManager.changePage(${this.currentPage + 1}); return false;">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        `;
+        
+        pagination.innerHTML = html;
+    }
+    
+    /**
+     * Cambia de página
+     */
+    changePage(page) {
+        if (page < 1 || page > this.totalPages) return;
+        this.currentPage = page;
+        this.loadPacientes();
+    }
+    
+    /**
+     * Actualiza el contador total de pacientes
+     */
+    updateTotalPacientes() {
+        const totalElement = document.getElementById('totalPacientes');
+        if (totalElement) {
+            totalElement.textContent = `${this.totalPacientes} paciente${this.totalPacientes !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    /**
+     * Limpia los filtros
+     */
+    clearFilters() {
+        const searchInput = document.getElementById('searchInput');
+        const filterActivo = document.getElementById('filterActivo');
+        
+        if (searchInput) searchInput.value = '';
+        if (filterActivo) filterActivo.value = '';
+        
+        this.currentPage = 1;
+        this.loadPacientes();
+    }
+    
+    /**
+     * Abre el modal para crear/editar paciente
+     */
+    openModal(pacienteId = null) {
+        const modal = new bootstrap.Modal(document.getElementById('pacienteModal'));
+        const modalTitle = document.getElementById('modalTitle');
+        
+        if (pacienteId) {
+            modalTitle.textContent = 'Editar Paciente';
+            this.loadPacienteData(pacienteId);
+        } else {
+            modalTitle.textContent = 'Nuevo Paciente';
+            this.resetForm();
+        }
+        
+        modal.show();
+    }
+    
+    /**
+     * Carga los datos de un paciente para editar
+     */
+    async loadPacienteData(id) {
+        try {
+            this.showLoading(true);
+            
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}get.php?id=${id}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.fillForm(result.data);
+                this.currentPaciente = result.data;
+            } else {
+                throw new Error(result.error || 'Error al cargar paciente');
+            }
+        } catch (error) {
+            console.error('Error cargando paciente:', error);
+            this.showError('Error al cargar paciente: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Resetea el formulario
+     */
+    resetForm() {
+        const form = document.getElementById('pacienteForm');
+        if (form) {
+            form.reset();
+            document.getElementById('pacienteId').value = '';
+            document.getElementById('activo').checked = true;
+            document.getElementById('pacienteIdInput').disabled = false;
+            document.getElementById('pacienteIdInput').readOnly = true; // Siempre readonly
+            document.getElementById('pacienteIdInput').value = ''; // Limpiar ID interno
+        }
+        
+        // Limpiar mensaje de búsqueda
+        const statusDiv = document.getElementById('idpacienteBusquedaStatus');
+        if (statusDiv) {
+            statusDiv.innerHTML = '';
+        }
+        
+        this.currentPaciente = null;
+    }
+    
+    /**
+     * Rellena el formulario con los datos del paciente
+     */
+    fillForm(paciente) {
+        document.getElementById('pacienteId').value = paciente.id || '';
+        document.getElementById('pacienteIdInput').value = paciente.paciente_id || paciente.id_interno || '';
+        document.getElementById('nombre').value = paciente.nombre || '';
+        document.getElementById('idpaciente').value = paciente.idpaciente || '';
+        document.getElementById('telefono').value = paciente.telefono || '';
+        document.getElementById('email').value = paciente.email || '';
+        document.getElementById('direccion').value = paciente.direccion || paciente.domicilio || '';
+        document.getElementById('activo').checked = paciente.activo !== undefined ? paciente.activo : true;
+        
+        // En edición, deshabilitar campo ID interno y mantener readonly
+        const pacienteIdInput = document.getElementById('pacienteIdInput');
+        if (paciente.id) {
+            pacienteIdInput.disabled = true;
+            pacienteIdInput.readOnly = true;
+        } else {
+            pacienteIdInput.disabled = false;
+            pacienteIdInput.readOnly = true; // Siempre readonly porque se autogenera
+        }
+        
+        // Limpiar mensaje de búsqueda en edición
+        const statusDiv = document.getElementById('idpacienteBusquedaStatus');
+        if (statusDiv) {
+            statusDiv.innerHTML = '';
+        }
+    }
+    
+    /**
+     * Busca paciente por ID PACS (en BD o PACS)
+     */
+    async buscarPorIdPacs() {
+        const idpacienteInput = document.getElementById('idpaciente');
+        const statusDiv = document.getElementById('idpacienteBusquedaStatus');
+        
+        if (!idpacienteInput) return;
+        
+        const idpaciente = idpacienteInput.value.trim();
+        
+        if (!idpaciente) {
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="alert alert-warning alert-sm py-1 px-2 mb-0"><small><i class="fas fa-info-circle me-1"></i>Ingrese un ID PACS para buscar</small></div>';
+            }
+            return;
+        }
+        
+        // Solo buscar si es creación (no edición)
+        const pacienteId = document.getElementById('pacienteId').value;
+        if (pacienteId) {
+            // Es edición, no buscar automáticamente
+            return;
+        }
+        
+        try {
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="alert alert-info alert-sm py-1 px-2 mb-0"><small><i class="fas fa-spinner fa-spin me-1"></i>Buscando...</small></div>';
+            }
+            
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}search-by-idpacs.php?idpaciente=${encodeURIComponent(idpaciente)}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                if (result.data.found_in_db) {
+                    // Encontrado en BD: usar datos existentes pero generar nuevo ID interno
+                    const paciente = result.data.paciente;
+                    
+                    // Llenar formulario con datos existentes
+                    document.getElementById('nombre').value = paciente.nombre || '';
+                    document.getElementById('telefono').value = paciente.telefono || '';
+                    document.getElementById('email').value = paciente.email || '';
+                    document.getElementById('direccion').value = paciente.direccion || paciente.domicilio || '';
+                    
+                    // Limpiar ID interno (se generará nuevo automáticamente)
+                    document.getElementById('pacienteIdInput').value = '';
+                    
+                    if (statusDiv) {
+                        statusDiv.innerHTML = `<div class="alert alert-success alert-sm py-1 px-2 mb-0"><small><i class="fas fa-check-circle me-1"></i>Se encontraron datos anteriores. Se generará un nuevo ID interno.</small></div>`;
+                    }
+                    
+                    this.showSuccess('Datos del paciente cargados. Se generará un nuevo ID interno automáticamente.');
+                } else if (result.data.found_in_pacs) {
+                    // Encontrado en PACS pero no en BD: obtener nombre
+                    const nombre = result.data.nombre || '';
+                    
+                    document.getElementById('nombre').value = nombre;
+                    
+                    if (statusDiv) {
+                        if (nombre) {
+                            statusDiv.innerHTML = `<div class="alert alert-success alert-sm py-1 px-2 mb-0"><small><i class="fas fa-check-circle me-1"></i>Paciente encontrado en PACS. Complete teléfono, email y dirección.</small></div>`;
+                        } else {
+                            statusDiv.innerHTML = `<div class="alert alert-warning alert-sm py-1 px-2 mb-0"><small><i class="fas fa-exclamation-triangle me-1"></i>Paciente encontrado en PACS pero sin nombre. Complete todos los datos.</small></div>`;
+                        }
+                    }
+                    
+                    if (nombre) {
+                        this.showSuccess('Paciente encontrado en PACS. Complete teléfono, email y dirección.');
+                    } else {
+                        this.showSuccess('Paciente encontrado en PACS. Complete todos los datos.');
+                    }
+                } else {
+                    // No encontrado en ningún lado
+                    if (statusDiv) {
+                        statusDiv.innerHTML = `<div class="alert alert-warning alert-sm py-1 px-2 mb-0"><small><i class="fas fa-exclamation-triangle me-1"></i>No encontrado en BD ni PACS. Complete todos los datos manualmente.</small></div>`;
+                    }
+                }
+            } else {
+                throw new Error(result.error || 'Error al buscar paciente');
+            }
+        } catch (error) {
+            console.error('Error buscando paciente por ID PACS:', error);
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="alert alert-danger alert-sm py-1 px-2 mb-0"><small><i class="fas fa-times-circle me-1"></i>Error: ${error.message}</small></div>`;
+            }
+            this.showError('Error al buscar paciente: ' + error.message);
+        }
+    }
+    
+    /**
+     * Guarda un paciente (crear o actualizar)
+     */
+    async savePaciente() {
+        try {
+            const form = document.getElementById('pacienteForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const formData = new FormData(form);
+            const pacienteData = {};
+            
+            const isUpdate = document.getElementById('pacienteId').value && document.getElementById('pacienteId').value !== '';
+            
+            for (const [key, value] of formData.entries()) {
+                if (key === 'activo') {
+                    pacienteData[key] = true;
+                } else if (key === 'paciente_id' || key === 'id_interno') {
+                    // En creación, no enviar id_interno (se generará automáticamente)
+                    if (!isUpdate) {
+                        // No incluir, se generará en el backend
+                        continue;
+                    } else {
+                        // En edición, enviar si existe
+                        if (value !== '') {
+                            pacienteData['id_interno'] = value;
+                        }
+                    }
+                } else if (value !== '') {
+                    pacienteData[key] = value;
+                }
+            }
+            
+            // Manejar checkbox activo
+            pacienteData.activo = document.getElementById('activo').checked;
+            
+            // ID solo en actualización
+            if (isUpdate) {
+                pacienteData.id = document.getElementById('pacienteId').value;
+            }
+            
+            this.showLoading(true);
+            
+            const url = `${this.apiBaseUrl}save.php`;
+            const method = isUpdate ? 'PUT' : 'POST';
+            
+            const response = await this.fetchWithAuth(url, {
+                method: method,
+                body: JSON.stringify(pacienteData)
+            });
+            
+            // Intentar parsear respuesta incluso si hay error HTTP
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                // Si no se puede parsear JSON, crear un error genérico
+                throw new Error(`Error HTTP: ${response.status} - ${response.statusText}`);
+            }
+            
+            if (!response.ok) {
+                const errorMsg = result.error || `Error HTTP: ${response.status}`;
+                console.error('Error guardando paciente:', errorMsg);
+                throw new Error(errorMsg);
+            }
+            
+            if (result.success) {
+                this.showSuccess(isUpdate ? 'Paciente actualizado correctamente' : 'Paciente creado correctamente');
+                bootstrap.Modal.getInstance(document.getElementById('pacienteModal')).hide();
+                this.loadPacientes();
+            } else {
+                const errorMsg = result.error || 'Error al guardar paciente';
+                console.error('Error guardando paciente:', errorMsg);
+                throw new Error(errorMsg);
+            }
+        } catch (error) {
+            console.error('Error guardando paciente:', error);
+            this.showError('Error al guardar paciente: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Envía un mensaje de WhatsApp al paciente
+     * @param {number} pacienteId - ID del paciente
+     * @param {string} telefono - Número de teléfono
+     * @param {string} nombre - Nombre del paciente
+     * @param {string} idInterno - ID interno del paciente
+     */
+    async sendWhatsApp(pacienteId, telefono, nombre, idInterno) {
+        try {
+            if (!telefono || telefono.trim() === '') {
+                this.showError('El paciente no tiene número de teléfono registrado');
+                return;
+            }
+            
+            // Guardar datos para el modal de confirmación
+            this.whatsappData = {
+                pacienteId: pacienteId,
+                telefono: telefono,
+                nombre: nombre,
+                idInterno: idInterno
+            };
+            
+            // Obtener URL del portal
+            const portalUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, 'paciente.html');
+            
+            // Mensaje estándar
+            const mensaje = `Estimado/a ${nombre || 'paciente'}, puede ingresar a ${portalUrl} usando su Documento o ID Interno (${idInterno || 'N/A'}) para visualizar sus estudios de imágenes e informes de estudio. Gracias por confiar en nuestra experiencia y profesionalidad. TJS MEDICAL`;
+            
+            // Llenar información en el modal
+            document.getElementById('whatsappPacienteNombre').textContent = nombre || '-';
+            document.getElementById('whatsappPacienteTelefono').textContent = telefono || '-';
+            document.getElementById('whatsappPacienteIdInterno').textContent = idInterno || '-';
+            document.getElementById('whatsappMensajePreview').textContent = mensaje;
+            
+            // Configurar el botón de confirmación
+            const btnConfirmar = document.getElementById('btnConfirmarEnviarWhatsApp');
+            if (btnConfirmar) {
+                // Remover listeners anteriores
+                const newBtn = btnConfirmar.cloneNode(true);
+                btnConfirmar.parentNode.replaceChild(newBtn, btnConfirmar);
+                
+                // Agregar nuevo listener
+                newBtn.addEventListener('click', () => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('confirmWhatsAppModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    this.confirmarEnviarWhatsApp();
+                });
+            }
+            
+            // Mostrar el modal
+            const modal = new bootstrap.Modal(document.getElementById('confirmWhatsAppModal'));
+            modal.show();
+            
+        } catch (error) {
+            console.error('Error preparando envío WhatsApp:', error);
+            this.showError('Error al preparar envío de WhatsApp: ' + error.message);
+        }
+    }
+    
+    /**
+     * Confirma y envía el mensaje de WhatsApp
+     */
+    async confirmarEnviarWhatsApp() {
+        try {
+            if (!this.whatsappData) {
+                this.showError('No hay datos de WhatsApp para enviar');
+                return;
+            }
+            
+            const { telefono, nombre, idInterno } = this.whatsappData;
+            
+            // Obtener URL del portal
+            const portalUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, 'paciente.html');
+            
+            // Mensaje estándar
+            const mensaje = `Estimado/a ${nombre || 'paciente'}, puede ingresar a ${portalUrl} usando su Documento o ID Interno (${idInterno || 'N/A'}) para visualizar sus estudios de imágenes e informes de estudio. Gracias por confiar en nuestra experiencia y profesionalidad. TJS MEDICAL`;
+            
+            this.showLoading(true);
+            
+            // Enviar mensaje usando Evolution API
+            const result = await evolutionAPI.sendTextMessage(telefono, mensaje);
+            
+            if (result.success) {
+                this.showSuccess(`Mensaje de WhatsApp enviado correctamente a ${nombre || 'el paciente'}`);
+            } else {
+                throw new Error(result.error || 'Error al enviar mensaje');
+            }
+            
+            // Limpiar datos
+            this.whatsappData = null;
+            
+        } catch (error) {
+            console.error('Error enviando WhatsApp:', error);
+            this.showError('Error al enviar mensaje de WhatsApp: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Edita un paciente
+     */
+    editPaciente(id) {
+        this.openModal(id);
+    }
+    
+    /**
+     * Ver detalles de un paciente
+     */
+    async viewPaciente(id) {
+        try {
+            this.showLoading(true);
+            
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}get.php?id=${id}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const paciente = result.data;
+                this.showDetallesModal(paciente);
+            } else {
+                throw new Error(result.error || 'Error al cargar paciente');
+            }
+        } catch (error) {
+            console.error('Error viendo paciente:', error);
+            this.showError('Error al cargar paciente: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Muestra el modal con los detalles del paciente
+     */
+    showDetallesModal(paciente) {
+        const modalBody = document.getElementById('detallesPacienteBody');
+        const modalTitle = document.getElementById('detallesPacienteModalLabel');
+        const btnEditar = document.getElementById('btnEditarDesdeDetalles');
+        
+        if (!modalBody) {
+            console.error('Modal de detalles no encontrado');
+            return;
+        }
+        
+        // Actualizar título del modal
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-user-injured me-2"></i>Detalles del Paciente - ${paciente.nombre || 'Sin nombre'}`;
+        }
+        
+        // Configurar botón editar
+        if (btnEditar) {
+            btnEditar.onclick = () => {
+                const modal = bootstrap.Modal.getInstance(document.getElementById('detallesPacienteModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                setTimeout(() => {
+                    this.editPaciente(paciente.id);
+                }, 300);
+            };
+        }
+        
+        // Formatear fecha de creación
+        let fechaCreacion = 'N/A';
+        if (paciente.fecha_creacion) {
+            try {
+                const fecha = new Date(paciente.fecha_creacion);
+                fechaCreacion = fecha.toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                fechaCreacion = paciente.fecha_creacion;
+            }
+        }
+        
+        // Formatear fecha de actualización
+        let fechaActualizacion = 'N/A';
+        if (paciente.fecha_actualizacion) {
+            try {
+                const fecha = new Date(paciente.fecha_actualizacion);
+                fechaActualizacion = fecha.toLocaleDateString('es-ES', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                fechaActualizacion = paciente.fecha_actualizacion;
+            }
+        }
+        
+        // Estado badge
+        const estadoBadge = paciente.activo
+            ? '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Activo</span>'
+            : '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Inactivo</span>';
+        
+        // Construir HTML del modal
+        const detallesHTML = `
+            <div class="row">
+                <div class="col-12 mb-4">
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-user-circle fa-4x text-info"></i>
+                        </div>
+                        <h4 class="mb-2">${paciente.nombre || 'Sin nombre'}</h4>
+                        <div class="mb-3">${estadoBadge}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-3">
+                                <i class="fas fa-id-card me-2"></i>Información de Identificación
+                            </h6>
+                            <div class="mb-2">
+                                <strong>ID Interno:</strong>
+                                <div class="text-break">${paciente.id_interno || paciente.paciente_id || 'N/A'}</div>
+                            </div>
+                            ${paciente.idpaciente ? `
+                            <div class="mb-2">
+                                <strong>ID PACS:</strong>
+                                <div class="text-break">${paciente.idpaciente}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-3">
+                                <i class="fas fa-address-book me-2"></i>Información de Contacto
+                            </h6>
+                            ${paciente.telefono ? `
+                            <div class="mb-2">
+                                <strong><i class="fas fa-phone me-2"></i>Teléfono:</strong>
+                                <div><a href="tel:${paciente.telefono}">${paciente.telefono}</a></div>
+                            </div>
+                            ` : '<div class="mb-2 text-muted"><i class="fas fa-phone me-2"></i>Teléfono: No registrado</div>'}
+                            ${paciente.email ? `
+                            <div class="mb-2">
+                                <strong><i class="fas fa-envelope me-2"></i>Email:</strong>
+                                <div><a href="mailto:${paciente.email}">${paciente.email}</a></div>
+                            </div>
+                            ` : '<div class="mb-2 text-muted"><i class="fas fa-envelope me-2"></i>Email: No registrado</div>'}
+                        </div>
+                    </div>
+                </div>
+                
+                ${paciente.domicilio || paciente.direccion ? `
+                <div class="col-12 mb-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-3">
+                                <i class="fas fa-map-marker-alt me-2"></i>Dirección
+                            </h6>
+                            <div class="text-break">${paciente.domicilio || paciente.direccion}</div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-3">
+                                <i class="fas fa-calendar-plus me-2"></i>Fecha de Creación
+                            </h6>
+                            <div>${fechaCreacion}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-3">
+                    <div class="card border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-3">
+                                <i class="fas fa-calendar-edit me-2"></i>Última Actualización
+                            </h6>
+                            <div>${fechaActualizacion}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modalBody.innerHTML = detallesHTML;
+        
+        // Mostrar el modal
+        const modal = new bootstrap.Modal(document.getElementById('detallesPacienteModal'));
+        modal.show();
+    }
+    
+    /**
+     * Confirma la eliminación de un paciente usando modal Bootstrap
+     */
+    async confirmDelete(id) {
+        try {
+            // Cargar datos del paciente para mostrar en el modal
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}get.php?id=${id}`);
+            
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                const paciente = result.data;
+                
+                // Llenar información del paciente en el modal
+                document.getElementById('deletePacienteId').textContent = paciente.id_interno || paciente.paciente_id || '-';
+                document.getElementById('deletePacienteNombre').textContent = paciente.nombre || '-';
+                document.getElementById('deletePacienteIdPacs').textContent = paciente.idpaciente || '-';
+                
+                // Configurar el botón de confirmación
+                const btnConfirmar = document.getElementById('btnConfirmarEliminarPaciente');
+                if (btnConfirmar) {
+                    // Remover listeners anteriores
+                    const newBtn = btnConfirmar.cloneNode(true);
+                    btnConfirmar.parentNode.replaceChild(newBtn, btnConfirmar);
+                    
+                    // Agregar nuevo listener
+                    newBtn.addEventListener('click', () => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        this.deletePaciente(id);
+                    });
+                }
+                
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+                modal.show();
+            } else {
+                throw new Error(result.error || 'Error al cargar paciente');
+            }
+        } catch (error) {
+            console.error('Error cargando paciente para eliminar:', error);
+            this.showError('Error al cargar información del paciente: ' + error.message);
+        }
+    }
+    
+    /**
+     * Elimina un paciente
+     */
+    async deletePaciente(id) {
+        try {
+            this.showLoading(true);
+            
+            // Usar POST en lugar de DELETE para mayor compatibilidad
+            const response = await this.fetchWithAuth(`${this.apiBaseUrl}delete.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-HTTP-Method-Override': 'DELETE'
+                },
+                body: JSON.stringify({ id: id })
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            console.log('Resultado eliminación:', result);
+            
+            if (result.success) {
+                this.showSuccess('Paciente eliminado correctamente');
+                // Recargar la lista después de un pequeño delay para asegurar que la BD se actualizó
+                setTimeout(() => {
+                    this.loadPacientes();
+                }, 300);
+            } else {
+                throw new Error(result.error || 'Error al eliminar paciente');
+            }
+        } catch (error) {
+            console.error('Error eliminando paciente:', error);
+            this.showError('Error al eliminar paciente: ' + error.message);
+        } finally {
+            this.showLoading(false);
+        }
+    }
+    
+    /**
+     * Muestra/oculta el loading overlay
+     */
+    showLoading(show) {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = show ? 'flex' : 'none';
+        }
+    }
+    
+    /**
+     * Muestra un mensaje de error usando Bootstrap Toast
+     */
+    showError(message) {
+        // Si es error de permisos, no mostrar nada (ya se mostró el modal)
+        if (message && (message.includes('permisos') || message.includes('permiso'))) {
+            console.warn('Error de permisos:', message);
+            return;
+        }
+        
+        // Crear toast de Bootstrap para mostrar el error
+        const toastId = 'errorToast_' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-exclamation-circle me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 5000
+        });
+        toast.show();
+        
+        // Remover el toast del DOM después de que se oculte
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+    
+    /**
+     * Muestra un mensaje de éxito usando Bootstrap Toast
+     */
+    showSuccess(message) {
+        // Crear toast de Bootstrap para mostrar el éxito
+        const toastId = 'successToast_' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" style="position: fixed; top: 20px; right: 20px; z-index: 9999;">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', toastHtml);
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 3000
+        });
+        toast.show();
+        
+        // Remover el toast del DOM después de que se oculte
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+    
+    /**
+     * Renderiza estado de error
+     */
+    renderError() {
+        const tbody = document.getElementById('pacientesTableBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
+                                        <p class="text-danger">Error al cargar pacientes</p>
+                                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+// Inicializar cuando el DOM esté listo y el usuario tenga permisos
+let pacientesManager;
+let pacientesManagerInitialized = false;
+
+// Función para inicializar el manager (solo si tiene permisos)
+window.initPacientesManager = function() {
+    if (!pacientesManagerInitialized) {
+        pacientesManager = new PacientesManager();
+        pacientesManager.init();
+        pacientesManagerInitialized = true;
+    }
+};
+
+// NO inicializar automáticamente - esperar a que se verifique permisos
+// El código en pacientes-manager.html llamará a initPacientesManager() después de verificar permisos
+

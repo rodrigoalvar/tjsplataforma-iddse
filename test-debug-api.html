@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de API Simplificada</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">🔍 Prueba de API Simplificada</h1>
+                
+                <div class="alert alert-info mt-4">
+                    <h4>Objetivo</h4>
+                    <p>Esta página prueba la API simplificada para identificar exactamente dónde está el problema.</p>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Pruebas de API:</h5>
+                    <div class="d-grid gap-2">
+                        <button onclick="testGET()" class="btn btn-primary">Probar GET</button>
+                        <button onclick="testPOST()" class="btn btn-success">Probar POST</button>
+                        <button onclick="testPUT()" class="btn btn-warning">Probar PUT</button>
+                        <button onclick="testDELETE()" class="btn btn-danger">Probar DELETE</button>
+                    </div>
+                </div>
+                
+                <div id="results" class="mt-4"></div>
+                
+                <div class="mt-4">
+                    <h5>Prueba del Modal de Edición:</h5>
+                    <button onclick="testModalEdit()" class="btn btn-info">Simular Modal de Edición</button>
+                    <div id="modalResults" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function addResult(title, content, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const alertClass = isError ? 'alert-danger' : 'alert-success';
+            resultsDiv.innerHTML += `
+                <div class="alert ${alertClass}">
+                    <h6>${title}</h6>
+                    <pre>${content}</pre>
+                </div>
+            `;
+        }
+        
+        async function testGET() {
+            try {
+                const response = await fetch('api/users/debug-simple.php');
+                const data = await response.json();
+                addResult('✅ GET Test', JSON.stringify(data, null, 2));
+            } catch (error) {
+                addResult('❌ GET Error', error.message, true);
+            }
+        }
+        
+        async function testPOST() {
+            try {
+                const testData = {
+                    nombre: 'Usuario',
+                    apellido: 'Prueba',
+                    email: 'prueba@test.com'
+                };
+                
+                const response = await fetch('api/users/debug-simple.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                addResult('✅ POST Test', JSON.stringify(data, null, 2));
+            } catch (error) {
+                addResult('❌ POST Error', error.message, true);
+            }
+        }
+        
+        async function testPUT() {
+            try {
+                const testData = {
+                    nombre: 'Usuario',
+                    apellido: 'Editado',
+                    email: 'editado@test.com'
+                };
+                
+                const response = await fetch('api/users/debug-simple.php?id=1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const data = await response.json();
+                addResult('✅ PUT Test', JSON.stringify(data, null, 2));
+            } catch (error) {
+                addResult('❌ PUT Error', error.message, true);
+            }
+        }
+        
+        async function testDELETE() {
+            try {
+                const response = await fetch('api/users/debug-simple.php?id=1', {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                addResult('✅ DELETE Test', JSON.stringify(data, null, 2));
+            } catch (error) {
+                addResult('❌ DELETE Error', error.message, true);
+            }
+        }
+        
+        async function testModalEdit() {
+            const modalDiv = document.getElementById('modalResults');
+            modalDiv.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Probando...</span></div>';
+            
+            try {
+                // Simular exactamente lo que hace el modal de edición
+                const formData = {
+                    id: 1,
+                    nombre: 'Usuario',
+                    apellido: 'Editado',
+                    email: 'editado@test.com',
+                    telefono: '1234567890',
+                    matricula_profesional: 'TEST001',
+                    especialidad: 'Medicina General',
+                    nivel: 'user',
+                    padre_id: '',
+                    permisos: '["dashboard"]'
+                };
+                
+                const response = await fetch('api/users/debug-simple.php?id=1', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    modalDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h6>✅ Modal Edit Test - Éxito</h6>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    modalDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6>❌ Modal Edit Test - Error</h6>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                modalDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>❌ Modal Edit Test - Error de JavaScript</h6>
+                        <pre>${error.message}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        // Ejecutar pruebas automáticamente
+        window.addEventListener('DOMContentLoaded', function() {
+            testGET();
+            testPOST();
+            testPUT();
+            testDELETE();
+        });
+    </script>
+</body>
+</html>
+
+

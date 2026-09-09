@@ -1,0 +1,147 @@
+<?php
+/**
+ * Callback del Worker de Cloudflare cuando termina la extracción del ZIP
+ * 
+ * Este endpoint recibe notificaciones del Worker cuando:
+ * - La extracción se completa exitosamente
+ * - Ocurre un error durante la extracción
+ */
+
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+try {
+    require_once __DIR__ . '/../../../config/database.php';
+    
+    // Validar autenticación
+    $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+    if (!preg_match('/Bearer\s+(.+)/', $authHeader, $matches)) {
+        throw new Exception('Unauthorized. Missing or invalid Authorization header.');
+    }
+    
+    $token = $matches[1];
+    
+    // Cargar configuración para obtener token esperado
+    require_once __DIR__ . '/../config/cloud_storage_config.php';
+    $config = CloudStorageConfig::load();
+    $expectedToken = $config['r2_worker_auth_token'] ?? '';
+    
+    if (empty($expectedToken) || $token !== $expectedToken) {
+        error_log('[R2_EXTRACTION_CALLBACK] Token inválido recibido');
+        throw new Exception('Invalid authentication token');
+    }
+    
+    // Parsear payload
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!$input) {
+        throw new Exception('Invalid JSON payload');
+    }
+    
+    $queueId = $input['queueId'] ?? null;
+    $studyInstanceUID = $input['studyInstanceUID'] ?? null;
+    $zipKey = $input['zipKey'] ?? null;
+    $status = $input['status'] ?? 'error';
+    $filesExtracted = $input['filesExtracted'] ?? 0;
+    $filesSkipped = $input['filesSkipped'] ?? 0;
+    $error = $input['error'] ?? null;
+    
+    if (!$queueId || !$studyInstanceUID) {
+        throw new Exception('Missing required fields: queueId and studyInstanceUID are required');
+    }
+    
+    $database = new Database();
+    $db = $database->getConnection();
+    
+    if (!$db) {
+        throw new Exception('Error conectando a la base de datos');
+    }
+    
+    if ($status === 'ok') {
+        // Extracción exitosa
+        error_log("[R2_EXTRACTION_CALLBACK] Extracción completada: queueId=$queueId, StudyUID=$studyInstanceUID, filesExtracted=$filesExtracted");
+        
+        // Actualizar estado a "estudio_online"
+        $stmt = $db->prepare("
+            UPDATE r2_queue 
+            SET status = 'estudio_online',
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$queueId]);
+        
+        // Asegurar que r2_studies también esté actualizado
+        $stmt = $db->prepare("
+            UPDATE r2_studies 
+            SET r2_status = 'online',
+                updated_at = NOW()
+            WHERE study_instance_uid = ?
+        ");
+        $stmt->execute([$studyInstanceUID]);
+        
+        // Si no existe registro en r2_studies, crearlo
+        $stmt = $db->prepare("SELECT id FROM r2_studies WHERE study_instance_uid = ?");
+        $stmt->execute([$studyInstanceUID]);
+        if ($stmt->rowCount() === 0) {
+            // Buscar orthanc_study_id desde r2_queue
+            $stmt2 = $db->prepare("SELECT orthanc_study_id FROM r2_queue WHERE id = ?");
+            $stmt2->execute([$queueId]);
+            $queueData = $stmt2->fetch(PDO::FETCH_ASSOC);
+            $orthancStudyId = $queueData['orthanc_study_id'] ?? null;
+            
+            if ($orthancStudyId) {
+                // Obtener manifest path desde zipKey
+                $manifestKey = str_replace('/study.zip', '/manifest.json', $zipKey);
+                
+                $stmt3 = $db->prepare("
+                    INSERT INTO r2_studies (orthanc_study_id, study_instance_uid, r2_status, r2_manifest_path, uploaded_at, updated_at)
+                    VALUES (?, ?, 'online', ?, NOW(), NOW())
+                ");
+                $stmt3->execute([$orthancStudyId, $studyInstanceUID, $manifestKey]);
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'Extraction completed successfully',
+            'queueId' => $queueId,
+            'studyInstanceUID' => $studyInstanceUID,
+            'filesExtracted' => $filesExtracted,
+            'filesSkipped' => $filesSkipped
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        
+    } else {
+        // Error en extracción
+        $errorMsg = $error ?? 'Unknown error during extraction';
+        error_log("[R2_EXTRACTION_CALLBACK] Error en extracción: queueId=$queueId, StudyUID=$studyInstanceUID, Error=$errorMsg");
+        
+        $stmt = $db->prepare("
+            UPDATE r2_queue 
+            SET status = 'error',
+                last_error = ?,
+                updated_at = NOW()
+            WHERE id = ?
+        ");
+        $stmt->execute([$errorMsg, $queueId]);
+        
+        echo json_encode([
+            'success' => false,
+            'error' => $errorMsg,
+            'queueId' => $queueId,
+            'studyInstanceUID' => $studyInstanceUID
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+    
+} catch (Exception $e) {
+    error_log('[R2_EXTRACTION_CALLBACK] Error: ' . $e->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
+}

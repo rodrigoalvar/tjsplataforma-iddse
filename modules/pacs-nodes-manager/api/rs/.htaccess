@@ -1,0 +1,10 @@
+# Rewrite rules para endpoints DICOMweb
+# Ruta: /api/pacs-nodes-manager/rs/{nodeId}/studies/...
+
+RewriteEngine On
+RewriteBase /modules/pacs-nodes-manager/api/rs/
+
+# Redirigir todas las peticiones a proxy.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ proxy.php [QSA,L]

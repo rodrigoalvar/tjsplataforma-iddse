@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Set Session Token</title>
+</head>
+<body>
+    <h2>Set Session Token</h2>
+    <button onclick="setToken()">Set Token from Database</button>
+    <div id="result"></div>
+    
+    <script>
+    async function setToken() {
+        try {
+            // Get a valid token from the database via PHP
+            const response = await fetch('/PORTAL_ESTUDIOS/api/auth/validate-session.php', {
+                method: 'GET',
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('result').innerHTML = '<p style="color: green;">Session already valid!</p>';
+                } else {
+                    document.getElementById('result').innerHTML = '<p style="color: orange;">No valid session, need to create one</p>';
+                }
+            } else {
+                // Try to get token directly from PHP
+                const tokenResponse = await fetch('/PORTAL_ESTUDIOS/get-token.php');
+                const tokenData = await tokenResponse.json();
+                
+                if (tokenData.token) {
+                    localStorage.setItem('sessionToken', tokenData.token);
+                    document.getElementById('result').innerHTML = '<p style="color: green;">Token set in localStorage: ' + tokenData.token.substring(0, 20) + '...</p><p><a href="components/informes-manager.html">Test Informes Manager</a></p>';
+                } else {
+                    document.getElementById('result').innerHTML = '<p style="color: red;">Failed to get token</p>';
+                }
+            }
+        } catch (error) {
+            document.getElementById('result').innerHTML = '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    }
+    </script>
+</body>
+</html>

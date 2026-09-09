@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css?v=202606251200" rel="stylesheet">
+    <style>
+        #auditConnectionsTable thead th.sortable,
+        #auditEventsTable thead th.sortable,
+        #auditPortalTable thead th.sortable,
+        #auditAudiosTable thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        #auditConnectionsTable thead th.sortable .sort-icon,
+        #auditEventsTable thead th.sortable .sort-icon,
+        #auditPortalTable thead th.sortable .sort-icon,
+        #auditAudiosTable thead th.sortable .sort-icon {
+            opacity: 0.45;
+            font-size: 0.72rem;
+            margin-left: 0.2rem;
+        }
+        #auditConnectionsTable thead th.sortable:hover .sort-icon,
+        #auditEventsTable thead th.sortable:hover .sort-icon,
+        #auditPortalTable thead th.sortable:hover .sort-icon,
+        #auditAudiosTable thead th.sortable:hover .sort-icon {
+            opacity: 1;
+        }
+    </style>
+    <script src="js/auth-middleware.js?v=202606251200"></script>
+    <script src="assets/js/iframe-detector.js?v=202606251200"></script>
+    <script src="assets/js/simple-permission-manager.js?v=202606251200"></script>
+    <script src="assets/js/sidebar-gui-manager.js?v=202607082345"></script>
+    <script>
+        (function () {
+            var style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+</head>
+<body>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            var ok = await requireAuth();
+            if (!ok) return;
+            var has = await requirePermissionSimple('audit_manager', 'Auditoría', {
+                title: 'Acceso denegado',
+                message: 'No tenés permiso para <strong>Auditoría</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            if (!has) return;
+            setupSidebarFunctionality();
+        });
+
+        function setupSidebarFunctionality() {
+            var sidebarToggle = document.getElementById('sidebarToggle');
+            var sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            var sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
+            var sidebar = document.getElementById('sidebar');
+            var sidebarOverlay = document.getElementById('sidebarOverlay');
+            var sidebarLayout = document.getElementById('sidebarLayout');
+            var sidebarToggleShow = document.getElementById('sidebarToggleShow');
+
+            function closeMobileSidebar() {
+                if (sidebar) sidebar.classList.remove('show');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('show');
+            }
+            function openMobileSidebar() {
+                if (sidebar) sidebar.classList.add('show');
+                if (sidebarOverlay) sidebarOverlay.classList.add('show');
+            }
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (sidebar && sidebar.classList.contains('show')) closeMobileSidebar();
+                    else openMobileSidebar();
+                });
+            }
+            if (sidebarCloseMobile) {
+                sidebarCloseMobile.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    closeMobileSidebar();
+                });
+            }
+            if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeMobileSidebar);
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', function () {
+                    if (sidebarLayout) sidebarLayout.classList.add('sidebar-hidden');
+                });
+            }
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', function () {
+                    if (sidebarLayout) sidebarLayout.classList.remove('sidebar-hidden');
+                });
+            }
+            updateSidebarUserInfo();
+        }
+
+        async function updateSidebarUserInfo() {
+            try {
+                await new Promise(function (r) { setTimeout(r, 100); });
+                if (window.getCurrentUser) {
+                    var user = window.getCurrentUser();
+                    if (user && user.nombre) {
+                        var fullName = user.apellido ? (user.nombre + ' ' + user.apellido) : user.nombre;
+                        var sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) sidebarUserName.textContent = fullName;
+                        var sidebarUserRole = document.querySelector('.sidebar-user .user-role');
+                        if (sidebarUserRole) sidebarUserRole.textContent = user.especialidad || 'Usuario';
+                    }
+                } else {
+                    setTimeout(updateSidebarUserInfo, 500);
+                }
+            } catch (e) {
+                setTimeout(updateSidebarUserInfo, 1000);
+            }
+        }
+    </script>
+
+    <div id="sidebarLayout" class="layout-container">
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle"><i class="fas fa-bars fa-lg"></i></button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown"><i class="fas fa-user-circle fa-lg"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html?v=202606251200">Mi Perfil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-lg-none" id="sidebarCloseMobile" title="Cerrar Menú"><i class="fas fa-times fa-lg"></i></button>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar"><i class="fas fa-angle-double-left"></i></button>
+                </div>
+            </div>
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                <div class="user-info">
+                    <div class="user-name">Usuario</div>
+                    <div class="user-role">Administrador</div>
+                </div>
+            </div>
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item"><a class="nav-link" href="dashboard-unified.html?v=202606251200"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="paciente.html?v=202606251200"><i class="fas fa-file-medical"></i><span>Portal Paciente</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/editor.html?v=202606251200" id="informesNavLink"><i class="fas fa-file-alt"></i><span>Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/informes-manager.html?v=202606251200"><i class="fas fa-search"></i><span>Gestión Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="estudios-manager.html?v=202606251200"><i class="fas fa-share-alt"></i><span>Gestión Estudios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacientes-manager.html?v=202606251200"><i class="fas fa-user-injured"></i><span>Gestión Pacientes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="app-container.html?section=workspace&v=202606251200" data-section="workspace"><i class="fas fa-th-large"></i><span>WorkSpace</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/audio-recorder.html?v=202606251200"><i class="fas fa-microphone"></i><span>Grabación</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="components/viewer.html?v=202606251200"><i class="fas fa-eye"></i><span>Visor DICOM</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="user-management.html?v=202606251200"><i class="fas fa-users"></i><span>Gestión Usuarios</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacs-manager.html?v=202606251200"><i class="fas fa-database"></i><span>PACS Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="pacs-nodes-manager.html?v=202606251200"><i class="fas fa-network-wired"></i><span>PACS Nodes Manager</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="study-history-manager.html?v=202606251200"><i class="fas fa-history"></i><span>Historial estudios</span></a></li><li class="nav-item"><a class="nav-link" href="modules/qa-publicacion/qa-manager.html?v=202607082330"><i class="fas fa-shield-alt"></i><span>QA Control de Calidad</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="cloud-storage.html?v=202606251200"><i class="fas fa-cloud"></i><span>Cloud Storage</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="worklist.html?v=202606251200"><i class="fas fa-list-alt"></i><span>Worklist</span></a></li>
+                    <li class="nav-item"><a class="nav-link active" href="audit-manager.html?v=202606251200"><i class="fas fa-clipboard-list"></i><span>Auditoría</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="ai-informes.html?v=202606251200"><i class="fas fa-robot"></i><span>AI Informes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="modules/email/admin.php" id="linkGestionMensajes"><i class="fas fa-envelope"></i><span>Gestión Mensajes</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="configuracion.html?v=202606251200"><i class="fas fa-cog"></i><span>Configuración</span></a></li>
+                </ul>
+            </div>
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn"><i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión</a>
+            </div>
+        </div>
+
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <div class="main-content">
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar"><i class="fas fa-chevron-right"></i></button>
+            <div class="container-fluid px-3 py-4">
+                <div class="welcome-card card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h4 class="mb-1"><i class="fas fa-clipboard-list me-2 text-primary"></i>Auditoría del sistema</h4>
+                        <p class="text-muted mb-0">Sesiones activas, eventos registrados y métricas de conectividad (RTT). Ejecutá <code>modules/audit-manager/install.php</code> si no ves datos.</p>
+                    </div>
+                </div>
+
+                <ul class="nav nav-tabs mb-3" id="auditTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="auditTabConnections" data-bs-toggle="tab" data-bs-target="#paneConnections" type="button" role="tab">Conexiones</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabPortalPaciente" data-bs-toggle="tab" data-bs-target="#panePortalPaciente" type="button" role="tab">Portal paciente</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabAudios" data-bs-toggle="tab" data-bs-target="#paneAudios" type="button" role="tab">Audios</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabInformesRecibidos" data-bs-toggle="tab" data-bs-target="#paneInformesRecibidos" type="button" role="tab">
+                            Informes API
+                            <span class="badge rounded-pill bg-secondary ms-1 d-none" id="auditInformesRecibidosBadge">P:0 · E:0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabEvents" data-bs-toggle="tab" data-bs-target="#paneEvents" type="button" role="tab">Eventos</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabStats" data-bs-toggle="tab" data-bs-target="#paneStats" type="button" role="tab">Estadísticas</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="auditTabMpps" data-bs-toggle="tab" data-bs-target="#paneMpps" type="button" role="tab">
+                            MPPS / Equipos
+                            <span class="badge rounded-pill bg-info text-dark ms-1 d-none" id="auditMppsMockBadge">Demo</span>
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="paneConnections" role="tabpanel">
+                        <p class="small text-muted" id="auditConnectionsHint"></p>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-6 col-md-2">
+                                <label class="form-label small mb-0">Usuario ID</label>
+                                <input type="number" class="form-control form-control-sm" id="auditConnUserId" placeholder="Todos" min="1">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small mb-0">Usuario (lista)</label>
+                                <select class="form-select form-select-sm" id="auditConnUserSelect" title="Filtra en el servidor al elegir">
+                                    <option value="">— Todos los usuarios —</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label small mb-0">Nombre, apellido o email</label>
+                                <input type="text" class="form-control form-control-sm" id="auditConnUserQ" placeholder="Consulta al servidor (Filtrar)" autocomplete="off" maxlength="120">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label small mb-0">Desde</label>
+                                <input type="date" class="form-control form-control-sm" id="auditConnDateFrom">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label small mb-0">Hasta</label>
+                                <input type="date" class="form-control form-control-sm" id="auditConnDateTo">
+                            </div>
+                            <div class="col-6 col-md-2">
+                                <label class="form-label small mb-0">En línea (min)</label>
+                                <input type="number" class="form-control form-control-sm" id="auditConnOnlineMin" value="5" min="1" max="120" title="Ventana para marcar probable en línea">
+                            </div>
+                            <div class="col-6 col-md-2 form-check mt-3">
+                                <input type="checkbox" class="form-check-input" id="auditConnActiveOnly">
+                                <label class="form-check-label small" for="auditConnActiveOnly">Solo sesiones activas</label>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <button type="button" class="btn btn-sm btn-primary" id="auditConnFilterBtn"><i class="fas fa-filter"></i> Filtrar</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary ms-1" id="auditRefreshConnections"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="small text-muted" id="auditConnTotal"></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditConnPrev">Anterior</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditConnNext">Siguiente</button>
+                            <input type="hidden" id="auditConnPage" value="1">
+                        </div>
+                        <div class="row g-2 align-items-center mb-2">
+                            <div class="col-12 col-md-6 col-lg-5">
+                                <label class="form-label small mb-0" for="auditConnLiveFilter">Filtrar resultados (tiempo real, solo esta página)</label>
+                                <input type="search" class="form-control form-control-sm" id="auditConnLiveFilter" placeholder="Texto en cualquier columna visible…" autocomplete="off">
+                            </div>
+                            <div class="col-12 col-md-6 small text-muted align-self-end" id="auditConnLiveHint"></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle" id="auditConnectionsTable">
+                                <thead><tr>
+                                    <th class="sortable" data-column="session_id">ID <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="user">Usuario <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="estado">Estado <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="activa">Activa <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="fecha_creacion">Inicio <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="ultima_actividad">Última act. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="active_seconds">Tiempo activo <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="fecha_cierre">Cierre <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="ip_login">IP <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="user_agent_login">User-Agent <i class="fas fa-sort sort-icon"></i></th>
+                                    <th>Acciones</th>
+                                </tr></thead>
+                                <tbody id="auditConnectionsBody"><tr><td colspan="11" class="text-muted">Cargando…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="panePortalPaciente" role="tabpanel">
+                        <p class="small text-muted mb-2">Accesos a <strong>paciente.html</strong> sin login (IP, texto buscado al pulsar “Visualizar”, navegador, referer). Ejecutá <code>install.php</code> para la columna <code>patient_query</code>.</p>
+                        <div class="alert alert-light border py-2 px-3 mb-3 d-none" id="auditPortalStatsBar" role="status">
+                            <div class="small text-muted mb-1">Totales en el <strong>período y filtros</strong> actuales (misma consulta que la tabla):</div>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="badge rounded-pill bg-secondary" id="auditPortalStatAccess">Cargas de página: —</span>
+                                <span class="badge rounded-pill bg-info text-dark" id="auditPortalStatSearch">Búsquedas con texto: —</span>
+                                <span class="badge rounded-pill bg-primary" id="auditPortalStatTotal">Registros coincidentes: —</span>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Desde</label>
+                                <input type="date" class="form-control form-control-sm" id="auditPortalDateFrom">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Hasta</label>
+                                <input type="date" class="form-control form-control-sm" id="auditPortalDateTo">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">IP contiene</label>
+                                <input type="text" class="form-control form-control-sm" id="auditPortalIp" placeholder="Ej. 192.168">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Búsqueda contiene</label>
+                                <input type="text" class="form-control form-control-sm" id="auditPortalQuery" placeholder="Documento / ID (servidor)" maxlength="128" autocomplete="off">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-primary" id="auditPortalFilterBtn"><i class="fas fa-filter"></i> Filtrar</button>
+                            </div>
+                            <div class="col-md-12 col-lg-auto ms-lg-auto d-flex flex-wrap gap-2 align-items-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="auditPortalPurgeOpenBtn" title="Requiere confirmación">
+                                    <i class="fas fa-trash-alt"></i> Limpiar auditoría…
+                                </button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="small text-muted" id="auditPortalTotal"></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditPortalPrev">Anterior</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditPortalNext">Siguiente</button>
+                            <input type="hidden" id="auditPortalPage" value="1">
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-12 col-md-5">
+                                <input type="search" class="form-control form-control-sm" id="auditPortalLiveFilter" placeholder="Filtrar resultados en tiempo real (esta página)…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped" id="auditPortalTable">
+                                <thead><tr>
+                                    <th class="sortable" data-column="created_at">Fecha <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="ip_address">IP <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="page_url">Página <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="patient_query">Búsqueda <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="user_agent">User-Agent <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="referer">Referer <i class="fas fa-sort sort-icon"></i></th>
+                                </tr></thead>
+                                <tbody id="auditPortalBody"><tr><td colspan="6" class="text-muted">Abrir pestaña…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="paneAudios" role="tabpanel">
+                        <div class="alert alert-warning d-none py-2 px-3 mb-3" id="auditAudiosNotConfigured" role="alert">
+                            No hay tabla <code>audios_informe</code> en esta base: esta vista quedará vacía hasta que exista el flujo de audios.
+                        </div>
+                        <p class="small text-muted mb-2">Solo lectura: dueño, origen (móvil / workspace), envío FTP exitoso (destino MP3), cola de transcripción, estudio enlazado, duración, tamaño y formato. Los filtros se aplican en el servidor con <strong>Filtrar</strong>; el cuadro inferior filtra solo la página actual.</p>
+                        <div class="alert alert-light border py-2 px-3 mb-3 d-none" id="auditAudiosStatsBar" role="status">
+                            <div class="small text-muted mb-1">Totales en el <strong>período y filtros</strong> actuales:</div>
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <span class="badge rounded-pill bg-secondary" id="auditAudiosStatCount">Audios: —</span>
+                                <span class="badge rounded-pill bg-primary" id="auditAudiosStatMinutes">Minutos totales: —</span>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Desde</label>
+                                <input type="date" class="form-control form-control-sm" id="auditAudiosDateFrom">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Hasta</label>
+                                <input type="date" class="form-control form-control-sm" id="auditAudiosDateTo">
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label small mb-0">User ID</label>
+                                <input type="number" class="form-control form-control-sm" id="auditAudiosUserId" placeholder="ID" min="1">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Usuario</label>
+                                <select class="form-select form-select-sm" id="auditAudiosUserSelect" title="Filtra en el servidor">
+                                    <option value="">— Todos —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Nombre / email</label>
+                                <input type="text" class="form-control form-control-sm" id="auditAudiosUserQ" placeholder="Servidor" maxlength="120" autocomplete="off">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-0">Estudio ID contiene</label>
+                                <input type="text" class="form-control form-control-sm" id="auditAudiosStudyQ" placeholder="Orthanc / UID" maxlength="120" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Estado informe</label>
+                                <input type="text" class="form-control form-control-sm" id="auditAudiosEstado" placeholder="Coincidencia exacta" maxlength="40" autocomplete="off">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Origen</label>
+                                <select class="form-select form-select-sm" id="auditAudiosOrigin">
+                                    <option value="">— Todos —</option>
+                                    <option value="mobile">Móvil</option>
+                                    <option value="workspace">Workspace</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">FTP enviado</label>
+                                <select class="form-select form-select-sm" id="auditAudiosFtp">
+                                    <option value="">— Todos —</option>
+                                    <option value="yes">Sí (éxito)</option>
+                                    <option value="no">No</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small mb-0">Transcripción</label>
+                                <select class="form-select form-select-sm" id="auditAudiosTx">
+                                    <option value="">— Cualquiera —</option>
+                                    <option value="none">Sin cola</option>
+                                    <option value="pending">Pendiente / proc.</option>
+                                    <option value="completed">Completada</option>
+                                    <option value="failed">Fallida</option>
+                                    <option value="any">Con cola</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center pt-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="auditAudiosIncludeInactive">
+                                    <label class="form-check-label small" for="auditAudiosIncludeInactive">Incl. inactivos</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button type="button" class="btn btn-sm btn-primary" id="auditAudiosFilterBtn"><i class="fas fa-filter"></i> Filtrar</button>
+                            </div>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                            <span class="small text-muted" id="auditAudiosTotal"></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditAudiosPrev">Anterior</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditAudiosNext">Siguiente</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" id="auditAudiosRequeueTxBtn" title="Reencola en AI los audios seleccionados">
+                                <i class="fas fa-rotate-right"></i> Reencolar TX seleccionados
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="auditAudiosRetryFtpBtn" title="Resetea reintento FTP para audios seleccionados">
+                                <i class="fas fa-cloud-arrow-up"></i> Reintentar FTP seleccionados
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="auditAudiosFillDurationBtn" title="ffprobe/ffmpeg sobre archivos en disco; hasta 40 por vez">
+                                <i class="fas fa-stopwatch"></i> Medir duración en BD (esta página)
+                            </button>
+                            <input type="hidden" id="auditAudiosPage" value="1">
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-12 col-md-6">
+                                <input type="search" class="form-control form-control-sm" id="auditAudiosLiveFilter" placeholder="Filtrar resultados en tiempo real (esta página)…" autocomplete="off">
+                            </div>
+                            <div class="col-12 col-md-6 small text-muted align-self-center" id="auditAudiosLiveHint"></div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped" id="auditAudiosTable">
+                                <thead><tr>
+                                    <th><input type="checkbox" id="auditAudiosSelectAll" title="Seleccionar página"></th>
+                                    <th class="sortable" data-column="id">ID <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="user">Usuario <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="origin_label">Origen <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="estudio_id">Estudio <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="study_patient_name">Paciente <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="study_modality">Mod. <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="fecha_creacion">Fecha <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="duracion_segundos">Duración <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="tamano_bytes">Tamaño <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="format_label">Formato <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="estado">Estado <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="ftp_sent">FTP <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="transcription_queue_status">Cola TX <i class="fas fa-sort sort-icon"></i></th>
+                                    <th>Acciones</th>
+                                    <th class="sortable" data-column="nombre_archivo">Archivo <i class="fas fa-sort sort-icon"></i></th>
+                                </tr></thead>
+                                <tbody id="auditAudiosBody"><tr><td colspan="16" class="text-muted">Abrir pestaña…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="paneInformesRecibidos" role="tabpanel">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <p class="small text-muted mb-0">
+                                Control de informes recibidos por API externa (PDF + TXT), con estado, vinculación y errores.
+                            </p>
+                            <a class="btn btn-sm btn-outline-primary" href="informes-recibidos.html?v=202606251200" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-up-right-from-square me-1"></i>Abrir en pestaña
+                            </a>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mb-3">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="auditIrOpenAttemptsModalBtn">
+                                <i class="fas fa-list-check me-1"></i>Trazabilidad de intentos API
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="auditIrOpenTesterModalBtn">
+                                <i class="fas fa-vial me-1"></i>Probar envío a API
+                            </button>
+                        </div>
+                        <div class="ratio" style="--bs-aspect-ratio: 62%;">
+                            <iframe
+                                id="auditInformesRecibidosFrame"
+                                title="Informes recibidos por API"
+                                src="about:blank"
+                                data-src="informes-recibidos.html?iframe=1&v=202606251200"
+                                style="border: 1px solid #dee2e6; border-radius: 0.5rem; background: #fff;"
+                            ></iframe>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="paneEvents" role="tabpanel">
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-2"><input type="number" class="form-control form-control-sm" id="auditFilterUserId" placeholder="User ID"></div>
+                            <div class="col-md-3">
+                                <select class="form-select form-select-sm" id="auditEventsUserSelect" title="Filtra en el servidor">
+                                    <option value="">— Usuario (todos) —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="auditFilterUserQ" placeholder="Nombre / email (servidor)" autocomplete="off" maxlength="120"></div>
+                            <div class="col-md-3"><input type="text" class="form-control form-control-sm" id="auditFilterAction" placeholder="action_key contiene"></div>
+                            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="auditFilterFrom"></div>
+                            <div class="col-md-2"><input type="date" class="form-control form-control-sm" id="auditFilterTo"></div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-sm btn-primary" id="auditEventsFilterBtn">Filtrar</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="auditEventsPrev">Ant.</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="auditEventsNext">Sig.</button>
+                                <input type="hidden" id="auditEventsPage" value="1">
+                                <span class="small ms-2" id="auditEventsTotal"></span>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-2">
+                            <div class="col-12 col-md-6">
+                                <input type="search" class="form-control form-control-sm" id="auditEventsLiveFilter" placeholder="Filtrar resultados en tiempo real (esta página)…" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped" id="auditEventsTable">
+                                <thead><tr>
+                                    <th class="sortable" data-column="created_at">Fecha <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="user">Usuario <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="action_key">Acción <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="rtt_ms">RTT <i class="fas fa-sort sort-icon"></i></th>
+                                    <th class="sortable" data-column="client_duration_ms">Cliente ms <i class="fas fa-sort sort-icon"></i></th>
+                                    <th>Meta</th>
+                                </tr></thead>
+                                <tbody id="auditEventsBody"><tr><td colspan="6" class="text-muted">Abrir pestaña…</td></tr></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="paneStats" role="tabpanel">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <label class="small mb-0">Días</label>
+                            <select id="auditStatsDays" class="form-select form-select-sm" style="width:6rem">
+                                <option value="7" selected>7</option>
+                                <option value="14">14</option>
+                                <option value="30">30</option>
+                            </select>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="auditStatsReload">Recargar</button>
+                        </div>
+                        <div id="auditStatsBox" class="border rounded p-3 bg-light"></div>
+                    </div>
+                    <div class="tab-pane fade" id="paneMpps" role="tabpanel">
+                        <p class="small text-muted mb-2" id="auditMppsHint">
+                            Al refrescar se consulta Orthanc en vivo (GET /mpps). Si no hay avisos, la lista queda vacía.
+                        </p>
+                        <div class="row g-2 mb-3" id="auditMppsCards">
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 bg-light h-100">
+                                    <div class="small text-muted">Eventos</div>
+                                    <div class="fs-5 fw-semibold" id="mppsStatTotal">—</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 bg-light h-100">
+                                    <div class="small text-muted">En progreso</div>
+                                    <div class="fs-5 fw-semibold" id="mppsStatInProgress">—</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 bg-light h-100">
+                                    <div class="small text-muted">Fuera de worklist</div>
+                                    <div class="fs-5 fw-semibold text-warning" id="mppsStatOrphan">—</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="border rounded p-2 bg-light h-100">
+                                    <div class="small text-muted">Fantasmas</div>
+                                    <div class="fs-5 fw-semibold text-danger" id="mppsStatGhost">—</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-0" for="mppsFilterStatus">Diagnóstico</label>
+                                <select class="form-select form-select-sm" id="mppsFilterStatus">
+                                    <option value="">Todos</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="orphan">Fuera de worklist</option>
+                                    <option value="ghost">Fantasma</option>
+                                    <option value="no_show">Ausente</option>
+                                    <option value="pending_images">Pendiente imágenes</option>
+                                    <option value="unknown">Desconocido</option>
+                                </select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <button type="button" class="btn btn-sm btn-primary" id="mppsFilterBtn"><i class="fas fa-filter"></i> Filtrar</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="mppsReloadBtn"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle" id="mppsEventsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Estado</th>
+                                        <th>Paciente</th>
+                                        <th>Accession</th>
+                                        <th>Modalidad</th>
+                                        <th>Sala</th>
+                                        <th>Inicio</th>
+                                        <th>Fin</th>
+                                        <th>Worklist</th>
+                                        <th>PACS</th>
+                                        <th>Diagnóstico</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mppsEventsBody">
+                                    <tr><td colspan="10" class="text-muted text-center">Abrí esta pestaña para cargar…</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p class="small text-muted mb-0" id="mppsEventsFooter"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditPortalPurgeModal" tabindex="-1" aria-labelledby="auditPortalPurgeModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auditPortalPurgeModalTitle">Limpiar auditoría portal paciente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-danger small mb-3"><strong>No se puede deshacer.</strong> Elige el alcance:</p>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="auditPortalPurgeScope" id="purgeScopeFiltered" value="filtered" checked>
+                        <label class="form-check-label" for="purgeScopeFiltered">Solo registros del <strong>período y filtros</strong> actuales (desde / hasta / IP / búsqueda)</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="auditPortalPurgeScope" id="purgeScopeAll" value="all">
+                        <label class="form-check-label" for="purgeScopeAll"><strong>Toda</strong> la tabla <code>audit_portal_paciente_visits</code> (histórico completo)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="auditPortalPurgeConfirm">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditIrAttemptsModal" tabindex="-1" aria-labelledby="auditIrAttemptsModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auditIrAttemptsModalTitle">Trazabilidad de intentos API</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 align-items-end mb-2">
+                        <div class="col-md-2">
+                            <label class="form-label small mb-0">Estado</label>
+                            <select class="form-select form-select-sm" id="auditIrAttemptEstado">
+                                <option value="">Todos</option>
+                                <option value="iniciado">Iniciado</option>
+                                <option value="exitoso">Exitoso</option>
+                                <option value="error">Error</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-0">Desde</label>
+                            <input type="date" class="form-control form-control-sm" id="auditIrAttemptFrom">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small mb-0">Hasta</label>
+                            <input type="date" class="form-control form-control-sm" id="auditIrAttemptTo">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-0">ACCNO / request_id / IP</label>
+                            <input type="text" class="form-control form-control-sm" id="auditIrAttemptQ" placeholder="Buscar...">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-sm btn-primary" id="auditIrAttemptFilterBtn"><i class="fas fa-filter"></i> Filtrar</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditIrAttemptRefreshBtn"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditIrAttemptPrev">Ant.</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="auditIrAttemptNext">Sig.</button>
+                            <input type="hidden" id="auditIrAttemptPage" value="1">
+                        </div>
+                    </div>
+                    <div class="small text-muted mb-2" id="auditIrAttemptTotal">Sin datos</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Estado</th>
+                                    <th>request_id</th>
+                                    <th>ACCNO</th>
+                                    <th>PDF/TXT</th>
+                                    <th>IP</th>
+                                    <th>Error</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditIrAttemptBody">
+                                <tr><td colspan="8" class="text-muted">Abrir modal…</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditIrTesterModal" tabindex="-1" aria-labelledby="auditIrTesterModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auditIrTesterModalTitle">Probar envío a API de informes recibidos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <label class="form-label small mb-0">URL destino (endpoint recibir-pdf.php)</label>
+                            <input type="url" class="form-control form-control-sm" id="auditIrTestUrl" placeholder="https://tu-servidor/api/informes/recibir-pdf.php">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-0">Archivo PDF</label>
+                            <input type="file" class="form-control form-control-sm" id="auditIrTestPdf" accept="application/pdf,.pdf">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-0">Archivo TXT</label>
+                            <input type="file" class="form-control form-control-sm" id="auditIrTestTxt" accept=".txt,text/plain">
+                        </div>
+                        <div class="col-md-12">
+                            <button type="button" class="btn btn-sm btn-success" id="auditIrTestSendBtn">
+                                <i class="fas fa-paper-plane me-1"></i>Enviar prueba
+                            </button>
+                            <span class="small text-muted ms-2">Si la URL es de otro dominio, puede requerir CORS habilitado.</span>
+                        </div>
+                    </div>
+                    <pre class="bg-light border rounded p-2 mt-3 small mb-0" id="auditIrTestResult" style="max-height:220px; overflow:auto;">Sin ejecuciones.</pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="auditRevokeModal" tabindex="-1" aria-labelledby="auditRevokeModalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="auditRevokeModalTitle">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="auditRevokeModalMsg" class="mb-3"></p>
+                    <label for="auditRevokeReason" class="form-label small text-muted mb-1">Motivo (opcional)</label>
+                    <textarea class="form-control form-control-sm" id="auditRevokeReason" rows="2" maxlength="500" placeholder="Ej. solicitud del usuario"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" id="auditRevokeModalConfirm">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11000" id="auditToastContainer" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="modules/audit-manager/assets/js/audit-manager.js?v=202606251200"></script>
+</body>
+</html>

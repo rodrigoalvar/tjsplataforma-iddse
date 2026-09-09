@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Usuario Sin PACS QUERY</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; background-color: #f8f9fa; }
+        .test-card { margin-bottom: 20px; }
+        .permission-badge { font-size: 0.9em; }
+        .mode-indicator { font-weight: bold; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .mode-assigned { background-color: #e3f2fd; color: #1976d2; }
+        .mode-pacs { background-color: #e8f5e8; color: #388e3c; }
+        .test-result { margin-top: 15px; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-test-tube"></i> Prueba de Permisos PACS QUERY</h1>
+        <p class="lead">Simulación de usuario sin permiso PACS QUERY</p>
+
+        <!-- Test Card 1: Simular usuario sin PACS QUERY -->
+        <div class="card test-card">
+            <div class="card-header">
+                <h5><i class="fas fa-user"></i> Usuario de Prueba: Dr. Juan Médico</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información del Usuario:</h6>
+                        <ul>
+                            <li><strong>ID:</strong> 3</li>
+                            <li><strong>Nombre:</strong> Dr. Juan Médico</li>
+                            <li><strong>Nivel:</strong> user</li>
+                            <li><strong>Permisos:</strong> 
+                                <span class="badge bg-primary permission-badge">dashboard</span>
+                                <span class="badge bg-primary permission-badge">estudios</span>
+                                <span class="badge bg-primary permission-badge">informes</span>
+                            </li>
+                            <li><strong>PACS Query:</strong> <span class="badge bg-danger">NO</span></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Modo Esperado:</h6>
+                        <div class="mode-indicator mode-assigned">
+                            <i class="fas fa-clipboard-list"></i> Estudios Asignados
+                        </div>
+                        <p><small>Este usuario solo debería ver estudios que le han sido asignados desde estudios-manager.</small></p>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="testUserPermissions()">
+                    <i class="fas fa-play"></i> Probar Permisos
+                </button>
+
+                <div id="testResults"></div>
+            </div>
+        </div>
+
+        <!-- Test Card 2: Simular usuario con PACS QUERY -->
+        <div class="card test-card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-shield"></i> Usuario de Prueba: Dr. Admin Root</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Información del Usuario:</h6>
+                        <ul>
+                            <li><strong>ID:</strong> 1</li>
+                            <li><strong>Nombre:</strong> Dr. Admin Root</li>
+                            <li><strong>Nivel:</strong> root</li>
+                            <li><strong>Permisos:</strong> 
+                                <span class="badge bg-success permission-badge">all</span>
+                            </li>
+                            <li><strong>PACS Query:</strong> <span class="badge bg-success">SÍ</span></li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Modo Esperado:</h6>
+                        <div class="mode-indicator mode-pacs">
+                            <i class="fas fa-search"></i> PACS Query
+                        </div>
+                        <p><small>Este usuario puede consultar PACS directamente y ver todos los estudios.</small></p>
+                    </div>
+                </div>
+
+                <button class="btn btn-success" onclick="testAdminPermissions()">
+                    <i class="fas fa-play"></i> Probar Permisos Admin
+                </button>
+
+                <div id="adminTestResults"></div>
+            </div>
+        </div>
+
+        <!-- Test Card 3: Probar APIs -->
+        <div class="card test-card">
+            <div class="card-header">
+                <h5><i class="fas fa-api"></i> Prueba de APIs</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>API para Estudios Asignados:</h6>
+                        <p><code>get_user_assigned_studies_fixed.php</code></p>
+                        <button class="btn btn-outline-primary" onclick="testAssignedStudiesAPI()">
+                            <i class="fas fa-clipboard-list"></i> Probar API Asignados
+                        </button>
+                        <div id="assignedAPIResults"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>API para Validación de Sesión:</h6>
+                        <p><code>api/auth/validate-session-simple.php</code></p>
+                        <button class="btn btn-outline-success" onclick="testSessionAPI()">
+                            <i class="fas fa-shield-alt"></i> Probar API Sesión
+                        </button>
+                        <div id="sessionAPIResults"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Instrucciones de Prueba</h5>
+            </div>
+            <div class="card-body">
+                <ol>
+                    <li><strong>Abrir dashboard-unified.html</strong> en otra pestaña</li>
+                    <li><strong>Verificar el modo</strong> que se activa automáticamente</li>
+                    <li><strong>Comprobar las funcionalidades</strong> disponibles según el permiso</li>
+                    <li><strong>Usar estudios-manager.html</strong> para asignar estudios a usuarios sin PACS QUERY</li>
+                </ol>
+
+                <div class="alert alert-info mt-3">
+                    <h6><i class="fas fa-lightbulb"></i> Cómo funciona el sistema:</h6>
+                    <ul class="mb-0">
+                        <li><strong>Con PACS QUERY:</strong> El usuario puede buscar cualquier estudio en el servidor PACS usando filtros de fecha, paciente, modalidad, etc.</li>
+                        <li><strong>Sin PACS QUERY:</strong> El usuario solo ve estudios que le han sido específicamente asignados por un administrador desde estudios-manager.</li>
+                        <li><strong>Asignación:</strong> Los administradores buscan estudios en PACS y los asignan a usuarios específicos.</li>
+                    </ul>
+                </div>
+
+                <div class="mt-3">
+                    <a href="dashboard-unified.html" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-external-link-alt"></i> Abrir Dashboard Unified
+                    </a>
+                    <a href="estudios-manager.html" class="btn btn-secondary" target="_blank">
+                        <i class="fas fa-cogs"></i> Abrir Estudios Manager
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simular lógica de permisos como en dashboard-with-permissions.js
+        function checkPermissions(permisos) {
+            const hasPacsQueryPermission = permisos.includes('pacs_query') || permisos.includes('all');
+            const isAssignedStudiesMode = !hasPacsQueryPermission;
+            
+            return {
+                hasPacsQuery: hasPacsQueryPermission,
+                isAssignedMode: isAssignedStudiesMode,
+                mode: isAssignedStudiesMode ? 'Estudios Asignados' : 'PACS Query'
+            };
+        }
+
+        function testUserPermissions() {
+            const userPermisos = ['dashboard', 'estudios', 'informes'];
+            const result = checkPermissions(userPermisos);
+            
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = `
+                <div class="test-result ${result.isAssignedMode ? 'success' : 'info'}">
+                    <h6><i class="fas fa-check-circle"></i> Resultado de la Prueba:</h6>
+                    <ul>
+                        <li><strong>PACS Query:</strong> ${result.hasPacsQuery ? 'SÍ' : 'NO'}</li>
+                        <li><strong>Modo:</strong> ${result.mode}</li>
+                        <li><strong>API a usar:</strong> ${result.isAssignedMode ? 'get_user_assigned_studies_fixed.php' : 'get_all_studies.php'}</li>
+                        <li><strong>Funcionalidad:</strong> ${result.isAssignedMode ? 'Solo estudios asignados' : 'Consulta completa PACS'}</li>
+                    </ul>
+                    <div class="alert alert-success mt-2">
+                        ✅ <strong>Correcto:</strong> Usuario sin PACS QUERY está en modo "Estudios Asignados"
+                    </div>
+                </div>
+            `;
+        }
+
+        function testAdminPermissions() {
+            const adminPermisos = ['all'];
+            const result = checkPermissions(adminPermisos);
+            
+            const resultsDiv = document.getElementById('adminTestResults');
+            resultsDiv.innerHTML = `
+                <div class="test-result ${result.hasPacsQuery ? 'success' : 'info'}">
+                    <h6><i class="fas fa-check-circle"></i> Resultado de la Prueba:</h6>
+                    <ul>
+                        <li><strong>PACS Query:</strong> ${result.hasPacsQuery ? 'SÍ' : 'NO'}</li>
+                        <li><strong>Modo:</strong> ${result.mode}</li>
+                        <li><strong>API a usar:</strong> ${result.isAssignedMode ? 'get_user_assigned_studies_fixed.php' : 'get_all_studies.php'}</li>
+                        <li><strong>Funcionalidad:</strong> ${result.isAssignedMode ? 'Solo estudios asignados' : 'Consulta completa PACS'}</li>
+                    </ul>
+                    <div class="alert alert-success mt-2">
+                        ✅ <strong>Correcto:</strong> Usuario con permiso "all" está en modo "PACS Query"
+                    </div>
+                </div>
+            `;
+        }
+
+        async function testAssignedStudiesAPI() {
+            const resultsDiv = document.getElementById('assignedAPIResults');
+            resultsDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Probando API...';
+            
+            try {
+                const response = await fetch('api/get_user_assigned_studies_fixed.php');
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result success mt-2">
+                        <h6><i class="fas fa-check"></i> API Estudios Asignados:</h6>
+                        <p><strong>Estado:</strong> ${response.ok ? 'OK' : 'Error'}</p>
+                        <p><strong>Estudios encontrados:</strong> ${data.data?.studies?.length || 0}</p>
+                        <p><strong>Usuario:</strong> ${data.data?.user?.name || 'N/A'}</p>
+                        <p><strong>Permisos:</strong> [${(data.data?.user?.permissions || []).join(', ')}]</p>
+                        <details>
+                            <summary>Ver respuesta completa</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result info mt-2">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Error en API:</h6>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSessionAPI() {
+            const resultsDiv = document.getElementById('sessionAPIResults');
+            resultsDiv.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Probando API...';
+            
+            try {
+                const response = await fetch('api/auth/validate-session-simple.php');
+                const data = await response.json();
+                
+                const permissions = checkPermissions(data.permisos || []);
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result success mt-2">
+                        <h6><i class="fas fa-check"></i> API Validación Sesión:</h6>
+                        <p><strong>Estado:</strong> ${response.ok ? 'OK' : 'Error'}</p>
+                        <p><strong>Usuario:</strong> ${data.nombre || 'N/A'}</p>
+                        <p><strong>Permisos:</strong> [${(data.permisos || []).join(', ')}]</p>
+                        <p><strong>Modo detectado:</strong> ${permissions.mode}</p>
+                        <details>
+                            <summary>Ver respuesta completa</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result info mt-2">
+                        <h6><i class="fas fa-exclamation-triangle"></i> Error en API:</h6>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

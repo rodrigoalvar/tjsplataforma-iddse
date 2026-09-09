@@ -1,0 +1,17 @@
+<div class="header">
+<h1>{{app_name}}</h1>
+</div>
+<div class="content">
+<h2>{{titulo|Notificaci&oacute;n}}</h2>
+{{#if nombre_usuario}}
+<p>Estimado/a <strong>{{nombre_usuario}}</strong>,</p>
+{{/if}}
+<div>{{mensaje|Este es un mensaje de notificaci&oacute;n del sistema.}}</div>
+{{#if url_accion}}
+<div style="text-align: center; margin: 20px 0;"><a href="{{url_accion}}" style="display: inline-block; padding: 12px 30px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px;"> {{texto_accion|Acceder}} </a></div>
+{{/if}}</div>
+<div class="footer">
+<p>Este es un email autom&aacute;tico, por favor no respondas a este mensaje.</p>
+<!-- Footer inyectado automáticamente desde config/branding.php -->
+<p>Fecha: {{current_datetime}}</p>
+</div>

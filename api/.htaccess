@@ -1,0 +1,8 @@
+# Configuración para subida de archivos grandes de audio (AI Informes)
+# Aumentar límites de PHP para archivos de hasta 100MB
+
+php_value upload_max_filesize 500M
+php_value post_max_size 500M
+php_value memory_limit 512M
+php_value max_execution_time 1800
+php_value max_input_time 1800

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Columna Jerarquía</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="bi bi-diagram-3"></i> Test Columna Jerarquía
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Problema Identificado:</h5>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Las cuentas que tienen dependientes figuraban como "Sin Jerarquía" 
+                            pero deberían figurar como "Principal" o "Padre".
+                        </div>
+                        
+                        <h5>Solución Implementada:</h5>
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle me-2"></i>
+                            Nueva función <code>getHierarchyType()</code> que considera:
+                            <ul class="mb-0 mt-2">
+                                <li>Si tiene padre: muestra nombre del padre</li>
+                                <li>Si tiene dependientes: muestra "Principal (X dependientes)"</li>
+                                <li>Si no tiene ni padre ni dependientes: "Sin jerarquía"</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Pruebas del Sistema:</h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="testHierarchyLogic()">
+                                <i class="bi bi-test-tube me-2"></i>Probar Lógica de Jerarquía
+                            </button>
+                            <button class="btn btn-info" onclick="simulateUsers()">
+                                <i class="bi bi-people me-2"></i>Simular Usuarios
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6>Resultados:</h6>
+                            <div id="testResults" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                                <small class="text-muted">Los resultados aparecerán aquí...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Tabla de Prueba:</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Padre</th>
+                                    <th>Dependientes</th>
+                                    <th>Jerarquía (Antes)</th>
+                                    <th>Jerarquía (Después)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="testTableBody">
+                                <!-- Se llenará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Función para determinar el tipo de jerarquía (copiada del archivo principal)
+        function getHierarchyType(user) {
+            if (user.padre_nombre) {
+                return `${user.padre_nombre} ${user.padre_apellido}`;
+            } else if (user.dependientes_count > 0) {
+                return `Principal (${user.dependientes_count} dependiente${user.dependientes_count > 1 ? 's' : ''})`;
+            } else {
+                return 'Sin jerarquía';
+            }
+        }
+        
+        // Función antigua (problemática)
+        function getHierarchyTypeOld(user) {
+            if (user.padre_nombre) {
+                return `${user.padre_nombre} ${user.padre_apellido}`;
+            } else {
+                return 'Sin jerarquía'; // PROBLEMA: No consideraba dependientes
+            }
+        }
+        
+        function testHierarchyLogic() {
+            const testUsers = [
+                {
+                    nombre: 'Usuario Root',
+                    apellido: 'Principal',
+                    padre_nombre: null,
+                    dependientes_count: 3
+                },
+                {
+                    nombre: 'Usuario Admin',
+                    apellido: 'Secundario',
+                    padre_nombre: 'Usuario Root',
+                    padre_apellido: 'Principal',
+                    dependientes_count: 1
+                },
+                {
+                    nombre: 'Usuario',
+                    apellido: 'Final',
+                    padre_nombre: 'Usuario Admin',
+                    padre_apellido: 'Secundario',
+                    dependientes_count: 0
+                },
+                {
+                    nombre: 'Usuario',
+                    apellido: 'Independiente',
+                    padre_nombre: null,
+                    dependientes_count: 0
+                }
+            ];
+            
+            const results = document.getElementById('testResults');
+            results.innerHTML = '<h6>Pruebas de Lógica de Jerarquía:</h6>';
+            
+            testUsers.forEach((user, index) => {
+                const oldResult = getHierarchyTypeOld(user);
+                const newResult = getHierarchyType(user);
+                const isCorrect = newResult !== oldResult && user.dependientes_count > 0;
+                
+                results.innerHTML += `
+                    <div class="mb-2 p-2 border rounded ${isCorrect ? 'bg-success text-white' : 'bg-light'}">
+                        <strong>${user.nombre} ${user.apellido}:</strong><br>
+                        <small>Antes: ${oldResult}</small><br>
+                        <small>Después: ${newResult}</small><br>
+                        <small>${isCorrect ? '✅ CORREGIDO' : 'ℹ️ Sin cambios'}</small>
+                    </div>
+                `;
+            });
+        }
+        
+        function simulateUsers() {
+            const testUsers = [
+                {
+                    nombre: 'Eugenio',
+                    apellido: 'Castiglione',
+                    padre_nombre: null,
+                    dependientes_count: 2
+                },
+                {
+                    nombre: 'Usuario',
+                    apellido: 'Prueba cURL',
+                    padre_nombre: 'Eugenio',
+                    padre_apellido: 'Castiglione',
+                    dependientes_count: 0
+                },
+                {
+                    nombre: 'Usuario',
+                    apellido: 'Prueba',
+                    padre_nombre: 'Eugenio',
+                    padre_apellido: 'Castiglione',
+                    dependientes_count: 0
+                },
+                {
+                    nombre: 'Rodrigo',
+                    apellido: 'Alvar',
+                    padre_nombre: null,
+                    dependientes_count: 0
+                }
+            ];
+            
+            const tbody = document.getElementById('testTableBody');
+            tbody.innerHTML = testUsers.map(user => {
+                const oldHierarchy = getHierarchyTypeOld(user);
+                const newHierarchy = getHierarchyType(user);
+                const isChanged = oldHierarchy !== newHierarchy;
+                
+                return `
+                    <tr class="${isChanged ? 'table-success' : ''}">
+                        <td>${user.nombre} ${user.apellido}</td>
+                        <td>${user.padre_nombre ? `${user.padre_nombre} ${user.padre_apellido}` : 'Ninguno'}</td>
+                        <td>${user.dependientes_count}</td>
+                        <td><span class="text-danger">${oldHierarchy}</span></td>
+                        <td><span class="text-success">${newHierarchy}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Ejecutar pruebas al cargar
+        document.addEventListener('DOMContentLoaded', function() {
+            testHierarchyLogic();
+            simulateUsers();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Profesional - TJS Medical</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="js/auth-middleware.js"></script>
+</head>
+<body>
+    <script>
+        // Verificar si ya hay una sesión activa
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('api/auth/validate-session.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Usuario ya autenticado, redirigir al dashboard
+                    window.location.href = 'dashboard-unified.html';
+                    return;
+                }
+            } catch (error) {
+                // No hay sesión activa, continuar mostrando el formulario
+                console.log('No hay sesión activa');
+            }
+        });
+    </script>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="text-center mb-4">
+                    <a href="index.html">
+                        <img src="logo.svg" alt="TJS Medical" class="logo mb-3">
+                    </a>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="text-center mb-4">Portal de Imágenes</h2>
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <input type="email" class="form-control" id="email" placeholder="Email" required>
+                            </div>
+                            <div class="mb-4">
+                                <input type="password" class="form-control" id="password" placeholder="Contraseña" required>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary" id="submitBtn">Ingresar</button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center mt-3">
+                            <p>¿No tienes cuenta? <a href="register.html">Regístrate aquí</a></p>
+                        </div>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Deshabilitar botón durante el proceso
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Iniciando sesión...';
+            
+            try {
+                const response = await fetch('api/auth/login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Establecer indicadores de nueva sesión para evitar restaurar datos de sesiones anteriores
+                    sessionStorage.setItem('new_session_flag', 'true');
+                    sessionStorage.setItem('session_start_time', Date.now().toString());
+                    
+                    // Login exitoso, redirigir al dashboard
+                    window.location.href = 'dashboard-unified.html';
+                } else {
+                    // Mostrar error
+                    alert(result.message || 'Error al iniciar sesión');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error de conexión. Por favor, intenta nuevamente.');
+            } finally {
+                // Rehabilitar botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Ingresar';
+            }
+        });
+    </script>
+</body>
+</html>

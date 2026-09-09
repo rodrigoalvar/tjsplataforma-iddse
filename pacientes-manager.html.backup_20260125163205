@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Pacientes - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- Cargar Bootstrap JS antes de los scripts de permisos para que el modal funcione -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/auth-middleware.js"></script>
+    <script src="assets/js/iframe-detector.js"></script>
+    <script src="assets/js/simple-permission-manager.js"></script>
+    <script src="assets/js/evolution-api.js"></script>
+    <script>
+        // Ocultar elementos del sidebar inmediatamente para evitar flash visual
+        (function() {
+            const style = document.createElement('style');
+            style.textContent = '.sidebar-nav .nav-item { display: none !important; }';
+            document.head.appendChild(style);
+        })();
+    </script>
+    <style>
+        .pacientes-container {
+            padding: 20px;
+        }
+        .search-bar {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .pacientes-table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .table-actions {
+            white-space: nowrap;
+        }
+        .badge-activo {
+            background-color: #28a745;
+        }
+        .badge-inactivo {
+            background-color: #dc3545;
+        }
+        .paciente-modal .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .form-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .form-section:last-child {
+            border-bottom: none;
+        }
+        .form-section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .alert-sm {
+            font-size: 0.875rem;
+            padding: 0.25rem 0.5rem;
+            margin-bottom: 0;
+        }
+        .alert-sm small {
+            font-size: 0.8125rem;
+        }
+        
+        /* Sticky header para welcome section */
+        .pacientes-container > .row:first-child,
+        .main-content .container-fluid > .row:first-child {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: white;
+            padding-top: 1rem;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .pacientes-container > .row:first-child .welcome-card,
+        .main-content .container-fluid > .row:first-child .welcome-card {
+            margin-bottom: 0;
+        }
+        
+        /* Botón flotante para volver al inicio */
+        .scroll-to-top-btn {
+            position: fixed !important;
+            bottom: 30px !important;
+            right: 30px !important;
+            width: 50px !important;
+            height: 50px !important;
+            background: linear-gradient(135deg, #8B0D32 0%, #A91B47 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 50% !important;
+            box-shadow: 0 4px 12px rgba(139, 13, 50, 0.4) !important;
+            cursor: pointer !important;
+            display: none !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 99999 !important;
+            transition: opacity 0.3s ease, transform 0.3s ease !important;
+            font-size: 20px !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        
+        .scroll-to-top-btn:hover {
+            background: linear-gradient(135deg, #A91B47 0%, #8B0D32 100%) !important;
+            transform: translateY(-3px) !important;
+            box-shadow: 0 6px 16px rgba(139, 13, 50, 0.5) !important;
+        }
+        
+        .scroll-to-top-btn:active {
+            transform: translateY(-1px) !important;
+        }
+        
+        .scroll-to-top-btn.show {
+            display: flex !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+        
+        @media (max-width: 767.98px) {
+            .scroll-to-top-btn {
+                bottom: 20px !important;
+                right: 20px !important;
+                width: 45px !important;
+                height: 45px !important;
+                font-size: 18px !important;
+            }
+            
+            .pacientes-container > .row:first-child,
+            .main-content .container-fluid > .row:first-child {
+                top: 56px;
+                z-index: 99;
+            }
+        }
+        
+        /* Estilos para el logo en el header de bienvenida */
+        .welcome-logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .welcome-logo {
+            max-height: 80px;
+            max-width: 120px;
+            height: auto;
+            width: auto;
+            object-fit: contain;
+        }
+        
+        @media (max-width: 991.98px) {
+            .welcome-logo {
+                max-height: 50px;
+                max-width: 80px;
+            }
+        }
+        
+        @media (max-width: 767.98px) {
+            .welcome-logo {
+                max-height: 40px;
+                max-width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Proteger página - requiere autenticación y permisos
+        document.addEventListener('DOMContentLoaded', async function() {
+            const isAuthenticated = await requireAuth();
+            if (!isAuthenticated) {
+                return; // La función requireAuth ya maneja la redirección
+            }
+            
+            // Verificar permisos específicos para Gestión Pacientes usando la API simplificada
+            const hasAccess = await requirePermissionSimple('pacientes', 'Gestión Pacientes', {
+                title: 'Acceso Denegado - Gestión Pacientes',
+                message: 'No tienes permisos para acceder a <strong>Gestión Pacientes</strong>.',
+                redirectUrl: 'dashboard-unified.html',
+                showLogoutButton: true
+            });
+            
+            // Si no tiene permisos, no continuar con el resto del código
+            if (!hasAccess) {
+                return;
+            }
+            
+            // Si tiene permisos, inicializar el gestor de pacientes
+            if (window.initPacientesManager) {
+                window.initPacientesManager();
+            }
+            
+            // Actualizar nombre de usuario en sidebar
+            updateWelcomeMessage();
+        });
+
+        async function updateWelcomeMessage() {
+            try {
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                if (window.getCurrentUser) {
+                    const user = window.getCurrentUser();
+                    
+                    if (user && user.nombre) {
+                        const welcomeTitle = document.getElementById('welcomeTitle');
+                        if (welcomeTitle) {
+                            const fullName = user.apellido ? `${user.nombre} ${user.apellido}` : `${user.nombre}`;
+                            welcomeTitle.textContent = `Gestión de Pacientes - ${fullName}`;
+                        }
+                        
+                        const sidebarUserName = document.querySelector('.sidebar-user .user-name');
+                        if (sidebarUserName) {
+                            const fullName = user.apellido ? `Dr. ${user.nombre} ${user.apellido}` : `Dr. ${user.nombre}`;
+                            sidebarUserName.textContent = fullName;
+                        }
+                    }
+                } else {
+                    setTimeout(updateWelcomeMessage, 500);
+                }
+            } catch (error) {
+                setTimeout(updateWelcomeMessage, 1000);
+            }
+        }
+    </script>
+
+    <!-- Sidebar Layout -->
+    <div id="sidebarLayout" class="layout-container">
+        <!-- Mobile Header -->
+        <div class="mobile-header d-lg-none">
+            <div class="container-fluid">
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <button class="btn btn-link" id="sidebarToggle">
+                        <i class="fas fa-bars fa-lg"></i>
+                    </button>
+                    <img src="logo.svg" alt="Logo" height="30">
+                    <div class="dropdown">
+                        <button class="btn btn-link" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="profesional.html">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="#configuracion">Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger logout-btn" href="#">Cerrar Sesión</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar d-flex flex-column" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="text-center flex-grow-1">
+                        <img src="logo.svg" alt="Logo" class="sidebar-logo mb-2">
+                        <h5 class="sidebar-title mb-0">Portal Estudios</h5>
+                    </div>
+                    <button class="btn btn-link text-white p-1 d-none d-lg-block" id="sidebarToggleDesktop" title="Ocultar Sidebar">
+                        <i class="fas fa-angle-double-left"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- User Info -->
+            <div class="sidebar-user d-none d-lg-flex">
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Dr. Usuario</div>
+                    <div class="user-role">Médico Radiólogo</div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <div class="sidebar-nav flex-grow-1">
+                <ul class="nav flex-column">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard-unified.html">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span>Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="paciente.html">
+                            <i class="fas fa-file-medical"></i>
+                            <span>Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/editor.html">
+                            <i class="fas fa-file-alt"></i>
+                            <span>Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/informes-manager.html">
+                            <i class="fas fa-search"></i>
+                            <span>Gestión Informes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="estudios-manager.html">
+                            <i class="fas fa-share-alt"></i>
+                            <span>Gestión Estudios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="pacientes-manager.html">
+                            <i class="fas fa-user-injured"></i>
+                            <span>Gestión Pacientes</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/workspace.html">
+                            <i class="fas fa-th-large"></i>
+                            <span>WorkSpace</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/audio-recorder.html">
+                            <i class="fas fa-microphone"></i>
+                            <span>Grabación</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="components/viewer.html">
+                            <i class="fas fa-eye"></i>
+                            <span>Visor DICOM</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="user-management.html">
+                            <i class="fas fa-users"></i>
+                            <span>Gestión Usuarios</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="pacs-manager.html">
+                            <i class="fas fa-database"></i>
+                            <span>PACS Manager</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="configuracion.html">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer d-none d-lg-block">
+                <a href="#" class="btn btn-outline-light w-100 logout-btn">
+                    <i class="fas fa-sign-out-alt me-2"></i>
+                    Cerrar Sesión
+                </a>
+            </div>
+        </div>
+
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Desktop Sidebar Toggle (when hidden) -->
+            <button class="btn btn-outline-secondary sidebar-toggle-show d-none" id="sidebarToggleShow" title="Mostrar Sidebar">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+            
+            <div class="pacientes-container">
+                <!-- Welcome Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="welcome-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h2 class="welcome-title" id="welcomeTitle">Gestión de Pacientes</h2>
+                                    <p class="welcome-subtitle">Administración completa de pacientes del sistema</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="welcome-logo-container d-flex justify-content-end">
+                                        <img id="welcomeLogo" src="logo.svg" alt="Logo" class="welcome-logo" style="display: none;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuración de Búsqueda Global -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cog me-2"></i>Configuración de Búsqueda en Portal de Pacientes
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Esta configuración afecta cómo se buscarán los estudios en <strong>PORTAL PACIENTES</strong>.
+                            Define si la búsqueda se realizará por documento (ID PACS) o por ID Interno.
+                        </p>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Tipo de Búsqueda por Defecto:</label>
+                                <div class="btn-group w-100" role="group" aria-label="Tipo de búsqueda">
+                                    <input type="radio" class="btn-check" name="globalSearchType" id="globalSearchIdPaciente" value="idpaciente">
+                                    <label class="btn btn-outline-primary" for="globalSearchIdPaciente">
+                                        <i class="fas fa-id-card me-1"></i>Por ID PACS / Documento
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="globalSearchType" id="globalSearchIdInterno" value="id_interno">
+                                    <label class="btn btn-outline-primary" for="globalSearchIdInterno">
+                                        <i class="fas fa-hashtag me-1"></i>Por ID Interno
+                                    </label>
+                                </div>
+                                <small class="form-text text-muted mt-2">
+                                    <strong>Por ID PACS/Documento:</strong> Busca directamente en PACS usando el documento ingresado como PatientID.<br>
+                                    <strong>Por ID Interno:</strong> Busca primero en la tabla pacientes por ID interno, luego usa el idpaciente asociado para buscar en PACS.
+                                </small>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-success" id="btnGuardarConfigBusqueda">
+                                    <i class="fas fa-save me-2"></i>Guardar Configuración
+                                </button>
+                            </div>
+                        </div>
+                        <div id="configBusquedaMessage" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <!-- Search Bar -->
+                <div class="search-bar">
+                    <div class="row g-3">
+                        <div class="col-md-8 col-lg-6">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Buscar por nombre, apellido, ID o documento...">
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-lg-3">
+                            <select class="form-select" id="filterActivo">
+                                <option value="">Todos los estados</option>
+                                <option value="1">Activos</option>
+                                <option value="0">Inactivos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 col-lg-3">
+                            <button class="btn btn-secondary w-100" id="btnLimpiar">
+                                <i class="fas fa-times me-2"></i>Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pacientes Table -->
+                <div class="pacientes-table-container">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <h5 class="mb-0">Lista de Pacientes</h5>
+                            <button class="btn btn-primary" id="btnNuevoPaciente">
+                                <i class="fas fa-plus me-2"></i>Nuevo Paciente
+                            </button>
+                        </div>
+                        <span class="text-muted" id="totalPacientes">0 pacientes</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th class="d-none d-sm-table-cell">ID Interno</th>
+                                    <th>Nombre</th>
+                                    <th class="d-none d-lg-table-cell">ID PACS</th>
+                                    <th class="d-none d-md-table-cell">Teléfono</th>
+                                    <th class="d-none d-xl-table-cell">Email</th>
+                                    <th class="d-none d-xl-table-cell">Dirección</th>
+                                    <th class="d-none d-sm-table-cell">Estado</th>
+                                    <th class="text-end">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pacientesTableBody">
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Cargando...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Pagination -->
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center" id="pagination">
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Ver Detalles del Paciente -->
+    <div class="modal fade" id="detallesPacienteModal" tabindex="-1" aria-labelledby="detallesPacienteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="detallesPacienteModalLabel">
+                        <i class="fas fa-user-injured me-2"></i>
+                        Detalles del Paciente
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="detallesPacienteBody">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnEditarDesdeDetalles">
+                        <i class="fas fa-edit me-2"></i>Editar Paciente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmar Envío de WhatsApp -->
+    <div class="modal fade" id="confirmWhatsAppModal" tabindex="-1" aria-labelledby="confirmWhatsAppModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title" id="confirmWhatsAppModalLabel">
+                        <i class="fab fa-whatsapp me-2"></i>
+                        Enviar Mensaje WhatsApp
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fab fa-whatsapp text-success" style="font-size: 3rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-3">¿Desea enviar un mensaje de WhatsApp a este paciente?</h6>
+                            <div id="whatsappPacienteInfo" class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">Información del Paciente:</h6>
+                                    <p class="card-text mb-1"><strong>Nombre:</strong> <span id="whatsappPacienteNombre">-</span></p>
+                                    <p class="card-text mb-1"><strong>Teléfono:</strong> <span id="whatsappPacienteTelefono">-</span></p>
+                                    <p class="card-text mb-0"><strong>ID Interno:</strong> <span id="whatsappPacienteIdInterno">-</span></p>
+                                </div>
+                            </div>
+                            <div class="alert alert-info mb-0">
+                                <h6 class="alert-heading"><i class="fas fa-envelope me-2"></i>Mensaje a enviar:</h6>
+                                <div id="whatsappMensajePreview" class="mt-2" style="white-space: pre-wrap; word-wrap: break-word;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnConfirmarEnviarWhatsApp">
+                        <i class="fab fa-whatsapp me-2"></i>Enviar WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Confirmar Eliminación -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Confirmar Eliminación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-trash-alt text-danger" style="font-size: 3rem;"></i>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-3">¿Está seguro de que desea eliminar este paciente?</h6>
+                            <div class="alert alert-danger mb-0" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>Advertencia:</strong> Esta acción <strong>eliminará permanentemente</strong> el paciente de la base de datos. 
+                                Esta acción no se puede deshacer.
+                            </div>
+                            <div id="deletePacienteInfo" class="card bg-light mt-3">
+                                <div class="card-body">
+                                    <h6 class="card-title mb-2">Información del Paciente:</h6>
+                                    <p class="card-text mb-1"><strong>ID Interno:</strong> <span id="deletePacienteId">-</span></p>
+                                    <p class="card-text mb-1"><strong>Nombre:</strong> <span id="deletePacienteNombre">-</span></p>
+                                    <p class="card-text mb-0"><strong>ID PACS:</strong> <span id="deletePacienteIdPacs">-</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <button type="button" class="btn btn-danger" id="btnConfirmarEliminarPaciente">
+                        <i class="fas fa-trash me-2"></i>Eliminar Paciente
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar paciente -->
+    <div class="modal fade paciente-modal" id="pacienteModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">Nuevo Paciente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="pacienteForm">
+                        <input type="hidden" id="pacienteId" name="id">
+                        
+                        <!-- Información Básica -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-user me-2"></i>Información Básica
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">ID Interno</label>
+                                    <input type="text" class="form-control" id="pacienteIdInput" name="paciente_id" readonly placeholder="Se generará automáticamente">
+                                    <small class="form-text text-muted">Se generará automáticamente al guardar (formato: PAC-AAAAMMDD-XXX)</small>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">ID PACS <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="idpaciente" name="idpaciente" required>
+                                        <button type="button" class="btn btn-outline-secondary" id="btnBuscarIdPacs" title="Buscar datos del paciente">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">ID del paciente en el sistema PACS. Presiona el botón de búsqueda para obtener datos automáticamente.</small>
+                                    <div id="idpacienteBusquedaStatus" class="mt-2"></div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información de Contacto -->
+                        <div class="form-section">
+                            <div class="form-section-title">
+                                <i class="fas fa-address-book me-2"></i>Información de Contacto
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Teléfono</label>
+                                    <input type="tel" class="form-control" id="telefono" name="telefono">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Dirección</label>
+                                    <textarea class="form-control" id="direccion" name="direccion" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="form-section">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="activo" name="activo" checked>
+                                <label class="form-check-label" for="activo">Paciente Activo</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btnGuardarPaciente">
+                        <i class="fas fa-save me-2"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Scripts -->
+    <!-- Bootstrap ya está cargado en el head, no es necesario cargarlo aquí -->
+    <script src="assets/js/pacientes-manager.js"></script>
+    <script src="assets/js/sidebar-gui-manager.js"></script>
+    
+    <!-- Sidebar Scripts -->
+    <script>
+        // Sidebar toggle functionality
+        // Function to load logo from configuration
+        async function loadWelcomeLogo() {
+            try {
+                const logoElement = document.getElementById('welcomeLogo');
+                if (!logoElement) return;
+                
+                const configResponse = await fetch('api/config/get-app-config.php');
+                const configData = await configResponse.json();
+                
+                if (configData.success && configData.logo) {
+                    logoElement.src = configData.logo;
+                    logoElement.style.display = 'block';
+                } else {
+                    logoElement.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error cargando logo de configuración:', error);
+                const logoElement = document.getElementById('welcomeLogo');
+                if (logoElement) {
+                    logoElement.style.display = 'none';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar logo desde configuración
+            loadWelcomeLogo();
+            
+            const sidebar = document.getElementById('sidebar');
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebarToggleDesktop = document.getElementById('sidebarToggleDesktop');
+            const sidebarToggleShow = document.getElementById('sidebarToggleShow');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const sidebarLayout = document.getElementById('sidebarLayout');
+            
+            // Mobile toggle
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                    if (sidebarOverlay) {
+                        sidebarOverlay.classList.toggle('show');
+                    }
+                });
+            }
+            
+            // Desktop toggle - ocultar sidebar
+            if (sidebarToggleDesktop) {
+                sidebarToggleDesktop.addEventListener('click', function() {
+                    if (sidebarLayout) {
+                        sidebarLayout.classList.add('sidebar-hidden');
+                    }
+                });
+            }
+            
+            // Desktop toggle - mostrar sidebar
+            if (sidebarToggleShow) {
+                sidebarToggleShow.addEventListener('click', function() {
+                    if (sidebarLayout) {
+                        sidebarLayout.classList.remove('sidebar-hidden');
+                    }
+                });
+            }
+            
+            // Overlay click (mobile)
+            if (sidebarOverlay) {
+                sidebarOverlay.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    sidebarOverlay.classList.remove('show');
+                });
+            }
+            
+            // Close sidebar on nav link click (mobile)
+            document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 992) {
+                        sidebar.classList.remove('show');
+                        if (sidebarOverlay) {
+                            sidebarOverlay.classList.remove('show');
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+    
+    <!-- Botón flotante para volver al inicio -->
+    <button class="scroll-to-top-btn" id="scrollToTopBtn" title="Volver al inicio" aria-label="Volver al inicio">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+    
+    <script>
+        // Funcionalidad del botón "Volver al inicio"
+        (function() {
+            function initScrollToTop() {
+                const scrollToTopBtn = document.getElementById('scrollToTopBtn');
+                if (!scrollToTopBtn) {
+                    setTimeout(initScrollToTop, 100);
+                    return;
+                }
+                
+                const mainContent = document.querySelector('.main-content');
+                const containerFluid = document.querySelector('.main-content .container-fluid, .pacientes-container');
+                
+                function getScrollPosition() {
+                    const windowScroll = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+                    let containerScroll = 0;
+                    if (mainContent && mainContent.scrollTop) {
+                        containerScroll = mainContent.scrollTop;
+                    }
+                    if (containerFluid && containerFluid.scrollTop) {
+                        containerScroll = Math.max(containerScroll, containerFluid.scrollTop);
+                    }
+                    return Math.max(windowScroll, containerScroll);
+                }
+                
+                function toggleScrollButton() {
+                    const scrollTop = getScrollPosition();
+                    if (scrollTop > 200) {
+                        scrollToTopBtn.classList.add('show');
+                    } else {
+                        scrollToTopBtn.classList.remove('show');
+                    }
+                }
+                
+                function scrollToTop(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const scrollOptions = { top: 0, behavior: 'smooth' };
+                    window.scrollTo(scrollOptions);
+                    if (document.documentElement) document.documentElement.scrollTo(scrollOptions);
+                    if (document.body) document.body.scrollTo(scrollOptions);
+                    if (mainContent) mainContent.scrollTo(scrollOptions);
+                    if (containerFluid) containerFluid.scrollTo(scrollOptions);
+                }
+                
+                window.addEventListener('scroll', toggleScrollButton, { passive: true });
+                document.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (mainContent) mainContent.addEventListener('scroll', toggleScrollButton, { passive: true });
+                if (containerFluid) containerFluid.addEventListener('scroll', toggleScrollButton, { passive: true });
+                scrollToTopBtn.addEventListener('click', scrollToTop);
+                setTimeout(toggleScrollButton, 500);
+                setInterval(toggleScrollButton, 1000);
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initScrollToTop);
+            } else {
+                initScrollToTop();
+            }
+        })();
+    </script>
+</body>
+</html>
+

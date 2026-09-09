@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Contadores Corregidos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .comparison {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .api-section {
+            flex: 1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .api-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .original {
+            border-left: 4px solid #ff6b6b;
+        }
+        .corrected {
+            border-left: 4px solid #51cf66;
+        }
+        .study-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .study-header {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+        }
+        .antecedents-info {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .counter-badge {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        .counter-zero {
+            background: #6c757d;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .summary {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .summary h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .summary-table th,
+        .summary-table td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }
+        .summary-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+        .difference {
+            font-weight: bold;
+        }
+        .difference.positive {
+            color: #28a745;
+        }
+        .difference.negative {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Comparación de Contadores de Antecedentes</h1>
+        <p>Esta página compara los contadores de antecedentes entre la API original y la versión corregida.</p>
+        
+        <div class="summary" id="summary">
+            <h2>Resumen de Diferencias</h2>
+            <div id="summaryContent">Cargando...</div>
+        </div>
+        
+        <div class="comparison">
+            <div class="api-section original">
+                <h2>API Original (get_user_assigned_studies_fixed.php)</h2>
+                <div id="originalResults">
+                    <div class="loading">Cargando datos originales...</div>
+                </div>
+            </div>
+            
+            <div class="api-section corrected">
+                <h2>API Corregida (get_user_assigned_studies_corrected.php)</h2>
+                <div id="correctedResults">
+                    <div class="loading">Cargando datos corregidos...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let originalData = null;
+        let correctedData = null;
+
+        // Función para crear una tarjeta de estudio
+        function createStudyCard(study, isOriginal = true) {
+            const antecedents = study.antecedents || {};
+            const totalCount = antecedents.total_count || 0;
+            const notesCount = antecedents.notes_count || 0;
+            const filesCount = antecedents.files_count || 0;
+            
+            return `
+                <div class="study-card">
+                    <div class="study-header">
+                        ${study.patient_name} - Study ID: ${study.study_id}
+                    </div>
+                    <div>
+                        <strong>Modalidad:</strong> ${study.modality || 'N/A'} |
+                        <strong>Fecha:</strong> ${study.study_date || study.date || 'N/A'}
+                    </div>
+                    <div class="antecedents-info">
+                        <div>
+                            <span class="counter-badge ${totalCount === 0 ? 'counter-zero' : ''}">
+                                Total: ${totalCount}
+                            </span>
+                            ${isOriginal ? '' : `
+                                <span class="counter-badge ${notesCount === 0 ? 'counter-zero' : ''}">
+                                    Notas: ${notesCount}
+                                </span>
+                                <span class="counter-badge ${filesCount === 0 ? 'counter-zero' : ''}">
+                                    Archivos: ${filesCount}
+                                </span>
+                            `}
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <strong>Has Notes:</strong> ${antecedents.has_notes ? 'Sí' : 'No'} |
+                            <strong>Has Files:</strong> ${antecedents.has_files ? 'Sí' : 'No'}
+                        </div>
+                        ${antecedents.notes ? `
+                            <div style="margin-top: 8px;">
+                                <strong>Notas:</strong> ${antecedents.notes.substring(0, 100)}...
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Función para crear el resumen de diferencias
+        function createSummary() {
+            if (!originalData || !correctedData) return;
+
+            const originalStudies = originalData.data?.studies || [];
+            const correctedStudies = correctedData.data?.studies || [];
+
+            let summaryHTML = `
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Study ID</th>
+                            <th>Paciente</th>
+                            <th>Original Total</th>
+                            <th>Corregido Total</th>
+                            <th>Diferencia</th>
+                            <th>Notas (Corregido)</th>
+                            <th>Archivos (Corregido)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Crear un mapa de estudios corregidos para fácil acceso
+            const correctedMap = {};
+            correctedStudies.forEach(study => {
+                correctedMap[study.study_id] = study;
+            });
+
+            originalStudies.forEach(originalStudy => {
+                const correctedStudy = correctedMap[originalStudy.study_id];
+                if (correctedStudy) {
+                    const originalTotal = originalStudy.antecedents?.total_count || 0;
+                    const correctedTotal = correctedStudy.antecedents?.total_count || 0;
+                    const difference = correctedTotal - originalTotal;
+                    const notesCount = correctedStudy.antecedents?.notes_count || 0;
+                    const filesCount = correctedStudy.antecedents?.files_count || 0;
+
+                    let diffClass = '';
+                    let diffText = difference.toString();
+                    if (difference > 0) {
+                        diffClass = 'positive';
+                        diffText = '+' + difference;
+                    } else if (difference < 0) {
+                        diffClass = 'negative';
+                    }
+
+                    summaryHTML += `
+                        <tr>
+                            <td>${originalStudy.study_id}</td>
+                            <td>${originalStudy.patient_name}</td>
+                            <td>${originalTotal}</td>
+                            <td>${correctedTotal}</td>
+                            <td class="difference ${diffClass}">${diffText}</td>
+                            <td>${notesCount}</td>
+                            <td>${filesCount}</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            summaryHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('summaryContent').innerHTML = summaryHTML;
+        }
+
+        // Cargar datos de la API original
+        async function loadOriginalData() {
+            try {
+                const response = await fetch('/api/get_user_assigned_studies_fixed.php');
+                originalData = await response.json();
+                
+                if (originalData.success) {
+                    const studies = originalData.data?.studies || [];
+                    let html = '';
+                    
+                    if (studies.length === 0) {
+                        html = '<div class="error">No se encontraron estudios</div>';
+                    } else {
+                        studies.forEach(study => {
+                            html += createStudyCard(study, true);
+                        });
+                    }
+                    
+                    document.getElementById('originalResults').innerHTML = html;
+                } else {
+                    document.getElementById('originalResults').innerHTML = 
+                        `<div class="error">Error: ${originalData.error || 'Error desconocido'}</div>`;
+                }
+                
+                createSummary();
+            } catch (error) {
+                console.error('Error loading original data:', error);
+                document.getElementById('originalResults').innerHTML = 
+                    `<div class="error">Error de conexión: ${error.message}</div>`;
+            }
+        }
+
+        // Cargar datos de la API corregida
+        async function loadCorrectedData() {
+            try {
+                const response = await fetch('/api/get_user_assigned_studies_corrected.php');
+                correctedData = await response.json();
+                
+                if (correctedData.success) {
+                    const studies = correctedData.data?.studies || [];
+                    let html = '';
+                    
+                    if (studies.length === 0) {
+                        html = '<div class="error">No se encontraron estudios</div>';
+                    } else {
+                        studies.forEach(study => {
+                            html += createStudyCard(study, false);
+                        });
+                    }
+                    
+                    document.getElementById('correctedResults').innerHTML = html;
+                } else {
+                    document.getElementById('correctedResults').innerHTML = 
+                        `<div class="error">Error: ${correctedData.error || 'Error desconocido'}</div>`;
+                }
+                
+                createSummary();
+            } catch (error) {
+                console.error('Error loading corrected data:', error);
+                document.getElementById('correctedResults').innerHTML = 
+                    `<div class="error">Error de conexión: ${error.message}</div>`;
+            }
+        }
+
+        // Cargar ambos conjuntos de datos al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            loadOriginalData();
+            loadCorrectedData();
+        });
+    </script>
+</body>
+</html>

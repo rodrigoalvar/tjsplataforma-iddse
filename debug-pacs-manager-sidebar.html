@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug PACS Manager Sidebar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 20px; background: #f5f5f5; }
+        .card { margin-bottom: 20px; }
+        code { background: #ecf0f1; padding: 2px 6px; border-radius: 3px; }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
+        .warning { color: #f39c12; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4>🔍 Diagnóstico: PACS Manager en Sidebar</h4>
+        </div>
+        <div class="card-body">
+            <div id="results"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function diagnosticar() {
+    const results = document.getElementById('results');
+    let html = '<h5>Verificando permisos del usuario...</h5>';
+    
+    try {
+        // 1. Obtener permisos del usuario
+        const response = await fetch('api/auth/validate-session-simple.php');
+        const result = await response.json();
+        
+        if (!result.success || !result.user) {
+            html += '<div class="alert alert-danger">❌ No se pudo obtener información del usuario</div>';
+            results.innerHTML = html;
+            return;
+        }
+        
+        // Procesar permisos
+        let permisos = result.user.permisos || [];
+        if (typeof permisos === 'string') {
+            try {
+                permisos = JSON.parse(permisos);
+            } catch (e) {
+                permisos = [permisos];
+            }
+        }
+        if (!Array.isArray(permisos)) {
+            permisos = [];
+        }
+        
+        html += '<div class="alert alert-info">';
+        html += '<strong>Usuario:</strong> ' + result.user.nombre + ' ' + result.user.apellido + '<br>';
+        html += '<strong>ID:</strong> ' + result.user.id + '<br>';
+        html += '<strong>Nivel:</strong> ' + (result.user.nivel || 'N/A');
+        html += '</div>';
+        
+        html += '<h6>Permisos del Usuario:</h6>';
+        html += '<ul>';
+        permisos.forEach(perm => {
+            html += '<li><code>' + perm + '</code></li>';
+        });
+        html += '</ul>';
+        
+        // 2. Verificar permisos específicos
+        const hasPacsManager = permisos.includes('pacs_manager') || permisos.includes('all');
+        const hasGuiPacsManager = permisos.includes('gui_pacs_manager') || permisos.includes('all');
+        
+        html += '<hr><h6>Verificación de Permisos:</h6>';
+        html += '<table class="table table-bordered">';
+        html += '<thead><tr><th>Permiso</th><th>Estado</th><th>Descripción</th></tr></thead>';
+        html += '<tbody>';
+        
+        html += '<tr>';
+        html += '<td><code>pacs_manager</code></td>';
+        html += hasPacsManager ? '<td><span class="badge bg-success">✓ ACTIVO</span></td>' : '<td><span class="badge bg-danger">✗ INACTIVO</span></td>';
+        html += '<td>Permiso funcional (necesario para usar el módulo)</td>';
+        html += '</tr>';
+        
+        html += '<tr>';
+        html += '<td><code>gui_pacs_manager</code></td>';
+        html += hasGuiPacsManager ? '<td><span class="badge bg-success">✓ ACTIVO</span></td>' : '<td><span class="badge bg-danger">✗ INACTIVO</span></td>';
+        html += '<td>Permiso de interfaz (necesario para ver en el sidebar)</td>';
+        html += '</tr>';
+        
+        html += '</tbody></table>';
+        
+        // 3. Verificar enlace en HTML
+        html += '<hr><h6>Verificación del Enlace en HTML:</h6>';
+        const linkExists = document.querySelector('a[href*="pacs-manager.html"]') !== null;
+        html += linkExists 
+            ? '<div class="alert alert-success">✓ El enlace existe en el HTML</div>'
+            : '<div class="alert alert-warning">⚠ El enlace NO se encontró en esta página (normal si estás en otra página)</div>';
+        
+        // 4. Diagnóstico final
+        html += '<hr><h6>Diagnóstico Final:</h6>';
+        
+        if (hasGuiPacsManager) {
+            html += '<div class="alert alert-success">';
+            html += '<strong>✓ El permiso gui_pacs_manager está activo</strong><br>';
+            html += 'El enlace debería aparecer en el sidebar. Si no aparece:';
+            html += '<ul>';
+            html += '<li>Refresca la página (F5 o Ctrl+R)</li>';
+            html += '<li>Limpia la caché del navegador (Ctrl+Shift+R)</li>';
+            html += '<li>Verifica que estés en una página que carga sidebar-gui-manager.js</li>';
+            html += '</ul>';
+            html += '</div>';
+        } else {
+            html += '<div class="alert alert-danger">';
+            html += '<strong>✗ El permiso gui_pacs_manager NO está activo</strong><br>';
+            html += '<strong>Solución:</strong><br>';
+            html += '1. Ve a <code>user-management.html</code><br>';
+            html += '2. Edita el usuario<br>';
+            html += '3. En la sección <strong>"Interfaz/GUI"</strong>, marca el checkbox <code>gui_pacs_manager</code><br>';
+            html += '4. Guarda los cambios<br>';
+            html += '5. Refresca la página donde quieres ver el sidebar';
+            html += '</div>';
+        }
+        
+        if (!hasPacsManager) {
+            html += '<div class="alert alert-warning">';
+            html += '<strong>⚠ El permiso pacs_manager NO está activo</strong><br>';
+            html += 'Aunque el enlace aparezca en el sidebar, no podrás usar el módulo sin este permiso.';
+            html += '</div>';
+        }
+        
+        results.innerHTML = html;
+        
+    } catch (error) {
+        results.innerHTML = '<div class="alert alert-danger">Error: ' + error.message + '</div>';
+    }
+}
+
+// Ejecutar diagnóstico al cargar
+document.addEventListener('DOMContentLoaded', diagnosticar);
+</script>
+</body>
+</html>
+
+
+

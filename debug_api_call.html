@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug API Call</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 15px; border: 1px solid #ccc; background: #f9f9f9; }
+        .error { background: #ffe6e6; border-color: #ff9999; }
+        .success { background: #e6ffe6; border-color: #99ff99; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Debug API Call - get_user_assigned_studies_fixed.php</h1>
+    
+    <button onclick="testAPI()">Probar API</button>
+    <button onclick="testAPIWithHeaders()">Probar API con Headers</button>
+    <button onclick="clearResults()">Limpiar Resultados</button>
+    
+    <div id="results"></div>
+
+    <script>
+        async function testAPI() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                console.log('🔍 Probando API get_user_assigned_studies_fixed.php...');
+                
+                // Determinar la URL base como lo hace dashboard-with-permissions.js
+                const apiBaseUrl = window.location.pathname.includes('/components/') ? '../api/' : 'api/';
+                const url = apiBaseUrl + 'get_user_assigned_studies_fixed.php';
+                
+                console.log('📍 URL construida:', url);
+                console.log('📍 URL completa:', window.location.origin + '/' + url);
+                
+                const response = await fetch(url);
+                console.log('📡 Response object:', response);
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response headers:', [...response.headers.entries()]);
+                
+                const text = await response.text();
+                console.log('📄 Response text (primeros 200 chars):', text.substring(0, 200));
+                
+                // Intentar parsear como JSON
+                let result;
+                try {
+                    result = JSON.parse(text);
+                    console.log('✅ JSON parseado correctamente');
+                } catch (parseError) {
+                    console.error('❌ Error parseando JSON:', parseError);
+                    throw new Error(`Error parseando JSON: ${parseError.message}. Response: ${text.substring(0, 100)}...`);
+                }
+                
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        <h3>✅ Éxito - ${new Date().toLocaleTimeString()}</h3>
+                        <p><strong>URL:</strong> ${url}</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Estudios encontrados:</strong> ${result.data?.studies?.length || 0}</p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Error en testAPI:', error);
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        <h3>❌ Error - ${new Date().toLocaleTimeString()}</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAPIWithHeaders() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                console.log('🔍 Probando API con headers adicionales...');
+                
+                const apiBaseUrl = window.location.pathname.includes('/components/') ? '../api/' : 'api/';
+                const url = apiBaseUrl + 'get_user_assigned_studies_fixed.php';
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                const text = await response.text();
+                const result = JSON.parse(text);
+                
+                resultsDiv.innerHTML += `
+                    <div class="result success">
+                        <h3>✅ Éxito con Headers - ${new Date().toLocaleTimeString()}</h3>
+                        <p><strong>URL:</strong> ${url}</p>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Estudios encontrados:</strong> ${result.data?.studies?.length || 0}</p>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('❌ Error en testAPIWithHeaders:', error);
+                resultsDiv.innerHTML += `
+                    <div class="result error">
+                        <h3>❌ Error con Headers - ${new Date().toLocaleTimeString()}</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        // Auto-ejecutar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Página de debug cargada');
+            console.log('📍 Location:', window.location);
+            console.log('📍 Pathname:', window.location.pathname);
+            
+            // Mostrar información del contexto
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="result">
+                    <h3>ℹ️ Información del Contexto</h3>
+                    <p><strong>URL actual:</strong> ${window.location.href}</p>
+                    <p><strong>Pathname:</strong> ${window.location.pathname}</p>
+                    <p><strong>API Base URL calculada:</strong> ${window.location.pathname.includes('/components/') ? '../api/' : 'api/'}</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>

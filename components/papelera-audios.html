@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Papelera de Audios - Portal de Estudios Médicos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.css" rel="stylesheet">
+    <link href="../styles.css" rel="stylesheet">
+    <script src="../js/auth-middleware.js"></script>
+    <script src="../assets/js/iframe-detector.js"></script>
+    <style>
+        body {
+            background: #f8f9fa;
+            padding: 20px;
+        }
+        
+        .papelera-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .filters-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .audio-table {
+            margin-top: 20px;
+        }
+        
+        .audio-table th {
+            background: #e9ecef;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .badge-estado {
+            font-size: 0.85em;
+            padding: 5px 10px;
+        }
+        
+        .audio-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .audio-actions .btn {
+            padding: 4px 8px;
+            font-size: 0.85em;
+        }
+        
+        .pagination-info {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="papelera-container">
+        <h1 class="mb-4">
+            <i class="fas fa-trash-alt"></i> Papelera de Audios
+        </h1>
+        
+        <!-- Filtros -->
+        <div class="filters-section">
+            <h5 class="mb-3">Filtros</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Estudio</label>
+                    <select class="form-select" id="filterStudy">
+                        <option value="">Todos los estudios</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <div class="form-check-group">
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input estado-filter" type="checkbox" value="en_papelera" id="estado_papelera" checked>
+                            <label class="form-check-label" for="estado_papelera">En Papelera</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input estado-filter" type="checkbox" value="enviado_ftp" id="estado_ftp">
+                            <label class="form-check-label" for="estado_ftp">Enviado FTP</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input estado-filter" type="checkbox" value="eliminado" id="estado_eliminado">
+                            <label class="form-check-label" for="estado_eliminado">Eliminado</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input estado-filter" type="checkbox" value="guardado_informe" id="estado_informe">
+                            <label class="form-check-label" for="estado_informe">Guardado</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha Desde</label>
+                    <input type="date" class="form-control" id="filterDateFrom">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha Hasta</label>
+                    <input type="date" class="form-control" id="filterDateTo">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Búsqueda</label>
+                    <input type="text" class="form-control" id="filterSearch" placeholder="Paciente, estudio...">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <button class="btn btn-primary" onclick="PapeleraManager.loadAudios()">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                    <button class="btn btn-secondary" onclick="PapeleraManager.resetFilters()">
+                        <i class="fas fa-redo"></i> Limpiar Filtros
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabla de audios -->
+        <div class="audio-table">
+            <div id="loadingIndicator" class="text-center py-5" style="display: none;">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+            </div>
+            
+            <div id="audiosTableContainer">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th width="50">
+                                <input type="checkbox" id="selectAll">
+                            </th>
+                            <th>Fecha/Hora</th>
+                            <th>Duración</th>
+                            <th>Tamaño</th>
+                            <th>Estado</th>
+                            <th>Estudio</th>
+                            <th>Paciente</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audiosTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                No hay audios para mostrar. Use los filtros para buscar.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            <div class="pagination-info">
+                <div>
+                    <span id="paginationText">Mostrando 0 de 0 audios</span>
+                </div>
+                <nav>
+                    <ul class="pagination mb-0" id="pagination">
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        
+        <!-- Botones de acción masiva -->
+        <div class="mt-3">
+            <button class="btn btn-success" id="btnRecoverSelected" onclick="PapeleraManager.recoverSelected()" disabled>
+                <i class="fas fa-undo"></i> Recuperar Seleccionados
+            </button>
+            <button class="btn btn-primary" id="btnDownloadSelected" onclick="PapeleraManager.downloadSelected()" disabled>
+                <i class="fas fa-download"></i> Descargar Seleccionados
+            </button>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const PapeleraManager = {
+            currentPage: 1,
+            pageSize: 50,
+            selectedAudios: new Set(),
+            allAudios: [],
+            
+            init: function() {
+                this.loadStudies();
+                this.loadAudios();
+                this.setupEventListeners();
+            },
+            
+            setupEventListeners: function() {
+                // Select all checkbox
+                document.getElementById('selectAll').addEventListener('change', (e) => {
+                    const checkboxes = document.querySelectorAll('.audio-checkbox');
+                    checkboxes.forEach(cb => {
+                        cb.checked = e.target.checked;
+                        if (e.target.checked) {
+                            this.selectedAudios.add(parseInt(cb.value));
+                        } else {
+                            this.selectedAudios.delete(parseInt(cb.value));
+                        }
+                    });
+                    this.updateActionButtons();
+                });
+                
+                // Estado filters
+                document.querySelectorAll('.estado-filter').forEach(cb => {
+                    cb.addEventListener('change', () => {
+                        this.currentPage = 1;
+                    });
+                });
+            },
+            
+            getAuthToken: function() {
+                return localStorage.getItem('session_token') || sessionStorage.getItem('session_token');
+            },
+            
+            loadStudies: async function() {
+                try {
+                    // Cargar estudios del usuario (simplificado - puedes mejorar esto)
+                    const token = this.getAuthToken();
+                    // Por ahora dejamos el dropdown vacío, se puede mejorar cargando estudios reales
+                } catch (error) {
+                    console.error('Error cargando estudios:', error);
+                }
+            },
+            
+            loadAudios: async function() {
+                try {
+                    document.getElementById('loadingIndicator').style.display = 'block';
+                    document.getElementById('audiosTableContainer').style.display = 'none';
+                    
+                    const token = this.getAuthToken();
+                    const estados = Array.from(document.querySelectorAll('.estado-filter:checked')).map(cb => cb.value);
+                    const studyId = document.getElementById('filterStudy').value;
+                    const fechaDesde = document.getElementById('filterDateFrom').value;
+                    const fechaHasta = document.getElementById('filterDateTo').value;
+                    const busqueda = document.getElementById('filterSearch').value;
+                    
+                    const params = new URLSearchParams({
+                        page: this.currentPage,
+                        limit: this.pageSize
+                    });
+                    
+                    if (estados.length > 0) {
+                        params.append('estados', estados.join(','));
+                    }
+                    if (studyId) params.append('study_id', studyId);
+                    if (fechaDesde) params.append('fecha_desde', fechaDesde);
+                    if (fechaHasta) params.append('fecha_hasta', fechaHasta);
+                    if (busqueda) params.append('busqueda', busqueda);
+                    
+                    const response = await fetch(`../api/audios/papelera-list.php?${params.toString()}`, {
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        this.allAudios = result.data.audios || [];
+                        this.renderTable(this.allAudios);
+                        this.renderPagination(result.data.pagination);
+                    } else {
+                        throw new Error(result.message || 'Error cargando audios');
+                    }
+                } catch (error) {
+                    console.error('Error cargando audios:', error);
+                    document.getElementById('audiosTableBody').innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-danger py-5">
+                                Error al cargar audios: ${error.message}
+                            </td>
+                        </tr>
+                    `;
+                } finally {
+                    document.getElementById('loadingIndicator').style.display = 'none';
+                    document.getElementById('audiosTableContainer').style.display = 'block';
+                }
+            },
+            
+            renderTable: function(audios) {
+                const tbody = document.getElementById('audiosTableBody');
+                
+                if (audios.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                No se encontraron audios con los filtros seleccionados.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+                
+                tbody.innerHTML = audios.map(audio => {
+                    const estadoBadge = this.getEstadoBadge(audio.estado);
+                    const fecha = new Date(audio.fecha_creacion).toLocaleString('es-AR');
+                    const duracion = this.formatDuration(audio.duracion_segundos || 0);
+                    const tamano = this.formatFileSize(audio.tamano_bytes || 0);
+                    
+                    return `
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="audio-checkbox" value="${audio.id}" 
+                                       ${this.selectedAudios.has(audio.id) ? 'checked' : ''}
+                                       onchange="PapeleraManager.toggleSelection(${audio.id})">
+                            </td>
+                            <td>${fecha}</td>
+                            <td>${duracion}</td>
+                            <td>${tamano}</td>
+                            <td>${estadoBadge}</td>
+                            <td>${audio.study_description || audio.estudio_id || 'N/A'}</td>
+                            <td>${audio.patient_name || audio.patient_id || 'N/A'}</td>
+                            <td>
+                                <div class="audio-actions">
+                                    <button class="btn btn-sm btn-info" onclick="PapeleraManager.playAudio(${audio.id})" title="Escuchar">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-success" onclick="PapeleraManager.recoverAudio(${audio.id})" 
+                                            ${audio.estado === 'guardado_informe' ? 'disabled' : ''} title="Recuperar">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-primary" onclick="PapeleraManager.downloadAudio(${audio.id})" title="Descargar">
+                                        <i class="fas fa-download"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+            
+            getEstadoBadge: function(estado) {
+                const badges = {
+                    'en_papelera': '<span class="badge bg-secondary badge-estado">En Papelera</span>',
+                    'enviado_ftp': '<span class="badge bg-info badge-estado">Enviado FTP</span>',
+                    'enviado_transcripcion': '<span class="badge bg-warning badge-estado">En Transcripción</span>',
+                    'guardado_informe': '<span class="badge bg-success badge-estado">Guardado</span>',
+                    'eliminado': '<span class="badge bg-danger badge-estado">Eliminado</span>'
+                };
+                return badges[estado] || '<span class="badge bg-secondary badge-estado">' + estado + '</span>';
+            },
+            
+            formatDuration: function(seconds) {
+                if (!seconds || seconds === 0) return '0:00';
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}:${secs.toString().padStart(2, '0')}`;
+            },
+            
+            formatFileSize: function(bytes) {
+                if (!bytes || bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+            },
+            
+            renderPagination: function(pagination) {
+                const paginationEl = document.getElementById('pagination');
+                const paginationText = document.getElementById('paginationText');
+                
+                paginationText.textContent = `Mostrando ${pagination.page * pagination.limit - pagination.limit + 1} - ${Math.min(pagination.page * pagination.limit, pagination.total)} de ${pagination.total} audios`;
+                
+                if (pagination.total_pages <= 1) {
+                    paginationEl.innerHTML = '';
+                    return;
+                }
+                
+                let html = '';
+                
+                // Botón anterior
+                html += `<li class="page-item ${pagination.page === 1 ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="PapeleraManager.goToPage(${pagination.page - 1}); return false;">Anterior</a>
+                </li>`;
+                
+                // Números de página
+                for (let i = 1; i <= pagination.total_pages; i++) {
+                    if (i === 1 || i === pagination.total_pages || (i >= pagination.page - 2 && i <= pagination.page + 2)) {
+                        html += `<li class="page-item ${i === pagination.page ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="PapeleraManager.goToPage(${i}); return false;">${i}</a>
+                        </li>`;
+                    } else if (i === pagination.page - 3 || i === pagination.page + 3) {
+                        html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+                    }
+                }
+                
+                // Botón siguiente
+                html += `<li class="page-item ${pagination.page === pagination.total_pages ? 'disabled' : ''}">
+                    <a class="page-link" href="#" onclick="PapeleraManager.goToPage(${pagination.page + 1}); return false;">Siguiente</a>
+                </li>`;
+                
+                paginationEl.innerHTML = html;
+            },
+            
+            goToPage: function(page) {
+                this.currentPage = page;
+                this.loadAudios();
+            },
+            
+            toggleSelection: function(audioId) {
+                if (this.selectedAudios.has(audioId)) {
+                    this.selectedAudios.delete(audioId);
+                } else {
+                    this.selectedAudios.add(audioId);
+                }
+                this.updateActionButtons();
+            },
+            
+            updateActionButtons: function() {
+                const hasSelection = this.selectedAudios.size > 0;
+                document.getElementById('btnRecoverSelected').disabled = !hasSelection;
+                document.getElementById('btnDownloadSelected').disabled = !hasSelection;
+                document.getElementById('selectAll').checked = hasSelection && this.selectedAudios.size === this.allAudios.length;
+            },
+            
+            resetFilters: function() {
+                document.getElementById('filterStudy').value = '';
+                document.querySelectorAll('.estado-filter').forEach(cb => cb.checked = false);
+                document.getElementById('filterDateFrom').value = '';
+                document.getElementById('filterDateTo').value = '';
+                document.getElementById('filterSearch').value = '';
+                this.currentPage = 1;
+                this.loadAudios();
+            },
+            
+            recoverAudio: async function(audioId) {
+                if (!confirm('¿Recuperar este audio al workspace?')) return;
+                
+                try {
+                    const token = this.getAuthToken();
+                    const response = await fetch('../api/audios/recover.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            audio_ids: [audioId],
+                            workspace_panel_id: 'papelera_recovery',
+                            session_token: token
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Audio recuperado exitosamente. Abra workspace para verlo.');
+                        this.loadAudios();
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error recuperando audio: ' + error.message);
+                }
+            },
+            
+            recoverSelected: async function() {
+                if (this.selectedAudios.size === 0) return;
+                
+                if (!confirm(`¿Recuperar ${this.selectedAudios.size} audio(s) seleccionado(s)?`)) return;
+                
+                try {
+                    const token = this.getAuthToken();
+                    const audioIds = Array.from(this.selectedAudios);
+                    const response = await fetch('../api/audios/recover.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            audio_ids: audioIds,
+                            workspace_panel_id: 'papelera_recovery',
+                            session_token: token
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(`${result.data.total_recovered} audio(s) recuperado(s) exitosamente.`);
+                        this.selectedAudios.clear();
+                        this.loadAudios();
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (error) {
+                    alert('Error recuperando audios: ' + error.message);
+                }
+            },
+            
+            downloadAudio: function(audioId) {
+                const token = this.getAuthToken();
+                window.open(`../api/audios/get-audio-blob.php?audio_id=${audioId}&download=true&session_token=${token}`, '_blank');
+            },
+            
+            downloadSelected: function() {
+                if (this.selectedAudios.size === 0) return;
+                
+                this.selectedAudios.forEach(audioId => {
+                    this.downloadAudio(audioId);
+                });
+            },
+            
+            playAudio: function(audioId) {
+                const token = this.getAuthToken();
+                const audioUrl = `../api/audios/get-audio-blob.php?audio_id=${audioId}&session_token=${token}`;
+                
+                // Crear modal con reproductor de audio
+                const modalHtml = `
+                    <div class="modal fade" id="audioPlayerModal" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Reproducir Audio</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <audio controls autoplay style="width: 100%;">
+                                        <source src="${audioUrl}" type="audio/webm">
+                                        Tu navegador no soporta audio HTML5.
+                                    </audio>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const existingModal = document.getElementById('audioPlayerModal');
+                if (existingModal) existingModal.remove();
+                
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+                const modal = new bootstrap.Modal(document.getElementById('audioPlayerModal'));
+                modal.show();
+                
+                document.getElementById('audioPlayerModal').addEventListener('hidden.bs.modal', function() {
+                    this.remove();
+                });
+            }
+        };
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            PapeleraManager.init();
+        });
+    </script>
+</body>
+</html>

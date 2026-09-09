@@ -1,0 +1,17 @@
+{
+  "id": "hl7-worklist",
+  "name": "HL7 Worklist (MLLP)",
+  "version": "1.0.0",
+  "description": "Receptor MLLP HL7 v2 (ORM^O01) configurable que inserta/actualiza worklist DICOM. Sin Mirth. Coexiste con PULL .txt.",
+  "requires_core": ">=2025.06",
+  "install_url": "/modules/hl7-worklist/install.php",
+  "uninstall_url": "/modules/hl7-worklist/uninstall.php",
+  "integrates_with": ["worklist", "worklist_config", "WorklistIngestionService"],
+  "alters_core_tables": [
+    "worklist_config (hl7_* columns)",
+    "worklist_ingests (source_type HL7_MLLP)"
+  ],
+  "tables": [],
+  "status": "stable",
+  "phase": 1
+}

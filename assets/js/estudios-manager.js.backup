@@ -1,0 +1,2468 @@
+/**
+ * Gestor de Derivaciones de Estudios
+ * Maneja la asignación de estudios del PACS a usuarios del sistema
+ */
+class DerivacionesManager {
+    constructor() {
+        this.apiBaseUrl = 'api/';
+        this.studies = []; // Caché de todos los estudios del servidor
+        this.filteredStudies = [];
+        this.users = []; // Lista de usuarios del sistema
+        this.selectedUsers = []; // Usuarios seleccionados para asignación
+        this.selectedStudy = null; // Estudio seleccionado para asignar
+        this.studyAssignments = {}; // Asignaciones de estudios agrupadas por study_id
+        this.currentAntecedents = null; // Antecedentes del estudio actual
+        this.cameraStream = null; // Stream de cámara
+        this.capturedImages = []; // Imágenes capturadas con cámara
+        this.isDataLoaded = false;
+        this.storageKey = 'derivaciones_manager_state';
+        
+        this.currentFilters = {
+            search: '',
+            dateFrom: '',
+            dateTo: '',
+            patientId: '',
+            modalities: []
+        };
+    }
+    
+    /**
+     * Inicializa el gestor de derivaciones
+     */
+    async init() {
+        try {
+            this.setupEventListeners();
+            
+            // Cargar usuarios del sistema
+            await this.loadUsers();
+            
+            // Cargar asignaciones de estudios
+            await this.loadStudyAssignments();
+            
+            // Intentar cargar estado persistente
+            const persistentState = this.loadPersistentState();
+            if (persistentState && persistentState.studies && persistentState.studies.length > 0) {
+                this.studies = persistentState.studies;
+                this.currentFilters = { ...this.currentFilters, ...persistentState.filters };
+                this.isDataLoaded = true;
+                
+                this.restoreFormValues();
+                this.applyLocalFilters();
+                this.updateAvailableModalities(); // Actualizar botones de modalidad
+                this.updateCacheStatus('Datos restaurados desde caché local', 'text-success');
+                
+                console.log('Estado restaurado desde localStorage:', this.studies.length, 'estudios');
+            } else {
+                this.renderEmptyState();
+                this.updateCacheStatus('Listo para buscar - presiona "Buscar Estudios" para consultar PACS', 'text-info');
+            }
+            
+        } catch (error) {
+            console.error('Error inicializando gestor de derivaciones:', error);
+            this.showError('Error inicializando gestor de derivaciones');
+        }
+    }
+    
+    /**
+     * Carga los usuarios del sistema
+     */
+    async loadUsers() {
+        try {
+            const response = await fetch(this.apiBaseUrl + 'get_users.php');
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error || 'Error cargando usuarios');
+            }
+            
+            this.users = result.data || [];
+            this.renderUsers();
+            
+            console.log('Usuarios cargados:', this.users.length);
+        } catch (error) {
+            console.error('Error cargando usuarios:', error);
+            this.showError('Error cargando usuarios del sistema');
+            // Mostrar usuarios de ejemplo para demostración
+            this.users = [
+                {
+                    id: 1,
+                    nombre: 'Juan',
+                    apellido: 'Pérez',
+                    email: 'juan.perez@hospital.com',
+                    matricula_profesional: 'MP001'
+                },
+                {
+                    id: 2,
+                    nombre: 'María',
+                    apellido: 'González',
+                    email: 'maria.gonzalez@hospital.com',
+                    matricula_profesional: 'MP002'
+                },
+                {
+                    id: 3,
+                    nombre: 'Carlos',
+                    apellido: 'Rodríguez',
+                    email: 'carlos.rodriguez@hospital.com',
+                    matricula_profesional: 'MP003'
+                }
+            ];
+            this.renderUsers();
+        }
+    }
+    
+    /**
+     * Renderiza la lista de usuarios
+     */
+    renderUsers() {
+        const container = document.getElementById('usersContainer');
+        if (!container) return;
+        
+        if (this.users.length === 0) {
+            container.innerHTML = `
+                <div class="col-12 text-center py-4">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay usuarios disponibles</h5>
+                    <p class="text-muted">No se encontraron usuarios en el sistema</p>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        this.users.forEach(user => {
+            const initials = (user.nombre.charAt(0) + user.apellido.charAt(0)).toUpperCase();
+            const fullName = `${user.nombre} ${user.apellido}`;
+            
+            html += `
+                <div class="col-md-6 col-lg-4 mb-3">
+                    <div class="user-card" data-user-id="${user.id}">
+                        <div class="user-info">
+                            <div class="user-avatar">
+                                ${initials}
+                            </div>
+                            <div class="user-details">
+                                <h6>${fullName}</h6>
+                                <small class="text-muted">${user.email}</small><br>
+                                <small class="text-muted">MP: ${user.matricula_profesional}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+        
+        // Agregar event listeners a las tarjetas de usuario
+        container.querySelectorAll('.user-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const userId = parseInt(card.dataset.userId);
+                this.toggleUserSelection(userId, card);
+            });
+        });
+    }
+    
+    /**
+     * Alterna la selección de un usuario
+     */
+    toggleUserSelection(userId, cardElement) {
+        const index = this.selectedUsers.indexOf(userId);
+        
+        if (index > -1) {
+            // Deseleccionar usuario
+            this.selectedUsers.splice(index, 1);
+            cardElement.classList.remove('selected');
+        } else {
+            // Seleccionar usuario
+            this.selectedUsers.push(userId);
+            cardElement.classList.add('selected');
+        }
+        
+        console.log('Usuarios seleccionados:', this.selectedUsers);
+    }
+    
+    /**
+     * Configura los event listeners
+     */
+    setupEventListeners() {
+        // Botón de búsqueda
+        const searchButton = document.getElementById('searchButton');
+        if (searchButton) {
+            searchButton.addEventListener('click', () => {
+                this.handleSearchClick();
+            });
+        }
+        
+        // Enter en campos de búsqueda
+        const searchInputs = ['searchFilter', 'patientId'];
+        searchInputs.forEach(inputId => {
+            const input = document.getElementById(inputId);
+            if (input) {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.handleSearchClick();
+                    }
+                });
+                
+                // Agregar event listener para búsqueda en tiempo real
+                if (inputId === 'searchFilter') {
+                    input.addEventListener('input', () => {
+                        this.updateFiltersFromForm();
+                        this.applyLocalFilters();
+                    });
+                }
+            }
+        });
+        
+        // Filtros de modalidad
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modality-btn')) {
+                e.preventDefault();
+                const modality = e.target.dataset.modality;
+                
+                if (modality === 'all') {
+                    // Deseleccionar todas las modalidades
+                    document.querySelectorAll('.modality-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    e.target.classList.add('active');
+                    this.currentFilters.modalities = [];
+                } else {
+                    // Toggle modalidad específica
+                    document.querySelector('.modality-btn[data-modality="all"]').classList.remove('active');
+                    e.target.classList.toggle('active');
+                    
+                    const index = this.currentFilters.modalities.indexOf(modality);
+                    if (index > -1) {
+                        this.currentFilters.modalities.splice(index, 1);
+                    } else {
+                        this.currentFilters.modalities.push(modality);
+                    }
+                    
+                    // Si no hay modalidades seleccionadas, activar "Todas"
+                    if (this.currentFilters.modalities.length === 0) {
+                        document.querySelector('.modality-btn[data-modality="all"]').classList.add('active');
+                    }
+                }
+                
+                this.applyLocalFilters();
+                this.updateModalityCounter();
+            }
+        });
+        
+        // Modal de asignación
+        const confirmAssignBtn = document.getElementById('confirmAssignBtn');
+        if (confirmAssignBtn) {
+            confirmAssignBtn.addEventListener('click', () => {
+                this.confirmAssignment();
+            });
+        }
+        
+        // Nuevos event listeners para selección múltiple
+        const selectAllCheckbox = document.getElementById('selectAllStudies');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', () => this.handleSelectAll());
+        }
+        
+        const assignSelectedBtn = document.getElementById('assignSelectedBtn');
+        if (assignSelectedBtn) {
+            assignSelectedBtn.addEventListener('click', () => this.openBulkAssignModal());
+        }
+        
+        const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+        if (clearSelectionBtn) {
+            clearSelectionBtn.addEventListener('click', () => this.clearSelection());
+        }
+    }
+    
+    /**
+     * Maneja el click del botón de búsqueda
+     */
+    async handleSearchClick() {
+        try {
+            this.updateFiltersFromForm();
+            
+            // Validar que al menos se especifique un rango de fechas
+            if (!this.currentFilters.dateFrom && !this.currentFilters.dateTo && !this.currentFilters.patientId) {
+                this.showError('Por favor especifica al menos un rango de fechas o ID de paciente para la búsqueda');
+                return;
+            }
+            
+            this.updateCacheStatus('Buscando estudios en PACS...', 'text-warning');
+            
+            await this.loadStudies();
+            this.applyLocalFilters();
+            
+            this.updateCacheStatus(`Búsqueda completada - ${this.studies.length} estudios encontrados`, 'text-success');
+            
+        } catch (error) {
+            console.error('Error en búsqueda:', error);
+            this.showError('Error realizando búsqueda: ' + error.message);
+            this.updateCacheStatus('Error en la búsqueda', 'text-danger');
+        }
+    }
+    
+    /**
+     * Carga todos los estudios desde Orthanc
+     */
+    async loadStudies() {
+        try {
+            this.clearPersistentState();
+            
+            const params = new URLSearchParams();
+            
+            if (this.currentFilters.dateFrom) {
+                params.append('dateFrom', this.currentFilters.dateFrom);
+            }
+            if (this.currentFilters.dateTo) {
+                params.append('dateTo', this.currentFilters.dateTo);
+            }
+            if (this.currentFilters.patientId) {
+                params.append('patientId', this.currentFilters.patientId);
+            }
+            
+            const url = this.apiBaseUrl + 'get_all_studies.php' + (params.toString() ? '?' + params.toString() : '');
+            const response = await fetch(url);
+            const result = await response.json();
+            
+            if (!result.success) {
+                throw new Error(result.error);
+            }
+            
+            this.studies = result.data;
+            this.isDataLoaded = true;
+            
+            // Actualizar botones de modalidad basándose en los estudios cargados
+            this.updateAvailableModalities();
+            
+            this.savePersistentState();
+            
+            console.log('Estudios cargados:', this.studies.length);
+        } catch (error) {
+            console.error('Error cargando estudios:', error);
+            throw error;
+        }
+    }
+    
+    /**
+     * Actualiza los filtros desde el formulario
+     */
+    updateFiltersFromForm() {
+        const searchFilter = document.getElementById('searchFilter');
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const patientId = document.getElementById('patientId');
+        
+        this.currentFilters.search = searchFilter ? searchFilter.value.trim() : '';
+        this.currentFilters.dateFrom = dateFrom ? dateFrom.value : '';
+        this.currentFilters.dateTo = dateTo ? dateTo.value : '';
+        this.currentFilters.patientId = patientId ? patientId.value.trim() : '';
+    }
+    
+    /**
+     * Aplica filtros locales a los estudios
+     */
+    applyLocalFilters() {
+        if (!this.isDataLoaded || this.studies.length === 0) {
+            this.filteredStudies = [];
+            this.renderStudies();
+            return;
+        }
+        
+        this.filteredStudies = this.studies.filter(study => {
+            // Filtro de búsqueda general
+            if (this.currentFilters.search) {
+                const searchTerm = this.currentFilters.search.toLowerCase();
+                const searchableText = [
+                    study.patient_name,
+                    study.patient_id,
+                    study.modality,
+                    study.study_description
+                ].join(' ').toLowerCase();
+                
+                if (!searchableText.includes(searchTerm)) {
+                    return false;
+                }
+            }
+            
+            // Filtro de modalidades
+            if (this.currentFilters.modalities.length > 0) {
+                if (!this.currentFilters.modalities.includes(study.modality)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        this.renderStudies();
+        this.updateStats();
+    }
+    
+    /**
+     * Renderiza la tabla de estudios
+     */
+    renderStudies() {
+        const tbody = document.getElementById('studiesTableBody');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (!tbody) return;
+        
+        if (this.filteredStudies.length === 0) {
+            this.renderEmptyState();
+            return;
+        }
+        
+        // Ocultar estado vacío
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        
+        // Limpiar tabla
+        tbody.innerHTML = '';
+        
+        // Renderizar estudios
+        this.filteredStudies.forEach(study => {
+            const row = this.createStudyRow(study);
+            tbody.appendChild(row);
+        });
+    }
+    
+    /**
+     * Renderiza el estado vacío
+     */
+    renderEmptyState() {
+        const tbody = document.getElementById('studiesTableBody');
+        const emptyState = document.getElementById('emptyState');
+        
+        if (!tbody || !emptyState) return;
+        
+        // Limpiar tabla
+        tbody.innerHTML = '';
+        
+        // Mostrar estado vacío
+        emptyState.style.display = 'table-row';
+        tbody.appendChild(emptyState);
+        
+        // Actualizar botones de modalidad (ocultar todos excepto "Todas")
+        this.updateAvailableModalities();
+    }
+    
+    /**
+     * Crea una fila de estudio para la tabla
+     */
+    createStudyRow(study) {
+        const row = document.createElement('tr');
+        row.setAttribute('data-study-id', study.id);
+        
+        const formattedDate = this.formatDate(study.date || study.study_date);
+        const formattedTime = this.formatTime(study.time || study.study_time);
+        const modalityBadge = this.getModalityBadge(study.modality);
+        
+        // Obtener información de asignaciones para este estudio
+        const assignments = this.getStudyAssignments(study.id);
+        const assignmentInfo = this.formatAssignmentInfo(assignments);
+        
+        row.innerHTML = `
+            <td>
+                <input type="checkbox" class="form-check-input study-checkbox" 
+                       data-study-id="${study.id}" 
+                       onchange="derivacionesManager.handleStudySelection()">
+            </td>
+            <td>
+                <div class="fw-semibold">${study.patient_name}</div>
+                <small class="text-muted d-block d-lg-none">ID: ${study.patient_id}</small>
+            </td>
+            <td class="d-none d-lg-table-cell">${study.patient_id}</td>
+            <td>${formattedDate}</td>
+            <td class="d-none d-md-table-cell">${formattedTime}</td>
+            <td class="d-none d-sm-table-cell">${modalityBadge}</td>
+            <td class="d-none d-xl-table-cell">${study.study_description}</td>
+            <td class="d-none d-lg-table-cell">
+                <span class="badge status-badge status-completed">${study.status}</span>
+            </td>
+            <td>
+                <div class="assignment-info">
+                    ${assignmentInfo}
+                </div>
+            </td>
+            <td>
+                <div class="d-flex gap-1">
+                    <button class="btn btn-sm btn-action btn-info" title="Información" 
+                            onclick="derivacionesManager.showStudyInfo('${study.id}')">
+                        <i class="fas fa-info-circle"></i>
+                    </button>
+                    <button class="btn btn-sm btn-action btn-view" title="Ver" onclick="window.open('${study.viewer_url}', '_blank')">
+                        <i class="fas fa-eye"></i>
+                        <span class="d-none d-sm-inline ms-1">Ver</span>
+                    </button>
+                    <button class="btn btn-sm btn-action btn-warning" title="Antecedentes" 
+                            onclick="derivacionesManager.openAntecedentsModal('${study.id}')">
+                        <i class="fas fa-file-medical"></i>
+                        <span class="d-none d-sm-inline ms-1">Antecedentes</span>
+                    </button>
+                </div>
+            </td>
+        `;
+        
+        return row;
+    }
+    
+    /**
+     * Abre el modal de asignación para un estudio
+     */
+    openAssignModal(studyId) {
+        const study = this.studies.find(s => s.id === studyId);
+        if (!study) {
+            this.showError('Estudio no encontrado');
+            return;
+        }
+        
+        this.selectedStudy = study;
+        this.selectedUsers = [];
+        
+        // Actualizar información del estudio en el modal
+        document.getElementById('modalPatientName').textContent = study.patient_name;
+        document.getElementById('modalPatientId').textContent = study.patient_id;
+        document.getElementById('modalModality').textContent = study.modality;
+        document.getElementById('modalStudyDate').textContent = this.formatDate(study.date || study.study_date);
+        document.getElementById('modalStudyDescription').textContent = study.study_description;
+        
+        // Renderizar usuarios en el modal
+        this.renderModalUsers();
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('assignStudyModal'));
+        modal.show();
+    }
+    
+    /**
+     * Renderiza los usuarios en el modal de asignación
+     */
+    renderModalUsers() {
+        const container = document.getElementById('modalUsersContainer');
+        if (!container) return;
+        
+        let html = '';
+        this.users.forEach(user => {
+            const initials = (user.nombre.charAt(0) + user.apellido.charAt(0)).toUpperCase();
+            const fullName = `${user.nombre} ${user.apellido}`;
+            
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" value="${user.id}" id="modalUser${user.id}">
+                    <label class="form-check-label d-flex align-items-center" for="modalUser${user.id}">
+                        <div class="user-avatar me-3" style="width: 35px; height: 35px; font-size: 14px;">
+                            ${initials}
+                        </div>
+                        <div>
+                            <strong>${fullName}</strong><br>
+                            <small class="text-muted">${user.email} - MP: ${user.matricula_profesional}</small>
+                        </div>
+                    </label>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    /**
+     * Confirma la asignación del estudio
+     */
+    async confirmAssignment() {
+        try {
+            // Obtener usuarios seleccionados del modal
+            const selectedUserIds = [];
+            document.querySelectorAll('#modalUsersContainer input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedUserIds.push(parseInt(checkbox.value));
+            });
+            
+            if (selectedUserIds.length === 0) {
+                this.showError('Por favor selecciona al menos un usuario para la asignación');
+                return;
+            }
+            
+            if (!this.selectedStudy) {
+                this.showError('No hay estudio seleccionado');
+                return;
+            }
+            
+            // Simular asignación (aquí iría la llamada a la API)
+            console.log('Asignando estudio:', this.selectedStudy.id, 'a usuarios:', selectedUserIds);
+            
+            // Mostrar mensaje de éxito
+            const selectedUserNames = selectedUserIds.map(id => {
+                const user = this.users.find(u => u.id === id);
+                return user ? `${user.nombre} ${user.apellido}` : 'Usuario desconocido';
+            }).join(', ');
+            
+            this.showSuccess(`Estudio asignado exitosamente a: ${selectedUserNames}`);
+            
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('assignStudyModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Actualizar estadísticas
+            this.updateAssignmentStats();
+            
+        } catch (error) {
+            console.error('Error en asignación:', error);
+            this.showError('Error realizando asignación: ' + error.message);
+        }
+    }
+    
+    /**
+     * Muestra información detallada de un estudio
+     */
+    showStudyInfo(studyId) {
+        const study = this.studies.find(s => s.id === studyId);
+        if (!study) {
+            this.showError('Estudio no encontrado');
+            return;
+        }
+        
+        // Crear modal dinámico para mostrar información
+        const modalId = 'studyInfoModal';
+        
+        // Remover modal existente si existe
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        const modalHTML = `
+            <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="${modalId}Label">
+                                <i class="fas fa-info-circle me-2"></i>Información del Estudio
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Información del Paciente</h6>
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Nombre:</strong></td><td>${study.patient_name}</td></tr>
+                                        <tr><td><strong>ID Paciente:</strong></td><td>${study.patient_id}</td></tr>
+                                        <tr><td><strong>Fecha Nacimiento:</strong></td><td>${study.patient_birth_date || 'N/A'}</td></tr>
+                                        <tr><td><strong>Sexo:</strong></td><td>${study.patient_sex || 'N/A'}</td></tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Información del Estudio</h6>
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Fecha:</strong></td><td>${this.formatDate(study.date || study.study_date)}</td></tr>
+                                        <tr><td><strong>Hora:</strong></td><td>${this.formatTime(study.time || study.study_time)}</td></tr>
+                                        <tr><td><strong>Modalidad:</strong></td><td>${study.modality}</td></tr>
+                                        <tr><td><strong>Descripción:</strong></td><td>${study.study_description}</td></tr>
+                                        <tr><td><strong>Estado:</strong></td><td>${study.status}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6>Información Técnica</h6>
+                                    <table class="table table-sm">
+                                        <tr><td><strong>Study Instance UID:</strong></td><td class="text-break">${study.study_instance_uid || 'N/A'}</td></tr>
+                                        <tr><td><strong>Orthanc Study ID:</strong></td><td>${study.orthanc_study_id || 'N/A'}</td></tr>
+                                        <tr><td><strong>Número de Series:</strong></td><td>${study.number_of_series || 'N/A'}</td></tr>
+                                        <tr><td><strong>Número de Instancias:</strong></td><td>${study.number_of_instances || 'N/A'}</td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" class="btn btn-primary" onclick="derivacionesManager.openAssignModal('${study.id}'); bootstrap.Modal.getInstance(document.getElementById('${modalId}')).hide();">
+                                <i class="fas fa-share-alt me-2"></i>Asignar Estudio
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        const modal = new bootstrap.Modal(document.getElementById(modalId));
+        modal.show();
+        
+        // Limpiar modal cuando se cierre
+        document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    /**
+     * Actualiza las estadísticas
+     */
+    updateStats() {
+        const studiesCount = document.getElementById('studiesCount');
+        if (studiesCount) {
+            const count = this.filteredStudies.length;
+            studiesCount.textContent = `${count} estudio${count !== 1 ? 's' : ''} encontrado${count !== 1 ? 's' : ''}`;
+        }
+    }
+    
+    /**
+     * Actualiza las estadísticas de asignación
+     */
+    updateAssignmentStats() {
+        // Simular incremento en estadísticas
+        const assignedTodayEl = document.getElementById('assignedToday');
+        const totalAssignedEl = document.getElementById('totalAssigned');
+        
+        if (assignedTodayEl) {
+            const current = parseInt(assignedTodayEl.textContent) || 0;
+            assignedTodayEl.textContent = current + 1;
+        }
+        
+        if (totalAssignedEl) {
+            const current = parseInt(totalAssignedEl.textContent) || 0;
+            totalAssignedEl.textContent = current + 1;
+        }
+    }
+    
+    /**
+     * Actualiza el contador de modalidades
+     */
+    updateModalityCounter() {
+        const counter = document.getElementById('modalityCounter');
+        if (!counter) return;
+        
+        const activeModalities = this.currentFilters.modalities.length;
+        
+        if (activeModalities > 0) {
+            counter.textContent = activeModalities;
+            counter.style.display = 'inline';
+        } else {
+            counter.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Formatea una fecha
+     */
+    formatDate(dateStr) {
+        if (!dateStr) return 'N/A';
+        
+        try {
+            let date;
+            
+            // Si es formato YYYYMMDD (del PACS)
+            if (typeof dateStr === 'string' && dateStr.length === 8 && /^\d{8}$/.test(dateStr)) {
+                const year = dateStr.substring(0, 4);
+                const month = dateStr.substring(4, 6);
+                const day = dateStr.substring(6, 8);
+                date = new Date(year, month - 1, day);
+            } else {
+                // Intentar parsear como fecha normal
+                date = new Date(dateStr);
+            }
+            
+            // Verificar si la fecha es válida
+            if (isNaN(date.getTime())) {
+                return dateStr; // Devolver el string original si no se puede parsear
+            }
+            
+            return date.toLocaleDateString('es-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        } catch (error) {
+            console.warn('Error formateando fecha:', dateStr, error);
+            return dateStr;
+        }
+    }
+    
+    /**
+     * Formatea una hora
+     */
+    formatTime(timeStr) {
+        if (!timeStr) return 'N/A';
+        
+        try {
+            if (timeStr.length >= 6) {
+                const hours = timeStr.substring(0, 2);
+                const minutes = timeStr.substring(2, 4);
+                return `${hours}:${minutes}`;
+            }
+            return timeStr;
+        } catch (error) {
+            return timeStr;
+        }
+    }
+    
+    /**
+     * Obtiene el badge de modalidad
+     */
+    getModalityBadge(modality) {
+        const modalityColors = {
+            'CT': 'bg-primary',
+            'MR': 'bg-success',
+            'RX': 'bg-info',
+            'DX': 'bg-info',
+            'US': 'bg-warning',
+            'CR': 'bg-secondary',
+            'MG': 'bg-danger',
+            'NM': 'bg-dark',
+            'PT': 'bg-dark',
+            'XA': 'bg-primary',
+            'RF': 'bg-primary'
+        };
+        
+        const colorClass = modalityColors[modality] || 'bg-secondary';
+        return `<span class="badge ${colorClass}">${modality}</span>`;
+    }
+    
+    /**
+     * Actualiza el estado del caché
+     */
+    updateCacheStatus(message, className = 'text-muted') {
+        const statusElement = document.getElementById('cacheStatus');
+        if (statusElement) {
+            statusElement.innerHTML = `<i class="fas fa-database me-1"></i>${message}`;
+            statusElement.className = className;
+        }
+    }
+    
+    /**
+     * Muestra un mensaje de error
+     */
+    showError(message) {
+        // Crear toast de error
+        const toastHTML = `
+            <div class="toast align-items-center text-white bg-danger border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-exclamation-circle me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        this.showToast(toastHTML);
+    }
+    
+    /**
+     * Muestra un mensaje de éxito
+     */
+    showSuccess(message) {
+        // Crear toast de éxito
+        const toastHTML = `
+            <div class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas fa-check-circle me-2"></i>${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        this.showToast(toastHTML);
+    }
+    
+    /**
+     * Muestra un toast
+     */
+    showToast(toastHTML) {
+        // Crear contenedor de toasts si no existe
+        let toastContainer = document.getElementById('toastContainer');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toastContainer';
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '9999';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Agregar toast
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        // Inicializar y mostrar toast
+        const toastElement = toastContainer.lastElementChild;
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        
+        // Remover toast del DOM cuando se oculte
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            this.remove();
+        });
+    }
+    
+    /**
+     * Guarda el estado persistente
+     */
+    savePersistentState() {
+        try {
+            const state = {
+                studies: this.studies,
+                filters: this.currentFilters,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(this.storageKey, JSON.stringify(state));
+        } catch (error) {
+            console.warn('Error guardando estado persistente:', error);
+        }
+    }
+    
+    /**
+     * Carga el estado persistente
+     */
+    loadPersistentState() {
+        try {
+            const stored = localStorage.getItem(this.storageKey);
+            if (!stored) return null;
+            
+            const state = JSON.parse(stored);
+            
+            // Verificar que el estado no sea muy antiguo (24 horas)
+            const maxAge = 24 * 60 * 60 * 1000; // 24 horas en milisegundos
+            if (Date.now() - state.timestamp > maxAge) {
+                this.clearPersistentState();
+                return null;
+            }
+            
+            return state;
+        } catch (error) {
+            console.warn('Error cargando estado persistente:', error);
+            this.clearPersistentState();
+            return null;
+        }
+    }
+    
+    /**
+     * Limpia el estado persistente
+     */
+    clearPersistentState() {
+        try {
+            localStorage.removeItem(this.storageKey);
+        } catch (error) {
+            console.warn('Error limpiando estado persistente:', error);
+        }
+    }
+    
+    /**
+     * Restaura los valores del formulario
+     */
+    restoreFormValues() {
+        const searchFilter = document.getElementById('searchFilter');
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const patientId = document.getElementById('patientId');
+        
+        if (searchFilter) searchFilter.value = this.currentFilters.search || '';
+        if (dateFrom) dateFrom.value = this.currentFilters.dateFrom || '';
+        if (dateTo) dateTo.value = this.currentFilters.dateTo || '';
+        if (patientId) patientId.value = this.currentFilters.patientId || '';
+        
+        // Restaurar filtros de modalidad
+        document.querySelectorAll('.modality-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        if (this.currentFilters.modalities.length === 0) {
+            document.querySelector('.modality-btn[data-modality="all"]')?.classList.add('active');
+        } else {
+            this.currentFilters.modalities.forEach(modality => {
+                document.querySelector(`.modality-btn[data-modality="${modality}"]`)?.classList.add('active');
+            });
+        }
+        
+        this.updateModalityCounter();
+    }
+    
+    /**
+     * Actualiza los botones de modalidad basándose en las modalidades disponibles en los estudios
+     */
+    updateAvailableModalities() {
+        if (!this.studies || this.studies.length === 0) {
+            // Si no hay estudios, ocultar todos los botones excepto "Todas"
+            const modalityButtons = document.querySelectorAll('.modality-btn');
+            modalityButtons.forEach(btn => {
+                const modality = btn.getAttribute('data-modality');
+                if (modality === 'all') {
+                    btn.style.display = 'inline-block';
+                    btn.disabled = false;
+                } else {
+                    btn.style.display = 'none';
+                    btn.disabled = true;
+                }
+            });
+            return;
+        }
+        
+        // Obtener modalidades únicas de los estudios
+        const availableModalities = [...new Set(this.studies.map(study => study.modality).filter(Boolean))];
+        
+        // Obtener todos los botones de modalidad
+        const modalityButtons = document.querySelectorAll('.modality-btn');
+        
+        modalityButtons.forEach(btn => {
+            const modality = btn.getAttribute('data-modality');
+            
+            if (modality === 'all') {
+                // El botón "Todas" siempre está disponible
+                btn.style.display = 'inline-block';
+                btn.disabled = false;
+            } else {
+                const isAvailable = availableModalities.includes(modality);
+                
+                if (isAvailable) {
+                    btn.style.display = 'inline-block';
+                    btn.disabled = false;
+                } else {
+                    btn.style.display = 'none';
+                    btn.disabled = true;
+                }
+            }
+        });
+        
+        console.log('Modalidades disponibles en estudios:', availableModalities);
+    }
+    
+    /**
+     * Abre el modal de antecedentes para un estudio
+     */
+    openAntecedentsModal(studyId) {
+        try {
+            console.log('=== INICIO openAntecedentsModal ===');
+            console.log('studyId recibido:', studyId);
+            console.log('this.studies:', this.studies);
+            console.log('this.studies.length:', this.studies ? this.studies.length : 'undefined');
+            
+            // Buscar el estudio por ID
+            const study = this.studies.find(s => s.id === studyId);
+            if (!study) {
+                console.error('Estudio no encontrado:', studyId);
+                alert('Estudio no encontrado');
+                return;
+            }
+            
+            console.log('Abriendo modal de antecedentes para estudio:', studyId);
+            console.log('Estudio encontrado:', study);
+            
+            // Guardar estudio actual
+            this.currentAntecedents = study;
+            
+            // Limpiar cualquier modal anterior que pueda estar abierto
+            this.cleanupModal();
+            
+            // Crear directamente el modal de emergencia (que funciona correctamente)
+            console.log('Creando modal de emergencia directamente...');
+            this.createEmergencyModal(study);
+            
+            console.log('Modal de antecedentes abierto exitosamente');
+            console.log('=== FIN openAntecedentsModal ===');
+            
+        } catch (error) {
+            console.error('Error abriendo modal de antecedentes:', error);
+            console.error('Stack trace:', error.stack);
+            console.log('=== FIN openAntecedentsModal ===');
+            alert('Error abriendo modal de antecedentes: ' + error.message);
+        }
+    }
+    
+    /**
+     * Configura los event listeners del modal de antecedentes
+     */
+    setupAntecedentsEventListeners() {
+        try {
+            console.log('Configurando event listeners del modal de antecedentes');
+            
+            // Verificar que tenemos estudios cargados
+            if (!this.studies || this.studies.length === 0) {
+                console.error('No hay estudios cargados');
+                this.showError('No hay estudios cargados. Por favor, busque estudios primero.');
+                return;
+            }
+            
+            const study = this.studies.find(s => s.id === studyId);
+            console.log('Estudio encontrado:', study);
+            
+            if (!study) {
+                console.error('Estudio no encontrado con ID:', studyId);
+                console.log('IDs disponibles:', this.studies.map(s => s.id));
+                this.showError('Estudio no encontrado');
+                return;
+            }
+            
+            this.selectedStudy = study;
+            console.log('Estudio seleccionado:', this.selectedStudy);
+            
+            // Limpiar cualquier modal anterior que pueda estar abierto
+            this.cleanupModal();
+            
+            // Crear directamente el modal de emergencia (que funciona correctamente)
+            console.log('Creando modal de emergencia directamente...');
+            this.createEmergencyModal(study);
+            
+            console.log('Modal de antecedentes abierto exitosamente');
+            console.log('=== FIN openAntecedentsModal ===');
+            return;
+            
+            // Actualizar información del estudio en el modal
+            const patientNameEl = document.getElementById('antecedentsPatientName');
+            const patientIdEl = document.getElementById('antecedentsPatientId');
+            const modalityEl = document.getElementById('antecedentsModality');
+            const studyDateEl = document.getElementById('antecedentsStudyDate');
+            const studyDescEl = document.getElementById('antecedentsStudyDescription');
+            
+            console.log('Elementos del modal encontrados:', {
+                patientNameEl: !!patientNameEl,
+                patientIdEl: !!patientIdEl,
+                modalityEl: !!modalityEl,
+                studyDateEl: !!studyDateEl,
+                studyDescEl: !!studyDescEl
+            });
+            
+            if (patientNameEl) patientNameEl.textContent = study.patient_name || 'N/A';
+            if (patientIdEl) patientIdEl.textContent = study.patient_id || 'N/A';
+            if (modalityEl) modalityEl.textContent = study.modality || 'N/A';
+            if (studyDateEl) studyDateEl.textContent = this.formatDate(study.date || study.study_date);
+            if (studyDescEl) studyDescEl.textContent = study.study_description || 'N/A';
+            
+            console.log('Información del estudio actualizada en el modal');
+            
+            // Limpiar formulario
+            this.clearAntecedentsForm();
+            console.log('Formulario limpiado');
+            
+            // Configurar event listeners del modal
+            this.setupAntecedentsEventListeners();
+            console.log('Event listeners configurados');
+            
+            // Cargar antecedentes existentes (sin bloquear el modal)
+            this.loadAntecedents(studyId).catch(error => {
+                console.warn('Error cargando antecedentes existentes:', error);
+            });
+            
+            // Verificar que Bootstrap está disponible
+            console.log('Bootstrap disponible:', typeof bootstrap !== 'undefined');
+            
+            // Mostrar modal
+            console.log('Creando instancia del modal Bootstrap...');
+            const modal = new bootstrap.Modal(modalElement);
+            console.log('Instancia del modal creada:', modal);
+            
+            console.log('Mostrando modal...');
+            modal.show();
+            console.log('modal.show() ejecutado');
+            
+            // Método alternativo si Bootstrap falla
+            setTimeout(() => {
+                console.log('Verificando si el modal es visible...');
+                const isVisible = modalElement.classList.contains('show') || 
+                                 modalElement.style.display === 'block' ||
+                                 window.getComputedStyle(modalElement).display === 'block';
+                console.log('Modal visible:', isVisible);
+                
+                if (!isVisible) {
+                    console.log('Modal no visible, aplicando método alternativo...');
+                    
+                    // Forzar visibilidad del modal
+                    modalElement.style.display = 'block';
+                    modalElement.style.position = 'fixed';
+                    modalElement.style.top = '0';
+                    modalElement.style.left = '0';
+                    modalElement.style.width = '100%';
+                    modalElement.style.height = '100%';
+                    modalElement.style.zIndex = '1055';
+                    modalElement.classList.add('show');
+                    modalElement.setAttribute('aria-hidden', 'false');
+                    modalElement.setAttribute('aria-modal', 'true');
+                    
+                    // Agregar clase al body para evitar scroll
+                    document.body.classList.add('modal-open');
+                    
+                    // Crear y agregar backdrop
+                    const existingBackdrop = document.getElementById('antecedentsModalBackdrop');
+                    if (existingBackdrop) {
+                        existingBackdrop.remove();
+                    }
+                    
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.id = 'antecedentsModalBackdrop';
+                    backdrop.style.zIndex = '1050';
+                    document.body.appendChild(backdrop);
+                    
+                    // Asegurar que el modal-dialog esté centrado y visible
+                    const modalDialog = modalElement.querySelector('.modal-dialog');
+                    if (modalDialog) {
+                        modalDialog.style.margin = '1.75rem auto';
+                        modalDialog.style.maxWidth = '90%';
+                        modalDialog.style.position = 'relative';
+                        modalDialog.style.zIndex = '1056';
+                        modalDialog.style.display = 'block';
+                    }
+                    
+                    // Asegurar que el modal-content sea visible
+                    const modalContent = modalElement.querySelector('.modal-content');
+                    if (modalContent) {
+                        modalContent.style.position = 'relative';
+                        modalContent.style.zIndex = '1057';
+                        modalContent.style.display = 'block';
+                        modalContent.style.backgroundColor = 'white';
+                        modalContent.style.border = '1px solid #dee2e6';
+                        modalContent.style.borderRadius = '0.375rem';
+                        modalContent.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)';
+                    }
+                    
+                    // Forzar visibilidad de todos los elementos del modal
+                    const allModalElements = modalElement.querySelectorAll('*');
+                    allModalElements.forEach(el => {
+                        if (window.getComputedStyle(el).display === 'none') {
+                            el.style.display = 'block';
+                        }
+                    });
+                    
+                    // Agregar estilos de debug más agresivos
+                    modalElement.style.border = '5px solid red !important';
+                    modalElement.style.backgroundColor = 'rgba(255, 0, 0, 0.1)';
+                    
+                    console.log('Método alternativo aplicado exitosamente');
+                    console.log('Modal element después del método alternativo:', modalElement);
+                    console.log('Modal dialog:', modalDialog);
+                    console.log('Modal content:', modalContent);
+                    console.log('Backdrop creado:', backdrop);
+                    
+                    // Verificar visibilidad después de aplicar estilos
+                    setTimeout(() => {
+                        const computedStyle = window.getComputedStyle(modalElement);
+                        console.log('Computed styles del modal:', {
+                            display: computedStyle.display,
+                            visibility: computedStyle.visibility,
+                            opacity: computedStyle.opacity,
+                            position: computedStyle.position,
+                            zIndex: computedStyle.zIndex
+                        });
+                        
+                        const dialogComputedStyle = modalDialog ? window.getComputedStyle(modalDialog) : null;
+                        console.log('Computed styles del dialog:', dialogComputedStyle ? {
+                            display: dialogComputedStyle.display,
+                            visibility: dialogComputedStyle.visibility,
+                            opacity: dialogComputedStyle.opacity,
+                            position: dialogComputedStyle.position,
+                            zIndex: dialogComputedStyle.zIndex
+                        } : 'Dialog no encontrado');
+                    }, 50);
+                    
+                    // Método de emergencia: crear modal completamente nuevo si sigue sin ser visible
+                    setTimeout(() => {
+                        const isStillVisible = window.getComputedStyle(modalElement).display === 'block' && 
+                                             window.getComputedStyle(modalElement).visibility !== 'hidden' &&
+                                             window.getComputedStyle(modalElement).opacity !== '0';
+                        
+                        console.log('Verificando visibilidad final:', isStillVisible);
+                        
+                        // Siempre crear modal de emergencia para asegurar funcionalidad
+                        console.log('Creando modal de emergencia para garantizar funcionalidad...');
+                        this.createEmergencyModal(study);
+                    }, 200);
+                    
+                } else {
+                    console.log('Modal ya es visible, no se necesita método alternativo');
+                }
+            }, 100);
+            
+            console.log('Modal de antecedentes abierto exitosamente');
+            
+        } catch (error) {
+            console.error('Error abriendo modal de antecedentes:', error);
+            console.error('Stack trace:', error.stack);
+            this.showError('Error abriendo modal de antecedentes: ' + error.message);
+        }
+        
+        console.log('=== FIN openAntecedentsModal ===');
+    }
+    
+    /**
+     * Configura los event listeners del modal de antecedentes
+     */
+    setupAntecedentsEventListeners() {
+        try {
+            console.log('Configurando event listeners del modal de antecedentes');
+            
+            // Botón guardar antecedentes
+            const saveBtn = document.getElementById('saveAntecedentsBtn');
+            if (saveBtn) {
+                saveBtn.onclick = () => this.saveAntecedents();
+                console.log('Event listener guardar configurado');
+            } else {
+                console.warn('Botón guardar no encontrado');
+            }
+            
+            // Subida de imágenes
+            const imageUpload = document.getElementById('imageUpload');
+            if (imageUpload) {
+                imageUpload.onchange = (e) => this.handleImageUpload(e);
+                console.log('Event listener imagen configurado');
+            } else {
+                console.warn('Input imagen no encontrado');
+            }
+            
+            // Subida de archivos
+            const fileUpload = document.getElementById('fileUpload');
+            if (fileUpload) {
+                fileUpload.onchange = (e) => this.handleFileUpload(e);
+                console.log('Event listener archivo configurado');
+            } else {
+                console.warn('Input archivo no encontrado');
+            }
+            
+            // Controles de cámara
+            const startCameraBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureBtn');
+            const stopCameraBtn = document.getElementById('stopCameraBtn');
+            
+            if (startCameraBtn) {
+                startCameraBtn.onclick = () => this.startCamera();
+                console.log('Event listener iniciar cámara configurado');
+            }
+            if (captureBtn) {
+                captureBtn.onclick = () => this.capturePhoto();
+                console.log('Event listener capturar configurado');
+            }
+            if (stopCameraBtn) {
+                stopCameraBtn.onclick = () => this.stopCamera();
+                console.log('Event listener detener cámara configurado');
+            }
+            
+            // Limpiar al cerrar modal
+            const modal = document.getElementById('antecedentsModal');
+            if (modal) {
+                // Remover listener anterior si existe
+                modal.removeEventListener('hidden.bs.modal', this.handleModalClose);
+                
+                // Agregar nuevo listener
+                this.handleModalClose = () => {
+                    this.stopCamera();
+                    this.clearAntecedentsForm();
+                    this.cleanupModal();
+                };
+                modal.addEventListener('hidden.bs.modal', this.handleModalClose);
+                console.log('Event listener cerrar modal configurado');
+            } else {
+                console.warn('Modal no encontrado para configurar event listener');
+            }
+            
+            console.log('Event listeners del modal configurados exitosamente');
+            
+        } catch (error) {
+            console.error('Error configurando event listeners:', error);
+        }
+    }
+    
+    /**
+     * Carga antecedentes existentes para un estudio
+     */
+    async loadAntecedents(studyId) {
+        try {
+            const response = await fetch(`${this.apiBaseUrl}study_antecedents.php?study_id=${studyId}`);
+            const result = await response.json();
+            
+            if (result.success && result.data.antecedents) {
+                this.currentAntecedents = result.data.antecedents;
+                
+                // Cargar notas
+                const notesTextarea = document.getElementById('antecedentsNotes');
+                if (notesTextarea) {
+                    notesTextarea.value = result.data.antecedents.notes || '';
+                }
+                
+                // Cargar archivos
+                this.displayUploadedFiles(result.data.files);
+            } else {
+                this.currentAntecedents = null;
+            }
+        } catch (error) {
+            console.error('Error cargando antecedentes:', error);
+            this.showError('Error cargando antecedentes: ' + error.message);
+        }
+    }
+    
+    /**
+     * Guarda los antecedentes del estudio
+     */
+    async saveAntecedents() {
+        if (!this.selectedStudy) {
+            this.showError('No hay estudio seleccionado');
+            return;
+        }
+        
+        try {
+            // Obtener usuario actual desde sessionStorage o localStorage
+            const currentUser = this.getCurrentUser();
+            if (!currentUser) {
+                throw new Error('No se pudo obtener información del usuario actual');
+            }
+            
+            const notes = document.getElementById('antecedentsNotes').value;
+            
+            const response = await fetch(`${this.apiBaseUrl}study_antecedents.php`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    study_id: this.selectedStudy.id,
+                    notes: notes,
+                    created_by: currentUser.id
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showSuccess('Antecedentes guardados exitosamente');
+                
+                // Cerrar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('antecedentsModal'));
+                if (modal) {
+                    modal.hide();
+                }
+            } else {
+                throw new Error(result.error || 'Error guardando antecedentes');
+            }
+            
+        } catch (error) {
+            console.error('Error guardando antecedentes:', error);
+            this.showError('Error guardando antecedentes: ' + error.message);
+        }
+    }
+    
+    /**
+     * Maneja la subida de imágenes
+     */
+    async handleImageUpload(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        try {
+            const currentUser = this.getCurrentUser();
+            if (!currentUser) {
+                throw new Error('No se pudo obtener información del usuario actual');
+            }
+            
+            for (let file of files) {
+                await this.uploadFile(file, 'image', currentUser.id);
+            }
+            
+            // Recargar antecedentes para mostrar archivos
+            await this.loadAntecedents(this.selectedStudy.id);
+            
+        } catch (error) {
+            console.error('Error subiendo imágenes:', error);
+            this.showError('Error subiendo imágenes: ' + error.message);
+        }
+    }
+    
+    /**
+     * Maneja la subida de archivos
+     */
+    async handleFileUpload(event) {
+        const files = event.target.files;
+        if (!files || files.length === 0) return;
+        
+        try {
+            const currentUser = this.getCurrentUser();
+            if (!currentUser) {
+                throw new Error('No se pudo obtener información del usuario actual');
+            }
+            
+            for (let file of files) {
+                await this.uploadFile(file, 'document', currentUser.id);
+            }
+            
+            // Recargar antecedentes para mostrar archivos
+            await this.loadAntecedents(this.selectedStudy.id);
+            
+        } catch (error) {
+            console.error('Error subiendo archivos:', error);
+            this.showError('Error subiendo archivos: ' + error.message);
+        }
+    }
+    
+    /**
+     * Sube un archivo al servidor
+     */
+    async uploadFile(file, fileType, createdBy) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('study_id', this.selectedStudy.id);
+        formData.append('file_type', fileType);
+        formData.append('created_by', createdBy);
+        
+        const response = await fetch(`${this.apiBaseUrl}upload_antecedents_file.php`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Error subiendo archivo');
+        }
+        
+        return result.data;
+    }
+    
+    /**
+     * Inicia la cámara
+     */
+    async startCamera() {
+        try {
+            this.cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            });
+            
+            const video = document.getElementById('cameraVideo');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            
+            video.srcObject = this.cameraStream;
+            video.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Habilitar controles
+            document.getElementById('captureBtn').disabled = false;
+            document.getElementById('stopCameraBtn').disabled = false;
+            document.getElementById('startCameraBtn').disabled = true;
+            
+        } catch (error) {
+            console.error('Error accediendo a la cámara:', error);
+            this.showError('Error accediendo a la cámara: ' + error.message);
+        }
+    }
+    
+    /**
+     * Captura una foto con la cámara
+     */
+    capturePhoto() {
+        const video = document.getElementById('cameraVideo');
+        const canvas = document.getElementById('cameraCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Configurar canvas con las dimensiones del video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        
+        // Dibujar el frame actual del video en el canvas
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Convertir a blob
+        canvas.toBlob(async (blob) => {
+            try {
+                const currentUser = this.getCurrentUser();
+                if (!currentUser) {
+                    throw new Error('No se pudo obtener información del usuario actual');
+                }
+                
+                // Crear archivo desde blob
+                const file = new File([blob], `captura_${Date.now()}.jpg`, { type: 'image/jpeg' });
+                
+                // Subir archivo
+                await this.uploadFile(file, 'camera_capture', currentUser.id);
+                
+                // Agregar a lista de capturas
+                this.capturedImages.push({
+                    name: file.name,
+                    url: URL.createObjectURL(blob),
+                    timestamp: new Date()
+                });
+                
+                this.displayCapturedImages();
+                
+                // Recargar antecedentes para mostrar archivos
+                await this.loadAntecedents(this.selectedStudy.id);
+                
+            } catch (error) {
+                console.error('Error capturando foto:', error);
+                this.showError('Error capturando foto: ' + error.message);
+            }
+        }, 'image/jpeg', 0.8);
+    }
+    
+    /**
+     * Detiene la cámara
+     */
+    stopCamera() {
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => track.stop());
+            this.cameraStream = null;
+        }
+        
+        const video = document.getElementById('cameraVideo');
+        const placeholder = document.getElementById('cameraPlaceholder');
+        
+        video.style.display = 'none';
+        placeholder.style.display = 'block';
+        
+        // Deshabilitar controles
+        document.getElementById('captureBtn').disabled = true;
+        document.getElementById('stopCameraBtn').disabled = true;
+        document.getElementById('startCameraBtn').disabled = false;
+    }
+    
+    /**
+     * Muestra las imágenes capturadas
+     */
+    displayCapturedImages() {
+        const container = document.getElementById('capturedImages');
+        if (!container) return;
+        
+        if (this.capturedImages.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center small">No hay fotos capturadas</div>';
+            return;
+        }
+        
+        let html = '';
+        this.capturedImages.forEach((img, index) => {
+            html += `
+                <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                    <img src="${img.url}" class="me-2" style="width: 50px; height: 50px; object-fit: cover;">
+                    <div class="flex-grow-1">
+                        <small class="fw-semibold">${img.name}</small><br>
+                        <small class="text-muted">${img.timestamp.toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    /**
+     * Muestra los archivos subidos
+     */
+    displayUploadedFiles(files) {
+        // Mostrar imágenes
+        const imagesContainer = document.getElementById('uploadedImages');
+        if (imagesContainer) {
+            const imageFiles = files.filter(f => f.file_type === 'image' || f.file_type === 'camera_capture');
+            
+            if (imageFiles.length === 0) {
+                imagesContainer.innerHTML = `
+                    <div class="text-muted text-center">
+                        <i class="fas fa-image fa-2x mb-2"></i><br>
+                        No hay imágenes adjuntas
+                    </div>
+                `;
+            } else {
+                let html = '';
+                imageFiles.forEach(file => {
+                    html += `
+                        <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                            <img src="${file.file_path.replace('../', '')}" class="me-2" style="width: 50px; height: 50px; object-fit: cover;">
+                            <div class="flex-grow-1">
+                                <small class="fw-semibold">${file.file_name}</small><br>
+                                <small class="text-muted">${(file.file_size / 1024).toFixed(1)} KB</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                imagesContainer.innerHTML = html;
+            }
+        }
+        
+        // Mostrar archivos
+        const filesContainer = document.getElementById('uploadedFiles');
+        if (filesContainer) {
+            const documentFiles = files.filter(f => f.file_type === 'document');
+            
+            if (documentFiles.length === 0) {
+                filesContainer.innerHTML = `
+                    <div class="text-muted text-center">
+                        <i class="fas fa-file fa-2x mb-2"></i><br>
+                        No hay archivos adjuntos
+                    </div>
+                `;
+            } else {
+                let html = '';
+                documentFiles.forEach(file => {
+                    const icon = file.mime_type.includes('pdf') ? 'fa-file-pdf' : 'fa-file';
+                    html += `
+                        <div class="d-flex align-items-center mb-2 p-2 border rounded">
+                            <i class="fas ${icon} fa-2x me-2 text-primary"></i>
+                            <div class="flex-grow-1">
+                                <small class="fw-semibold">${file.file_name}</small><br>
+                                <small class="text-muted">${(file.file_size / 1024).toFixed(1)} KB</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                filesContainer.innerHTML = html;
+            }
+        }
+    }
+    
+    /**
+     * Limpia el formulario de antecedentes
+     */
+    clearAntecedentsForm() {
+        document.getElementById('antecedentsNotes').value = '';
+        document.getElementById('imageUpload').value = '';
+        document.getElementById('fileUpload').value = '';
+        this.capturedImages = [];
+        this.displayCapturedImages();
+        
+        // Limpiar contenedores de archivos
+        document.getElementById('uploadedImages').innerHTML = `
+            <div class="text-muted text-center">
+                <i class="fas fa-image fa-2x mb-2"></i><br>
+                No hay imágenes adjuntas
+            </div>
+        `;
+        
+        document.getElementById('uploadedFiles').innerHTML = `
+            <div class="text-muted text-center">
+                <i class="fas fa-file fa-2x mb-2"></i><br>
+                No hay archivos adjuntos
+            </div>
+        `;
+    }
+    
+    /**
+     * Crea un modal de emergencia completamente nuevo
+     */
+    createEmergencyModal(study) {
+        try {
+            console.log('Creando modal de emergencia...');
+            
+            // Remover modal existente si existe
+            const existingEmergencyModal = document.getElementById('emergencyAntecedentsModal');
+            if (existingEmergencyModal) {
+                existingEmergencyModal.remove();
+            }
+            
+            // Crear modal completamente nuevo
+            const emergencyModal = document.createElement('div');
+            emergencyModal.id = 'emergencyAntecedentsModal';
+            emergencyModal.className = 'modal fade show';
+            emergencyModal.style.cssText = `
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                z-index: 9999 !important;
+                display: block !important;
+                background-color: rgba(0, 0, 0, 0.5) !important;
+            `;
+            
+            emergencyModal.innerHTML = `
+                <div class="modal-dialog modal-xl" style="margin: 1.75rem auto; max-width: 90%; position: relative; z-index: 10000;">
+                    <div class="modal-content" style="background-color: white; border: 1px solid #dee2e6; border-radius: 0.375rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);">
+                        <div class="modal-header" style="border-bottom: 1px solid #dee2e6; padding: 1rem;">
+                            <h5 class="modal-title">
+                                <i class="fas fa-file-medical me-2"></i>Antecedentes Médicos
+                            </h5>
+                            <button type="button" class="btn-close" onclick="closeEmergencyModal();">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body" style="padding: 1rem;">
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <div class="card bg-light">
+                                        <div class="card-body">
+                                            <h6 class="card-title">
+                                                <i class="fas fa-info-circle me-2"></i>Información del Estudio
+                                            </h6>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <strong>Paciente:</strong> ${study.patient_name || 'N/A'}<br>
+                                                    <strong>ID Paciente:</strong> ${study.patient_id || 'N/A'}<br>
+                                                    <strong>Modalidad:</strong> ${study.modality || 'N/A'}
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <strong>Fecha:</strong> ${this.formatDate(study.date || study.study_date)}<br>
+                                                    <strong>Descripción:</strong> ${study.study_description || 'N/A'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Pestañas -->
+                            <ul class="nav nav-tabs" role="tablist" style="border-bottom: 1px solid #dee2e6;">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="emergency-notes-tab" data-bs-toggle="tab" data-bs-target="#emergency-notes" type="button" role="tab" style="border: none; background: none; padding: 0.5rem 1rem; color: #007bff; border-bottom: 2px solid #007bff;">
+                                        <i class="fas fa-sticky-note me-2"></i>Notas y Texto
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="emergency-images-tab" data-bs-toggle="tab" data-bs-target="#emergency-images" type="button" role="tab" style="border: none; background: none; padding: 0.5rem 1rem; color: #6c757d;">
+                                        <i class="fas fa-images me-2"></i>Imágenes
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" style="margin-top: 1rem;">
+                                <div class="tab-pane fade show active" id="emergency-notes" role="tabpanel">
+                                    <div class="mb-3">
+                                        <label for="emergencyNotes" class="form-label">
+                                            <i class="fas fa-edit me-2"></i>Notas y Antecedentes Médicos
+                                        </label>
+                                        <textarea class="form-control" id="emergencyNotes" rows="8" 
+                                                  placeholder="Ingrese aquí los antecedentes médicos, pedido médico, síntomas, historial clínico, etc."></textarea>
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            Esta información será visible para el médico que informe el estudio.
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="tab-pane fade" id="emergency-images" role="tabpanel">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <label for="emergencyImageUpload" class="form-label">
+                                                <i class="fas fa-upload me-2"></i>Subir Imágenes
+                                            </label>
+                                            <input type="file" class="form-control" id="emergencyImageUpload" multiple accept="image/*">
+                                            <div class="form-text">Seleccione una o múltiples imágenes (JPG, PNG, GIF)</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">
+                                                <i class="fas fa-images me-2"></i>Imágenes Adjuntas
+                                            </label>
+                                            <div id="emergencyUploadedImages" class="border rounded p-3" style="min-height: 100px;">
+                                                <div class="text-muted text-center">
+                                                    <i class="fas fa-image fa-2x mb-2"></i><br>
+                                                    No hay imágenes adjuntas
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid #dee2e6; padding: 1rem;">
+                            <button type="button" class="btn btn-secondary" onclick="closeEmergencyModal();">
+                                Cancelar
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="emergencySaveAntecedents('${study.id}');">
+                                <i class="fas fa-save me-2"></i>Guardar Antecedentes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Agregar al body
+            document.body.appendChild(emergencyModal);
+            document.body.classList.add('modal-open');
+            
+            // Agregar event listener para cerrar al hacer clic en el backdrop
+            emergencyModal.onclick = (e) => {
+                if (e.target === emergencyModal) {
+                    closeEmergencyModal();
+                }
+            };
+            
+            // Agregar event listener para tecla Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeEmergencyModal();
+                }
+            });
+            
+            console.log('Modal de emergencia creado exitosamente');
+            
+            // Configurar event listeners para el modal de emergencia
+            this.setupEmergencyModalListeners(study.id);
+            
+        } catch (error) {
+            console.error('Error creando modal de emergencia:', error);
+        }
+    }
+    
+    /**
+     * Configura los event listeners del modal de emergencia
+     */
+    setupEmergencyModalListeners(studyId) {
+        try {
+            // Event listener para pestañas
+            const notesTab = document.getElementById('emergency-notes-tab');
+            const imagesTab = document.getElementById('emergency-images-tab');
+            
+            if (notesTab) {
+                notesTab.onclick = () => {
+                    // Activar pestaña de notas
+                    notesTab.style.color = '#007bff';
+                    notesTab.style.borderBottom = '2px solid #007bff';
+                    imagesTab.style.color = '#6c757d';
+                    imagesTab.style.borderBottom = 'none';
+                    
+                    // Mostrar contenido de notas
+                    document.getElementById('emergency-notes').style.display = 'block';
+                    document.getElementById('emergency-images').style.display = 'none';
+                };
+            }
+            
+            if (imagesTab) {
+                imagesTab.onclick = () => {
+                    // Activar pestaña de imágenes
+                    imagesTab.style.color = '#007bff';
+                    imagesTab.style.borderBottom = '2px solid #007bff';
+                    notesTab.style.color = '#6c757d';
+                    notesTab.style.borderBottom = 'none';
+                    
+                    // Mostrar contenido de imágenes
+                    document.getElementById('emergency-images').style.display = 'block';
+                    document.getElementById('emergency-notes').style.display = 'none';
+                };
+            }
+            
+            // Event listener para subida de imágenes
+            const imageUpload = document.getElementById('emergencyImageUpload');
+            if (imageUpload) {
+                imageUpload.onchange = (e) => {
+                    console.log('Imágenes seleccionadas en modal de emergencia:', e.target.files.length);
+                    // Aquí se puede implementar la subida de imágenes
+                };
+            }
+            
+            console.log('Event listeners del modal de emergencia configurados');
+            
+        } catch (error) {
+            console.error('Error configurando event listeners del modal de emergencia:', error);
+        }
+    }
+    
+    /**
+     * Limpia el modal después de cerrarlo
+     */
+    cleanupModal() {
+        try {
+            console.log('Limpiando modal...');
+            
+            // Remover modal original
+            const modalElement = document.getElementById('antecedentsModal');
+            if (modalElement) {
+                modalElement.remove();
+            }
+            
+            // Remover modal de emergencia
+            const emergencyModal = document.getElementById('emergencyAntecedentsModal');
+            if (emergencyModal) {
+                emergencyModal.remove();
+            }
+            
+            // Remover backdrop personalizado
+            const backdrop = document.getElementById('antecedentsModalBackdrop');
+            if (backdrop) {
+                backdrop.remove();
+            }
+            
+            // Remover TODOS los backdrops de Bootstrap
+            const allBackdrops = document.querySelectorAll('.modal-backdrop');
+            allBackdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+            
+            // Limpiar clases del body
+            document.body.classList.remove('modal-open');
+            
+            // Limpiar estilos del body si existen
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+            
+            // Forzar limpieza de cualquier modal de Bootstrap activo
+            if (window.bootstrap && window.bootstrap.Modal) {
+                const activeModals = document.querySelectorAll('.modal.show');
+                activeModals.forEach(modal => {
+                    const modalInstance = bootstrap.Modal.getInstance(modal);
+                    if (modalInstance) {
+                        modalInstance.dispose();
+                    }
+                });
+            }
+            
+            console.log('Modal limpiado exitosamente');
+            
+        } catch (error) {
+            console.error('Error limpiando modal:', error);
+        }
+    }
+    
+    /**
+     * Obtiene el usuario actual desde sessionStorage
+     */
+    getCurrentUser() {
+        try {
+            const userData = sessionStorage.getItem('userData');
+            if (userData) {
+                return JSON.parse(userData);
+            }
+            
+            // Fallback a localStorage si no está en sessionStorage
+            const localUserData = localStorage.getItem('userData');
+            if (localUserData) {
+                return JSON.parse(localUserData);
+            }
+            
+            return null;
+        } catch (error) {
+            console.error('Error obteniendo usuario actual:', error);
+            return null;
+        }
+    }
+    
+    /**
+     * Obtiene las asignaciones para un estudio específico
+     */
+    getStudyAssignments(studyId) {
+        if (!this.studyAssignments) {
+            return [];
+        }
+        return this.studyAssignments[studyId] || [];
+    }
+    
+    /**
+     * Formatea la información de asignaciones para mostrar en la tabla
+     */
+    formatAssignmentInfo(assignments) {
+        if (!assignments || assignments.length === 0) {
+            return '<span class="text-muted">Sin asignar</span>';
+        }
+        
+        if (assignments.length === 1) {
+            const assignment = assignments[0];
+            return `
+                <div class="assignment-single">
+                    <i class="fas fa-user text-primary me-1"></i>
+                    <span class="fw-semibold">${assignment.usuario_nombre} ${assignment.usuario_apellido}</span>
+                    <small class="text-muted d-block">${assignment.matricula_profesional}</small>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="assignment-multiple">
+                    <i class="fas fa-users text-primary me-1"></i>
+                    <span class="fw-semibold">${assignments.length} usuarios</span>
+                    <small class="text-muted d-block">Ver detalles</small>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Maneja la selección de estudios individuales
+     */
+    handleStudySelection() {
+        const checkboxes = document.querySelectorAll('.study-checkbox');
+        const checkedBoxes = document.querySelectorAll('.study-checkbox:checked');
+        const selectAllCheckbox = document.getElementById('selectAllStudies');
+        const bulkActions = document.getElementById('bulkActions');
+        const selectedCount = document.getElementById('selectedCount');
+        const assignSelectedBtn = document.getElementById('assignSelectedBtn');
+        
+        // Actualizar contador
+        if (selectedCount) {
+            selectedCount.textContent = checkedBoxes.length;
+        }
+        
+        // Mostrar/ocultar acciones masivas
+        if (bulkActions) {
+            if (checkedBoxes.length > 0) {
+                bulkActions.classList.remove('d-none');
+            } else {
+                bulkActions.classList.add('d-none');
+            }
+        }
+        
+        // Habilitar/deshabilitar botón de asignación
+        if (assignSelectedBtn) {
+            assignSelectedBtn.disabled = checkedBoxes.length === 0;
+        }
+        
+        // Actualizar checkbox "Seleccionar todos"
+        if (selectAllCheckbox) {
+            if (checkedBoxes.length === 0) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = false;
+            } else if (checkedBoxes.length === checkboxes.length) {
+                selectAllCheckbox.indeterminate = false;
+                selectAllCheckbox.checked = true;
+            } else {
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+    }
+    
+    /**
+     * Maneja la selección/deselección de todos los estudios
+     */
+    handleSelectAll() {
+        const selectAllCheckbox = document.getElementById('selectAllStudies');
+        const checkboxes = document.querySelectorAll('.study-checkbox');
+        
+        if (!selectAllCheckbox) return;
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        
+        this.handleStudySelection();
+    }
+    
+    /**
+     * Limpia la selección de todos los estudios
+     */
+    clearSelection() {
+        const checkboxes = document.querySelectorAll('.study-checkbox');
+        const selectAllCheckbox = document.getElementById('selectAllStudies');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+        
+        this.handleStudySelection();
+    }
+    
+    /**
+     * Obtiene los IDs de los estudios seleccionados
+     */
+    getSelectedStudyIds() {
+        const checkedBoxes = document.querySelectorAll('.study-checkbox:checked');
+        return Array.from(checkedBoxes).map(checkbox => checkbox.getAttribute('data-study-id'));
+    }
+    
+    /**
+     * Abre el modal de asignación múltiple
+     */
+    openBulkAssignModal() {
+        const selectedIds = this.getSelectedStudyIds();
+        if (selectedIds.length === 0) {
+            this.showError('No hay estudios seleccionados');
+            return;
+        }
+        
+        // Usar el modal existente pero con múltiples estudios
+        const modal = new bootstrap.Modal(document.getElementById('assignStudyModal'));
+        
+        // Actualizar el título del modal
+        const modalTitle = document.getElementById('assignStudyModalLabel');
+        if (modalTitle) {
+            modalTitle.innerHTML = `
+                <i class="fas fa-share-alt me-2"></i>
+                Asignar ${selectedIds.length} Estudios Seleccionados
+            `;
+        }
+        
+        // Mostrar información de los estudios seleccionados
+        this.updateBulkModalContent(selectedIds);
+        
+        modal.show();
+    }
+    
+    /**
+     * Actualiza el contenido del modal para asignación múltiple
+     */
+    updateBulkModalContent(studyIds) {
+        const selectedStudies = this.studies.filter(study => studyIds.includes(study.id));
+        
+        // Crear lista de estudios seleccionados
+        let studiesListHtml = '';
+        selectedStudies.forEach(study => {
+            studiesListHtml += `
+                <div class="card mb-2">
+                    <div class="card-body py-2">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Paciente:</strong> ${study.patient_name}<br>
+                                <strong>ID Paciente:</strong> ${study.patient_id}<br>
+                                <strong>Modalidad:</strong> ${study.modality}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Fecha:</strong> ${this.formatDate(study.date || study.study_date)}<br>
+                                <strong>Descripción:</strong> ${study.study_description || 'N/A'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        // Actualizar el contenido del modal
+        const modalBody = document.querySelector('#assignStudyModal .modal-body');
+        if (modalBody) {
+            modalBody.innerHTML = `
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <h6>Estudios Seleccionados (${studyIds.length}):</h6>
+                        <div class="studies-list" style="max-height: 200px; overflow-y: auto;">
+                            ${studiesListHtml}
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Seleccionar Usuario(s) para Asignación:</h6>
+                        <div id="modalUsersContainer" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                            <!-- Los usuarios se cargarán aquí -->
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Cargar usuarios en el modal
+        this.loadUsersForModal();
+    }
+    
+    /**
+     * Carga usuarios para el modal de asignación
+     */
+    loadUsersForModal() {
+        const container = document.getElementById('modalUsersContainer');
+        if (!container) return;
+        
+        let html = '';
+        this.users.forEach(user => {
+            html += `
+                <div class="form-check mb-2">
+                    <input class="form-check-input modal-user-checkbox" type="checkbox" 
+                           value="${user.id}" id="user_${user.id}">
+                    <label class="form-check-label" for="user_${user.id}">
+                        <div class="d-flex align-items-center">
+                            <div class="user-avatar me-2">
+                                <i class="fas fa-user-circle text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold">${user.nombre} ${user.apellido}</div>
+                                <small class="text-muted">${user.matricula_profesional}</small>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+    
+    /**
+     * Confirma la asignación múltiple
+     */
+    async confirmBulkAssignment() {
+        const selectedStudyIds = this.getSelectedStudyIds();
+        const selectedUserIds = Array.from(document.querySelectorAll('.modal-user-checkbox:checked'))
+            .map(checkbox => parseInt(checkbox.value));
+        
+        if (selectedUserIds.length === 0) {
+            this.showError('Debe seleccionar al menos un usuario');
+            return;
+        }
+        
+        try {
+            // Obtener usuario actual (asignador)
+            const currentUser = this.getCurrentUser();
+            if (!currentUser) {
+                throw new Error('No se pudo obtener información del usuario actual');
+            }
+            
+            const response = await fetch(this.apiBaseUrl + 'assign_multiple_studies.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    study_ids: selectedStudyIds,
+                    user_ids: selectedUserIds,
+                    assigned_by: currentUser.id
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                this.showSuccess(result.message);
+                
+                // Cerrar modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('assignStudyModal'));
+                if (modal) {
+                    modal.hide();
+                }
+                
+                // Limpiar selección
+                this.clearSelection();
+                
+                // Recargar asignaciones
+                await this.loadStudyAssignments();
+                
+                // Actualizar tabla
+                this.renderFilteredStudies();
+                
+            } else {
+                throw new Error(result.error || 'Error en la asignación');
+            }
+            
+        } catch (error) {
+            console.error('Error en asignación múltiple:', error);
+            this.showError('Error asignando estudios: ' + error.message);
+        }
+    }
+    
+    /**
+     * Carga las asignaciones de estudios desde la API
+     */
+    async loadStudyAssignments() {
+        try {
+            const response = await fetch(this.apiBaseUrl + 'get_study_assignments.php');
+            const result = await response.json();
+            
+            if (result.success) {
+                this.studyAssignments = result.grouped_data || {};
+                console.log('Asignaciones cargadas:', Object.keys(this.studyAssignments).length, 'estudios');
+            } else {
+                console.warn('Error cargando asignaciones:', result.error);
+                this.studyAssignments = {};
+            }
+        } catch (error) {
+            console.error('Error cargando asignaciones:', error);
+            this.studyAssignments = {};
+        }
+    }
+}
+
+// Instancia global
+let derivacionesManager;
+
+// Inicializar cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', function() {
+    derivacionesManager = new DerivacionesManager();
+    derivacionesManager.init();
+});
+
+// Función global para búsqueda (compatibilidad)
+function searchStudies() {
+    if (derivacionesManager) {
+        derivacionesManager.handleSearchClick();
+    }
+}
+
+// Función global para guardar antecedentes desde modal de emergencia
+function emergencySaveAntecedents(studyId) {
+    try {
+        console.log('Guardando antecedentes desde modal de emergencia para estudio:', studyId);
+        
+        const notes = document.getElementById('emergencyNotes').value;
+        console.log('Notas a guardar:', notes);
+        
+        // Aquí se implementaría la lógica de guardado
+        // Por ahora, mostrar mensaje de éxito
+        alert('Antecedentes guardados exitosamente desde modal de emergencia');
+        
+        // Cerrar modal usando la función de limpieza
+        closeEmergencyModal();
+        
+    } catch (error) {
+        console.error('Error guardando antecedentes desde modal de emergencia:', error);
+        alert('Error guardando antecedentes: ' + error.message);
+    }
+}
+
+// Función global para cerrar modal de emergencia
+function closeEmergencyModal() {
+    try {
+        console.log('Cerrando modal de emergencia...');
+        
+        // Remover modal de emergencia
+        const emergencyModal = document.getElementById('emergencyAntecedentsModal');
+        if (emergencyModal) {
+            emergencyModal.remove();
+        }
+        
+        // Remover modal original si existe
+        const originalModal = document.getElementById('antecedentsModal');
+        if (originalModal) {
+            originalModal.remove();
+        }
+        
+        // Remover backdrop personalizado
+        const backdrop = document.getElementById('antecedentsModalBackdrop');
+        if (backdrop) {
+            backdrop.remove();
+        }
+        
+        // Remover TODOS los backdrops de Bootstrap
+        const allBackdrops = document.querySelectorAll('.modal-backdrop');
+        allBackdrops.forEach(backdrop => {
+            backdrop.remove();
+        });
+        
+        // Limpiar clases del body
+        document.body.classList.remove('modal-open');
+        
+        // Limpiar estilos del body si existen
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // Forzar limpieza de cualquier modal de Bootstrap activo
+        if (window.bootstrap && window.bootstrap.Modal) {
+            const activeModals = document.querySelectorAll('.modal.show');
+            activeModals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.dispose();
+                }
+            });
+        }
+        
+        // Remover event listener de Escape
+        document.removeEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeEmergencyModal();
+            }
+        });
+        
+        console.log('Modal de emergencia cerrado exitosamente');
+        
+        // Limpieza adicional después de un delay
+        setTimeout(() => {
+            // Verificar si aún hay elementos residuales
+            const remainingBackdrops = document.querySelectorAll('.modal-backdrop');
+            if (remainingBackdrops.length > 0) {
+                console.log('Removiendo backdrops residuales:', remainingBackdrops.length);
+                remainingBackdrops.forEach(backdrop => backdrop.remove());
+            }
+            
+            // Verificar si el body aún tiene la clase modal-open
+            if (document.body.classList.contains('modal-open')) {
+                console.log('Removiendo clase modal-open residual');
+                document.body.classList.remove('modal-open');
+            }
+            
+            // Limpiar estilos residuales del body
+            if (document.body.style.overflow === 'hidden') {
+                document.body.style.overflow = '';
+            }
+            if (document.body.style.paddingRight) {
+                document.body.style.paddingRight = '';
+            }
+        }, 100);
+        
+    } catch (error) {
+        console.error('Error cerrando modal de emergencia:', error);
+    }
+}

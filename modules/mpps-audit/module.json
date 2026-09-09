@@ -1,0 +1,34 @@
+{
+  "id": "mpps-audit",
+  "name": "Auditoría MPPS (Equipos DICOM)",
+  "version": "1.0.0",
+  "description": "Captura inicio/fin de estudios desde modalidades vía Orthanc MPPS; cruza worklist y PACS. Entrega 1: scaffold + pestaña mock en Auditoría.",
+  "requires_core": ">=2025.06",
+  "requires_modules": [],
+  "optional_integrations": ["worklist", "audit-manager", "orthanc"],
+  "install_url": "/modules/mpps-audit/install.php",
+  "permissions_url": "/modules/mpps-audit/install-permissions.php",
+  "uninstall_url": "/modules/mpps-audit/uninstall.php",
+  "tables": [
+    "mpps_events",
+    "mpps_audit_config",
+    "mpps_poll_state"
+  ],
+  "alters_core_tables": [],
+  "links_core_tables": [
+    "worklist (FK opcional mpps_events.worklist_id)"
+  ],
+  "core_patches_required": [
+    "audit-manager.html — pestaña MPPS / Equipos",
+    "modules/audit-manager/assets/js/audit-manager.js — init tab MPPS"
+  ],
+  "cron": [
+    "* * * * * php /var/www/tjsiddse/modules/mpps-audit/workers/mpps-poll-orthanc.php  # entrega 2"
+  ],
+  "permissions": [
+    "mpps_audit",
+    "gui_mpps_audit"
+  ],
+  "status": "scaffold",
+  "phase": 1
+}

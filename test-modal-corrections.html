@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔧 Test Modal Jerarquía - Correcciones</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-header">
+                <h1 class="card-title text-primary">
+                    <i class="bi bi-bug"></i> Test Modal Jerarquía - Correcciones
+                </h1>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Usuarios con Padre:</h5>
+                        <div id="usersWithParent" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                            <div class="text-center">
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Log de Pruebas:</h5>
+                        <div id="testLog" class="bg-light p-3 rounded" style="height: 200px; overflow-y: auto;">
+                            <small class="text-muted">Los logs aparecerán aquí...</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>Pruebas del Modal:</h5>
+                    <div class="d-grid gap-2">
+                        <button onclick="testModalWithParent()" class="btn btn-primary">
+                            <i class="bi bi-test-tube"></i> Probar Modal con Usuario que tiene Padre
+                        </button>
+                        <button onclick="testModalWithoutParent()" class="btn btn-secondary">
+                            <i class="bi bi-test-tube"></i> Probar Modal con Usuario sin Padre
+                        </button>
+                        <button onclick="testModalCleanup()" class="btn btn-warning">
+                            <i class="bi bi-test-tube"></i> Probar Limpieza del Modal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allUsers = [];
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsers();
+        });
+        
+        async function loadUsers() {
+            try {
+                logTest('Cargando usuarios desde la API...');
+                
+                const response = await fetch('api/users/manage-real-complete.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    allUsers = result.data.users;
+                    renderUsersWithParent();
+                    logTest('✓ Usuarios cargados: ' + allUsers.length);
+                } else {
+                    logTest('✗ Error cargando usuarios: ' + result.error);
+                }
+            } catch (error) {
+                logTest('✗ Error: ' + error.message);
+            }
+        }
+        
+        function renderUsersWithParent() {
+            const container = document.getElementById('usersWithParent');
+            const usersWithParent = allUsers.filter(user => user.padre_id);
+            
+            if (usersWithParent.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center"><small>No hay usuarios con padre asignado</small></div>';
+                return;
+            }
+            
+            container.innerHTML = usersWithParent.map(user => `
+                <div class="mb-2 p-2 border rounded">
+                    <strong>${user.nombre} ${user.apellido}</strong><br>
+                    <small class="text-muted">ID: ${user.id} | Nivel: ${user.nivel}</small><br>
+                    <small class="text-info">Padre: ${user.padre_nombre} ${user.padre_apellido}</small><br>
+                    <button onclick="testModalWithUser(${user.id})" class="btn btn-sm btn-outline-primary">
+                        Probar Modal
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        function testModalWithParent() {
+            const userWithParent = allUsers.find(u => u.padre_id);
+            if (userWithParent) {
+                testModalWithUser(userWithParent.id);
+            } else {
+                logTest('✗ No hay usuarios con padre para probar');
+            }
+        }
+        
+        function testModalWithoutParent() {
+            const userWithoutParent = allUsers.find(u => !u.padre_id);
+            if (userWithoutParent) {
+                testModalWithUser(userWithoutParent.id);
+            } else {
+                logTest('✗ No hay usuarios sin padre para probar');
+            }
+        }
+        
+        function testModalWithUser(userId) {
+            const user = allUsers.find(u => u.id == userId);
+            if (!user) {
+                logTest('✗ Usuario no encontrado');
+                return;
+            }
+            
+            logTest('🧪 Probando modal con usuario: ' + user.nombre + ' ' + user.apellido);
+            logTest('  - Tiene padre: ' + (user.padre_id ? 'Sí (' + user.padre_nombre + ')' : 'No'));
+            
+            showTestHierarchyModal(user);
+        }
+        
+        function showTestHierarchyModal(user) {
+            logTest('📋 Creando modal de prueba...');
+            
+            const modalHtml = `
+                <div class="modal fade" id="testHierarchyModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="bi bi-diagram-3 me-2"></i>
+                                    Test - ${user.nombre} ${user.apellido}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Información del Usuario</h6>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <p><strong>Nombre:</strong> ${user.nombre} ${user.apellido}</p>
+                                                <p><strong>Email:</strong> ${user.email}</p>
+                                                <p><strong>Nivel:</strong> ${user.nivel.toUpperCase()}</p>
+                                                <p><strong>Padre actual:</strong> ${user.padre_nombre ? `${user.padre_nombre} ${user.padre_apellido}` : 'Sin padre'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Asignar Padre</h6>
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <label class="form-label">Seleccionar nuevo padre:</label>
+                                                <select class="form-select" id="testParentSelect">
+                                                    <option value="">Sin padre (usuario independiente)</option>
+                                                </select>
+                                                <small class="form-text text-muted">El padre actual debería estar seleccionado por defecto</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Limpiar modal existente
+            const existingModal = document.getElementById('testHierarchyModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Limpiar backdrop
+            const existingBackdrop = document.querySelector('.modal-backdrop');
+            if (existingBackdrop) {
+                existingBackdrop.remove();
+            }
+            
+            // Remover clase modal-open
+            document.body.classList.remove('modal-open');
+            
+            // Agregar modal
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Cargar opciones de padre
+            loadTestParentOptions(user.id, user.padre_id);
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('testHierarchyModal'));
+            modal.show();
+            
+            // Agregar event listener para limpiar al cerrar
+            const modalElement = document.getElementById('testHierarchyModal');
+            modalElement.addEventListener('hidden.bs.modal', function() {
+                logTest('🧹 Limpiando modal...');
+                
+                // Limpiar backdrop
+                const backdrop = document.querySelector('.modal-backdrop');
+                if (backdrop) {
+                    backdrop.remove();
+                    logTest('  ✓ Backdrop removido');
+                }
+                
+                // Remover clase modal-open
+                document.body.classList.remove('modal-open');
+                logTest('  ✓ Clase modal-open removida');
+                
+                // Remover modal del DOM
+                modalElement.remove();
+                logTest('  ✓ Modal removido del DOM');
+                
+                logTest('✅ Limpieza completada');
+            });
+            
+            logTest('✓ Modal mostrado');
+        }
+        
+        function loadTestParentOptions(excludeUserId, currentParentId) {
+            const select = document.getElementById('testParentSelect');
+            const possibleParents = allUsers.filter(user => user.id != excludeUserId && user.activo);
+            
+            select.innerHTML = '<option value="">Sin padre (usuario independiente)</option>' +
+                possibleParents.map(parent => 
+                    `<option value="${parent.id}">${parent.nombre} ${parent.apellido} (${parent.nivel.toUpperCase()})</option>`
+                ).join('');
+            
+            // Establecer padre actual por defecto si existe
+            if (currentParentId) {
+                select.value = currentParentId;
+                logTest('✓ Padre actual seleccionado por defecto: ' + currentParentId);
+            } else {
+                logTest('ℹ️ Usuario sin padre - opción "Sin padre" seleccionada');
+            }
+        }
+        
+        function testModalCleanup() {
+            logTest('🧪 Probando limpieza manual del modal...');
+            
+            // Limpiar backdrop
+            const backdrop = document.querySelector('.modal-backdrop');
+            if (backdrop) {
+                backdrop.remove();
+                logTest('  ✓ Backdrop removido manualmente');
+            }
+            
+            // Remover clase modal-open
+            document.body.classList.remove('modal-open');
+            logTest('  ✓ Clase modal-open removida manualmente');
+            
+            // Remover modal del DOM
+            const modal = document.getElementById('testHierarchyModal');
+            if (modal) {
+                modal.remove();
+                logTest('  ✓ Modal removido manualmente');
+            }
+            
+            logTest('✅ Limpieza manual completada');
+        }
+        
+        function logTest(message) {
+            const log = document.getElementById('testLog');
+            const timestamp = new Date().toLocaleTimeString();
+            log.innerHTML += `<div><small class="text-muted">[${timestamp}]</small> ${message}</div>`;
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,21 @@
+{
+    "name": "tjmedical/portal-estudios",
+    "description": "Portal de Estudios Médicos - Sistema de gestión de informes y estudios DICOM",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "tecnickcom/tcpdf": "^6.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        },
+        "files": [
+            "config/database.php"
+        ]
+    },
+    "config": {
+        "vendor-dir": "vendor",
+        "optimize-autoloader": true
+    }
+}

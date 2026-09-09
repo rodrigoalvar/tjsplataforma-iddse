@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recarga del Sistema - Portal Estudios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="card-title">🔄 Sistema de Gestión de Usuarios</h1>
+                
+                <div class="alert alert-info mt-4">
+                    <h4>✅ Correcciones Aplicadas</h4>
+                    <ul>
+                        <li>✅ API robusta creada: <code>api/users/manage-robust.php</code></li>
+                        <li>✅ JavaScript actualizado: <code>user-management.js</code></li>
+                        <li>✅ Todas las APIs devuelven JSON válido</li>
+                        <li>✅ Sin errores 500 o HTML</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <h4>⚠️ Importante: Limpiar Caché</h4>
+                    <p>Para que los cambios surtan efecto, debes limpiar el caché del navegador:</p>
+                    <ul>
+                        <li><strong>Chrome/Edge:</strong> Presiona <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Delete</kbd></li>
+                        <li><strong>Firefox:</strong> Presiona <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Delete</kbd></li>
+                        <li><strong>O simplemente:</strong> Presiona <kbd>Ctrl</kbd> + <kbd>F5</kbd> para recargar forzadamente</li>
+                    </ul>
+                </div>
+                
+                <div class="d-grid gap-3 mt-4">
+                    <a href="user-management.html" class="btn btn-primary btn-lg">
+                        🚀 Ir al Panel de Gestión de Usuarios
+                    </a>
+                    
+                    <button onclick="clearCacheAndGo()" class="btn btn-success btn-lg">
+                        🔄 Limpiar Caché y Abrir Panel
+                    </button>
+                    
+                    <a href="test-robust-api.php" class="btn btn-info btn-lg" target="_blank">
+                        🧪 Probar APIs (Diagnóstico)
+                    </a>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>📋 Instrucciones:</h5>
+                    <ol>
+                        <li>Haz clic en "Limpiar Caché y Abrir Panel"</li>
+                        <li>O presiona <kbd>Ctrl</kbd> + <kbd>F5</kbd> en el panel de usuarios</li>
+                        <li>Verifica que no hay errores en la consola (F12)</li>
+                        <li>Prueba editar un usuario</li>
+                        <li>Guarda los cambios</li>
+                        <li>Verifica que funciona sin errores</li>
+                    </ol>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>🔍 Verificación Rápida:</h5>
+                    <button onclick="testAPI()" class="btn btn-secondary">
+                        Probar API Ahora
+                    </button>
+                    <div id="apiResult" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function clearCacheAndGo() {
+            // Agregar timestamp para evitar caché
+            const timestamp = new Date().getTime();
+            window.location.href = `user-management.html?v=${timestamp}`;
+        }
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<div class="spinner-border" role="status"><span class="visually-hidden">Probando...</span></div>';
+            
+            try {
+                // Probar API GET
+                const response = await fetch('api/users/manage-robust.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success">
+                            <h5>✅ API Funciona Correctamente</h5>
+                            <p>Usuarios encontrados: ${result.data.users.length}</p>
+                            <p>La API está devolviendo JSON válido.</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h5>✗ Error en API</h5>
+                            <p>${result.error}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>✗ Error</h5>
+                        <p>${error.message}</p>
+                        <p>Esto probablemente es un error de caché. Presiona Ctrl+F5 para recargar.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Probar API automáticamente al cargar
+        window.addEventListener('DOMContentLoaded', function() {
+            testAPI();
+        });
+    </script>
+</body>
+</html>
+
+

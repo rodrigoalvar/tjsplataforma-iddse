@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Discard Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Test Discard Report</h1>
+        <div class="row">
+            <div class="col-md-6">
+                <h3>Archivos Temporales Actuales</h3>
+                <div id="currentFiles"></div>
+                <button class="btn btn-primary mt-3" onclick="loadCurrentFiles()">Cargar Archivos</button>
+            </div>
+            <div class="col-md-6">
+                <h3>Probar Descarte</h3>
+                <div class="mb-3">
+                    <label for="studyId" class="form-label">Study ID:</label>
+                    <input type="text" class="form-control" id="studyId" value="ae09efb2-3b595e90-b4bc3156-d3721dd6-267e9ed5">
+                </div>
+                <div class="mb-3">
+                    <label for="patientId" class="form-label">Patient ID:</label>
+                    <input type="text" class="form-control" id="patientId" value="14279359">
+                </div>
+                <button class="btn btn-danger" onclick="testDiscard()">Probar Descarte</button>
+                <div id="discardResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/url-study-manager.js"></script>
+    <script src="assets/js/temp-audio-manager.js"></script>
+    
+    <script>
+        async function loadCurrentFiles() {
+            try {
+                const response = await fetch('components/temp-audio.php');
+                const data = await response.json();
+                
+                const container = document.getElementById('currentFiles');
+                if (data.success && data.files && data.files.length > 0) {
+                    container.innerHTML = '<ul class="list-group">' + 
+                        data.files.map(file => `<li class="list-group-item">${file.fileName} (${file.audioType})</li>`).join('') +
+                        '</ul>';
+                } else {
+                    container.innerHTML = '<p class="text-muted">No hay archivos temporales</p>';
+                }
+            } catch (error) {
+                console.error('Error al cargar archivos:', error);
+                document.getElementById('currentFiles').innerHTML = '<p class="text-danger">Error al cargar archivos</p>';
+            }
+        }
+        
+        async function testDiscard() {
+            const studyId = document.getElementById('studyId').value;
+            const patientId = document.getElementById('patientId').value;
+            const resultDiv = document.getElementById('discardResult');
+            
+            try {
+                // Simular URLESTUDIO
+                if (window.urlStudyManager) {
+                    window.urlStudyManager.setActiveStudy({
+                        studyId: studyId,
+                        patientId: patientId,
+                        patientName: 'Test Patient',
+                        modality: 'DX'
+                    });
+                }
+                
+                console.log('Iniciando descarte de informe...');
+                resultDiv.innerHTML = '<div class="alert alert-info">Procesando descarte...</div>';
+                
+                // Llamar a discardReport
+                if (window.TempAudioManager) {
+                    const success = await window.TempAudioManager.discardReport(studyId, patientId);
+                    
+                    if (success) {
+                        resultDiv.innerHTML = '<div class="alert alert-success">Descarte exitoso. Recarga los archivos para verificar.</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="alert alert-warning">Descarte completado con advertencias. Revisa la consola.</div>';
+                    }
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">TempAudioManager no está disponible</div>';
+                }
+                
+            } catch (error) {
+                console.error('Error en descarte:', error);
+                resultDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Cargar archivos al inicio
+        document.addEventListener('DOMContentLoaded', loadCurrentFiles);
+    </script>
+</body>
+</html>

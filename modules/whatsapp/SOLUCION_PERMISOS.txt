@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════════════════
+  SOLUCIÓN: Permisos para Guardar Configuración de WhatsApp
+═══════════════════════════════════════════════════════════════
+
+PROBLEMA:
+El archivo de configuración no tiene permisos de escritura para el servidor web.
+
+SOLUCIÓN:
+Ejecuta estos comandos en tu terminal (CLI):
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 1: Cambiar grupo a www-data (RECOMENDADO)
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chgrp www-data modules/whatsapp/config
+sudo chgrp www-data modules/whatsapp/config/whatsapp_config.php
+sudo chmod 2775 modules/whatsapp/config
+sudo chmod 664 modules/whatsapp/config/whatsapp_config.php
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 2: Cambiar ownership completo a www-data
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chown -R www-data:www-data modules/whatsapp/config
+sudo chmod 2775 modules/whatsapp/config
+sudo chmod 664 modules/whatsapp/config/whatsapp_config.php
+
+───────────────────────────────────────────────────────────────
+OPCIÓN 3: Cambiar ownership a tu usuario Y grupo www-data
+───────────────────────────────────────────────────────────────
+
+cd /var/www/tjsidimagenes
+sudo chown -R $(whoami):www-data modules/whatsapp/config
+sudo chmod 2775 modules/whatsapp/config
+sudo chmod 664 modules/whatsapp/config/whatsapp_config.php
+
+───────────────────────────────────────────────────────────────
+VERIFICACIÓN:
+───────────────────────────────────────────────────────────────
+
+Después de ejecutar los comandos, verifica con:
+
+ls -la modules/whatsapp/config/
+
+El grupo debería ser "www-data", NO "root".
+
+Para verificar que funciona:
+- El directorio debe tener permisos: drwxrwsr-x (2775)
+- El archivo debe tener permisos: -rw-rw-r-- (664)
+- El grupo debe ser: www-data
+
+═══════════════════════════════════════════════════════════════
+
